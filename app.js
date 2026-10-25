@@ -60,7 +60,6 @@
 
   // ---------- house state ----------
   let cur = null, curId = null, actors = {}, visiting = false, pose = 'idle';
-  const poseMemory = {};
   // ---------- where each bot is: status.json when fresh, else the default schedule ----------
   const BOTS = CFG.bots || [];
   const isBot = id => BOTS.includes(id);
@@ -69,47 +68,92 @@
   const hourNow = () => hourParam !== null ? +hourParam : new Date().getHours() + new Date().getMinutes() / 60;
   let liveAll = {}; // bot -> { place, pose, note } from a fresh status.json
   let statusFresh = false;
-  function scheduled(bot) {
-    const rows = (CFG.schedule || {})[bot] || [], h = hourNow(); let e = null;
-    rows.forEach(r => { if (h >= r[0]) e = r; });
-    if (!e || e[1] === 'bed') return { place: bot, pose: 'sleeping', note: '', live: false };
-    return { place: e[1], pose: e[2] || 'idle', note: '', live: false };
+  // ----- v26: each bot's day, generated from CFG.routines and seeded by the date (?day=2026-10-24 to preview a day) -----
+  const ROUT = CFG.routines || {};
+  const dayParam = new URLSearchParams(location.search).get('day');
+  const hashS = str => { let h = 2166136261; for (const ch of str) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619); } return h >>> 0; };
+  const rngOf = seed => () => { seed = (seed + 0x6D2B79F5) | 0; let t = Math.imul(seed ^ (seed >>> 15), 1 | seed); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+  const dayKey = off => { const d = dayParam ? new Date(dayParam + 'T12:00:00') : new Date(); d.setDate(d.getDate() + off); return d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate(); };
+  const planCache = {};
+  // rows: [fromHour, scene, pose] from waking up to bedtime (hours past midnight of that day; bedtime may be 24+)
+  function dayPlan(bot, key) {
+    const ck = bot + '|' + key; if (planCache[ck]) return planCache[ck];
+    const R = ROUT[bot] || { sleep: [22, 7], work: .5, outings: [] }, r = rngOf(hashS(ck)), q = v => Math.round(v * 4) / 4;
+    const wake = q(R.sleep[1] + (r() - .5) * .75), bed = q(R.sleep[0] + (r() - .5) * .75);
+    const rows = [[wake, bot + '-bed', 'awake']]; let t = q(wake + .5 + r() * .5), last = bot + '-bed';
+    while (t < bed - 1) {
+      const x = r(), hr = t % 24; let place = bot, pose = 'idle', dur = .75 + r();
+      if (x < R.work) { pose = 'working'; dur = 1.25 + r() * 1.75; }
+      else if (x < R.work + .3) {
+        const ok = (R.outings || []).filter(o => o !== last && C[o] && (o !== 'playground' || (hr >= 8 && hr < 19)) && (!(C[o].room && C[o].room.poses) || (hr >= 10 && hr < 21)));
+        if (ok.length) { place = ok[Math.floor(r() * ok.length)]; pose = place === 'starfall' ? 'sitting' : 'idle'; } else pose = 'sitting';
+      } else pose = r() < .5 ? 'sitting' : 'idle';
+      if (place + pose === last) pose = pose === 'idle' ? 'sitting' : 'idle';
+      rows.push([t, place, pose]); last = place + (place === bot ? pose : '');
+      t = q(Math.min(t + dur, bed - .5));
+    }
+    rows.push([Math.max(t, bed - .75), bot + '-bed', 'awake']);
+    return (planCache[ck] = { wake, bed, rows });
   }
-  function where(bot) { return liveAll[bot] || scheduled(bot); }
-  // the scene a bot is in right now (sleeping bots are in their bedroom)
-  const sceneOf = bot => { const w = where(bot); return w.pose === 'sleeping' ? bot + '-bed' : w.place; };
-  const hostHome = () => !isBot(curId) || (where(curId).place === curId && where(curId).pose !== 'sleeping');
+  function scheduled(bot) {
+    const h = hourNow(); let P = dayPlan(bot, dayKey(0)), t = h;
+    if (h < P.wake) { P = dayPlan(bot, dayKey(-1)); t = h + 24; }
+    if (t >= P.bed || t < P.wake) return { place: bot + '-bed', pose: 'sleeping', note: '', live: false };
+    let e = P.rows[0]; P.rows.forEach(rw => { if (t >= rw[0]) e = rw; });
+    return { place: e[1], pose: e[2], note: '', live: false };
+  }
+  // ----- v26: THE one place every scene asks "where is this character, doing what?" -----
+  // Returns { scene, place (= scene), pose, note, live }. Bots: status.json when fresh, else their day plan.
+  // Olithia: wherever she was last sent (localStorage bt-olithia-at), home and idle by default.
+  const isChar = id => isBot(id) || id === CFG.player;
+  function locate(id) {
+    if (id === CFG.player) {
+      const o = store.get('olithia-at', null), ok = o && C[o.scene];
+      const scene = ok ? o.scene : id, pose = ok ? (o.pose || 'idle') : 'idle';
+      return { scene, place: scene, pose, note: '', live: false };
+    }
+    const w = liveAll[id] || scheduled(id); let scene = w.place, pose = w.pose;
+    if (pose === 'sleeping' || scene === 'bed' || scene === id + '-bed') { scene = id + '-bed'; pose = pose === 'sleeping' || w.place === 'bed' ? 'sleeping' : 'awake'; }
+    else if (pose === 'awake') pose = 'idle';
+    if (!C[scene]) scene = id;
+    return { ...w, scene, place: scene, pose };
+  }
+  const where = locate;
+  const sceneOf = id => locate(id).scene;
+  const hostHome = () => !isChar(curId) || locate(curId).scene === curId;
+  function setOli(scene, pose) { store.set('olithia-at', { scene, pose }); applyLive(); }
   const stage = $('#stage'), vp = $('#viewport');
   let W = 0, H = 0, cam = { x: 0, y: 0, s: 1 };
   const tasksDone = id => store.get('tasks-' + id, []);
   const isBusy = id => { const o = store.get('busy-' + id, null); return o !== null ? o : (C[id].tasks || []).some((_, i) => !tasksDone(id)[i]); };
 
-  // Bedrooms show their sleeping image at night, or when the owner is set to sleep
-  // (localStorage bt-asleep-<id> = true/false overrides the clock; ?sleep=1 / ?sleep=0 to test).
-  const sleepParam = new URLSearchParams(location.search).get('sleep');
-  function isAsleep(id) {
-    if (sleepParam !== null) return sleepParam === '1';
-    if (isBot(id)) return where(id).pose === 'sleeping'; // a bot sleeps in its bed only when that's where it is
-    const o = store.get('asleep-' + id, null); if (o !== null) return !!o;
-    return inHours(CFG.sleepHours || [22, 7]);
-  }
   function inHours([from, to]) {
-    const h = new Date().getHours();
+    const h = hourNow() % 24;
     return from > to ? (h >= from || h < to) : (h >= from && h < to);
   }
-  // ?night=1 / ?night=0 forces the park's night image for testing
+  // ?night=1 / ?night=0 forces the night look for testing; bedrooms use CFG.bedNight, the park its own nightHours
   const nightParam = new URLSearchParams(location.search).get('night');
-  const isNight = () => nightParam !== null ? nightParam === '1' : inHours(cur.room.nightHours || [19, 6]);
+  const isNight = () => nightParam !== null ? nightParam === '1' : inHours(cur.room.nightHours || (cur.room.awake ? (CFG.bedNight || [20, 7]) : [19, 6]));
+  // v26: which painting to show, from locate() only
   function roomURL() {
-    if (cur.room.poses && !hostHome()) return cur.room.empty || cur.room.poses.idle; // host is out: the empty room
-    if (cur.room.poses) return (visiting && cur.room.visit) || cur.room.poses[pose] || cur.room.poses.idle;
-    if (cur.room.sleeping && isAsleep(cur.returnTo || curId)) return cur.room.sleeping;
-    if (cur.room.night && isNight()) return cur.room.night;
-    return cur.room.image;
+    const R = cur.room;
+    if (R.poses) { // a painted house: its owner in a pose, the visit painting, or empty
+      if (!hostHome()) return R.empty || R.poses.idle;
+      if (visiting && R.visit) return R.visit;
+      return R.poses[pose] || R.poses.idle;
+    }
+    if (R.awake || R.sleeping) { // a bedroom: asleep, awake, or empty, day or night
+      const L = locate(cur.returnTo || curId), here = L.scene === curId, n = isNight();
+      if (here && L.pose === 'sleeping') return n || !R.sleepingDay ? R.sleeping : R.sleepingDay;
+      if (here) return n ? (R.awakeNight || R.awake) : R.awake;
+      return n ? (R.night || R.image) : R.image;
+    }
+    if (R.night && isNight()) return R.night;
+    return R.image;
   }
   function applyBackdrop() {
     const url = roomURL();
-    const night = !!((cur.room.sleeping && url === cur.room.sleeping) || (cur.room.night && url === cur.room.night));
+    const night = [cur.room.sleeping, cur.room.night, cur.room.awakeNight].filter(Boolean).includes(url);
     $('#house').style.background = night
       ? 'radial-gradient(circle at 50% 45%, #141a2e, #0b0f1c)'
       : (cur.room.backdrop || '');
@@ -140,9 +184,9 @@
     if (hide.complete && hide.naturalWidth && hide.src === abs) paint();
   }
   function enter(id, opts = {}) {
-    curId = id; cur = C[id]; visiting = false;
-    pose = cur.room.poses ? (poseMemory[id] || 'idle') : 'idle';
-    if (isBot(id) && ['working', 'idle', 'sitting'].includes(where(id).pose)) pose = where(id).pose;
+    curId = id; cur = C[id];
+    visiting = id !== CFG.player && locate(CFG.player).scene === id;
+    pose = cur.room.poses && isChar(id) && hostHome() ? locate(id).pose : 'idle';
     $('#house').style.opacity = '';
     showRoom(applyBackdrop(), false);
     $('#roomImg').alt = cur.house; $('#roomFade').alt = '';
@@ -152,7 +196,6 @@
     $('#house').classList.toggle('has-poses', painted);
     $('#house').classList.toggle('gallery', gallery);
     $('#house').classList.toggle('play', !!cur.play);
-    $('#poses').hidden = !painted || !hostHome();
     $('#motto').hidden = !cur.room.motto; $('#motto').textContent = cur.room.motto || '';
     $('#tbBusy').hidden = painted || gallery;
     $('#tbVisit').hidden = painted || gallery;
@@ -248,6 +291,7 @@
     $('#actors').innerHTML = ''; actors = {};
     if (cur.room.poses || cur.gallery || !cur.sprite) return;
     if (!cur.bot || where(cur.bot).place === curId) actors.main = makeActor(curId, isBusy(curId) ? cur.room.work : cur.room.hangout);
+    if (cur.room.visitor && curId !== CFG.player && locate(CFG.player).scene === curId) actors.visitor = makeActor(CFG.player, cur.room.visitor);
     (cur.pets || []).forEach(p => {
       if (p.kind === 'attach') return;
       const el = document.createElement('div');
@@ -273,15 +317,14 @@
   function updateMode(initial) {
     if (cur.gallery) return;
     if (cur.room.poses && !hostHome()) {
-      const w = where(curId);
-      $('#statusChip').innerHTML = `<b>Out</b>${esc(w.pose === 'sleeping' ? 'Asleep in the bedroom' : 'At ' + placeName(w.place))}`;
+      const w = locate(curId);
+      $('#statusChip').innerHTML = `<b>Out</b>${esc(awayLine(w))}${curId === CFG.player ? ' · tap the desk or sofa to come home' : ''}`;
       return;
     }
     if (cur.room.poses && isBot(curId)) {
       const w = where(curId), label = { working: 'Working on', sitting: 'Sitting', idle: 'Relaxing' }[pose] || 'Here';
       let line = w.note || (pose === 'working' ? 'Busy working' : pose === 'sitting' ? 'Taking a cozy break' : 'A quiet idle moment');
       $('#statusChip').innerHTML = visiting && cur.room.visit ? `<b>Sitting together</b>Tea with ${esc(C[CFG.player].name)}` : `<b>${label}</b>${esc(line)}`;
-      $('#poses').querySelectorAll('button').forEach(b => { const on = b.dataset.pose === pose; b.classList.toggle('on', on); b.setAttribute('aria-pressed', on ? 'true' : 'false'); });
       return;
     }
     if (cur.room.poses) {
@@ -291,12 +334,7 @@
         : pose === 'sitting'
           ? ['Sitting', next ? 'Taking a cozy break' : 'All tasks done! Tea time']
           : ['Relaxing', next ? 'A quiet idle moment' : 'All tasks done! Tea time'];
-      if (visiting && cur.room.visit) { line[0] = 'Sitting together'; line[1] = `Tea with ${C[CFG.player].name}`; }
       $('#statusChip').innerHTML = `<b>${line[0]}</b>${line[1]}`;
-      $('#poses').querySelectorAll('button').forEach(b => {
-        const on = b.dataset.pose === pose;
-        b.classList.toggle('on', on); b.setAttribute('aria-pressed', on ? 'true' : 'false');
-      });
       return;
     }
     const busy = isBusy(curId) && !visiting, target = busy ? cur.room.work : cur.room.hangout;
@@ -307,20 +345,11 @@
     $('#tbVisit').classList.toggle('on', visiting); $('#tbVisit span').textContent = visiting ? 'Leave seat' : 'Sit with';
   }
   function galleryPad() { return cur && cur.gallery ? 80 : 120; }
-  $('#poses').onclick = e => {
-    const btn = e.target.closest('button'); if (!btn || !cur || !cur.room.poses) return;
-    const next = btn.dataset.pose; if (!next || next === pose) return;
-    pose = next; poseMemory[curId] = next; visiting = false;
-    showRoom(cur.room.poses[next], true);
-    updateMode(true);
-  };
   $('#tbBusy').onclick = () => { store.set('busy-' + curId, !isBusy(curId)); if (visiting) toggleVisit(); else updateMode(); };
+  // v26: "Sit with" moves Olithia here (so her cottage shows empty); again sends her home
   function toggleVisit() {
     if (curId === CFG.player || !cur.room.visitor) return;
-    visiting = !visiting;
-    if (visiting) { const v = cur.room.visitor; actors.visitor = makeActor(CFG.player, { x: v.x + (v.x > 50 ? 12 : -12), y: v.y + 6 }); requestAnimationFrame(() => requestAnimationFrame(() => walk(actors.visitor, v))); }
-    else if (actors.visitor) { actors.visitor.remove(); actors.visitor = null; }
-    updateMode();
+    if (visiting) setOli(CFG.player, 'idle'); else setOli(curId, 'visit');
   }
   $('#tbVisit').onclick = toggleVisit;
 
@@ -336,16 +365,22 @@
     return el;
   }
   function buildDoors() {
+    // v26: Olithia's cottage and bedroom: tap an object to move her there (tap it again or the floor for idle)
+    (cur.room.objects || []).forEach(o => { const el = addZone(o.zone, o.label, () => tapObject(o)); el.classList.remove('glow'); el.classList.add('obj'); el.style.zIndex = o.floor ? 500 : 600; });
     const bed = cur.room.bedroom;
     if (bed) addZone(bed.door, bed.label, () => travel(bed.to, { door: true }), 'Bedroom');
-    (cur.room.spots || []).forEach(s => { const el = addZone(s.zone, s.label, () => showBubble(el, s.label, s.caption)); el.classList.remove('glow'); }); // invisible until tapped
-    if (cur.room.visit && cur.room.seat && curId !== CFG.player && hostHome()) addZone(cur.room.seat, `Sit with ${cur.name}`, toggleSeat, 'Sit together');
+    (cur.room.spots || []).forEach(s => { const el = addZone(s.zone, s.label, () => {
+      if (s.join && locate(CFG.player).scene !== curId) { setOli(curId, 'sitting'); showBubble(el, C[CFG.player].name, 'Up on the crest with her handpan 🎶'); }
+      else showBubble(el, s.label, s.caption);
+    }); el.classList.remove('glow'); }); // invisible until tapped
+    if (cur.room.visit && cur.room.seat && curId !== CFG.player && (hostHome() || visiting)) addZone(cur.room.seat, visiting ? 'Leave the seat' : `Sit with ${cur.name}`, toggleSeat, visiting ? 'Leave seat' : 'Sit together');
   }
-  // Painted houses: Olithia sits with the host (the -visit image); tap again to go back to the host's pose.
-  function toggleSeat() {
-    visiting = !visiting;
-    showRoom(roomURL(), true);
-    updateMode(true);
+  // Painted houses: Olithia sits with the host (the -visit image); tap again to send her home.
+  function toggleSeat() { if (visiting) setOli(CFG.player, 'idle'); else setOli(curId, 'visit'); }
+  function tapObject(o) {
+    const L = locate(CFG.player), idle = cur.returnTo ? 'awake' : 'idle';
+    let p = o.pose; if (!o.floor && L.scene === curId && L.pose === p) p = idle;
+    setOli(curId, p);
   }
   function buildLinks() {
     buildDoors();
@@ -438,7 +473,7 @@
   // ---------- loader ----------
   (function () {
     const tips = CFG.loadingTips || [];
-    const urls = ['assets/map-v3.webp', ...Object.values(CFG.sprites || {}).map(s => s.src), ...Object.values(C).flatMap(c => [c.sprite, c.mapImage, c.room && c.room.image, c.room && c.room.sleeping, c.room && c.room.night, c.room && c.room.visit, c.room && c.room.empty, c.room && c.room.swing && c.room.swing.src, ...Object.values(c.room.cameos || {}).flatMap(k => [k.day, k.night]), ...Object.values(c.room.poses || {}), ...(c.pets || []).filter(p => p.sprite).map(p => p.sprite)])].filter(Boolean);
+    const urls = ['assets/map-v3.webp', ...Object.values(CFG.sprites || {}).map(s => s.src), ...Object.values(C).flatMap(c => [c.sprite, c.mapImage, c.room && c.room.image, c.room && c.room.sleeping, c.room && c.room.night, c.room && c.room.awake, c.room && c.room.awakeNight, c.room && c.room.sleepingDay, c.room && c.room.visit, c.room && c.room.empty, c.room && c.room.swing && c.room.swing.src, ...Object.values(c.room.cameos || {}).flatMap(k => [k.day, k.night]), ...Object.values(c.room.poses || {}), ...(c.pets || []).filter(p => p.sprite).map(p => p.sprite)])].filter(Boolean);
     let done = 0, ti = 0; const t0 = Date.now(), slow = +(new URLSearchParams(location.search).get('loaddelay') || 0);
     const tipEl = $('#tip'); if (tips.length) tipEl.textContent = tips[0];
     const tipTimer = setInterval(() => { tipEl.style.opacity = 0; setTimeout(() => { ti = (ti + 1) % tips.length; tipEl.textContent = tips[ti]; tipEl.style.opacity = 1; }, 300); }, 1800);
@@ -569,11 +604,12 @@
 
   // ---------- live status (all bots), map pins, guests, playground, the town post and the town board ----------
   const LIVE_PLACES = ['gorbo', 'olithia', 'loria', 'scout', 'starfall', 'playground', 'burrow'];
-  const LIVE_POSES = ['working', 'idle', 'sitting', 'sleeping'];
+  const LIVE_POSES = ['working', 'idle', 'sitting', 'sleeping', 'awake']; // v26: "awake" (or place "<bot>-bed") = up in its own bedroom
   const LIVE_MAX = 6 * 60 * 60 * 1000;
   const esc = t => String(t == null ? '' : t).replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
   const botName = id => (C[id] && C[id].name) || String(id || '');
-  const placeName = p => p === 'olithia' ? "Olithia's cottage" : (C[p] && C[p].house) || p;
+  const placeName = p => String(p).endsWith('-bed') ? 'the bedroom' : p === 'olithia' ? "Olithia's cottage" : (C[p] && C[p].house) || p;
+  const awayLine = w => w.pose === 'sleeping' ? 'Asleep in the bedroom' : String(w.scene).endsWith('-bed') ? 'Up in the bedroom' : 'At ' + placeName(w.scene);
   function fillText(el, text) {
     el.replaceChildren();
     String(text || '').split(/\n{2,}/).forEach(para => {
@@ -601,10 +637,16 @@
   function buildGuests() {
     $('#actors').querySelectorAll('.guest,.cameo').forEach(e => e.remove());
     if (!cur) return;
-    BOTS.forEach(b => {
-      if (b === curId) return;
-      const w = where(b); if (w.pose === 'sleeping' || w.place !== curId) return;
-      const cam = cur.room.cameos && cur.room.cameos[b], spot = cur.room.guests && cur.room.guests[b], spr = (CFG.sprites || {})[b];
+    [...BOTS, CFG.player].forEach(b => {
+      if (b === curId || b === cur.returnTo) return; // painted into its own house / bedroom
+      const w = locate(b); if (w.scene !== curId) return; // one instance: only the scene locate() names
+      const cam = cur.room.cameos && cur.room.cameos[b], spr = (CFG.sprites || {})[b];
+      let spot = cur.room.guests && cur.room.guests[b];
+      if (b === CFG.player) {
+        if (cur.room.visitor) return; // sprite rooms (the burrow): she is an actor there
+        if (cur.room.poses && cur.room.seat) { if (hostHome() && cur.room.visit) return; // painted into the -visit image
+          const st = cur.room.seat; spot = { x: st.left + st.width / 2, y: st.top + st.height * .85 }; }
+      }
       let el;
       if (cam) {
         el = document.createElement('img'); el.className = 'cameo'; el.alt = botName(b); el.draggable = false;
@@ -615,18 +657,20 @@
         const hPct = spr.h * (cur.room.guestScale || 1) * 100 / (cur.room.aspect || .75);
         Object.assign(el.style, { left: spot.x + '%', top: spot.y + '%', height: hPct + '%', zIndex: Math.round(spot.y * 10) });
       } else return;
+      el.dataset.id = b;
       el.onclick = ev => { ev.stopPropagation(); showBubble(el, botName(b), w.note || pick(C[b].dialog || ['Hi!'])); };
       $('#actors').appendChild(el);
     });
   }
   function refreshScene() {
     if (!cur) return;
-    if (cur.room.poses && isBot(curId) && hostHome() && !visiting && ['working', 'idle', 'sitting'].includes(where(curId).pose)) pose = where(curId).pose;
+    visiting = curId !== CFG.player && locate(CFG.player).scene === curId;
+    pose = cur.room.poses && isChar(curId) && hostHome() ? locate(curId).pose : 'idle';
     showRoom(applyBackdrop(), true);
-    $('#poses').hidden = !cur.room.poses || !hostHome();
-    $('#actors').querySelectorAll('.link').forEach(e => e.remove()); buildLinks();
-    if (cur.bot && !!actors.main !== (where(cur.bot).place === curId)) buildActors();
-    buildGuests(); updateMode(true);
+    $('#actors').querySelectorAll('.link:not(.pboard)').forEach(e => e.remove()); buildLinks();
+    const wantMain = !cur.bot || locate(cur.bot).scene === curId, wantVis = !!(cur.room.visitor && visiting);
+    if (cur.sprite && !cur.room.poses && !cur.gallery && (!!actors.main !== wantMain || !!actors.visitor !== wantVis)) buildActors();
+    buildGuests(); updateMode(true); if (cur.play) playTools();
     if (!$('#tasks').hidden && (cur.tasks || isBot(curId))) renderTasks();
   }
 
@@ -635,10 +679,10 @@
   function applyLive() {
     const pins = $('#botPins'); pins.innerHTML = '';
     const byPlace = {};
-    BOTS.forEach(b => { const h = pinSpot(b); if (!h) return; const k = h.left + ',' + h.top; (byPlace[k] = byPlace[k] || []).push(b); });
+    [...BOTS, CFG.player].forEach(b => { const h = pinSpot(b); if (!h) return; const k = h.left + ',' + h.top; (byPlace[k] = byPlace[k] || []).push(b); });
     Object.values(byPlace).forEach(list => list.forEach((b, i) => {
       const h = pinSpot(b), w = where(b), spr = (CFG.sprites || {})[b];
-      const p = document.createElement('div'); p.className = 'bot-pin' + (w.pose === 'sleeping' ? ' asleep' : '');
+      const p = document.createElement('div'); p.className = 'bot-pin' + (w.pose === 'sleeping' ? ' asleep' : '') + (b === CFG.player ? ' me' : '');
       p.style.left = (h.left + h.width / 2 + (i - (list.length - 1) / 2) * 11) + '%'; p.style.top = (h.top + h.height / 2) + '%';
       p.innerHTML = `<i>${spr ? `<img src="${spr.face || spr.src}" alt="">` : ''}</i><span>${esc(botName(b))}${w.pose === 'sleeping' ? ' 💤' : ''}</span>`;
       pins.appendChild(p);
@@ -646,7 +690,7 @@
     const chips = $('#botChips'); chips.innerHTML = '';
     BOTS.forEach(b => {
       const w = where(b), spr = (CFG.sprites || {})[b];
-      const line = w.pose === 'sleeping' ? 'Asleep' : (w.note || ((w.pose === 'working' ? 'Working at ' : 'At ') + placeName(w.place)));
+      const line = w.pose === 'sleeping' ? 'Asleep' : (w.note || (String(w.scene).endsWith('-bed') ? 'Up in the bedroom' : (w.pose === 'working' ? 'Working at ' : 'At ') + placeName(w.place)));
       const c = document.createElement('button'); c.type = 'button'; c.className = 'bot-chip' + (w.live ? ' live' : '');
       c.innerHTML = `<i>${spr ? `<img src="${spr.face || spr.src}" alt="">` : ''}</i><span><b>${esc(botName(b))}</b> ${esc(line)}</span>`;
       c.setAttribute('aria-label', `${botName(b)}: ${line}. Visit`);
@@ -666,9 +710,10 @@
       statusFresh = Number.isFinite(t) && Date.now() - t <= LIVE_MAX;
       if (statusFresh) BOTS.forEach(b => {
         const g = data[b]; if (!g || typeof g !== 'object') return;
-        const place = LIVE_PLACES.includes(g.place) ? g.place : b;
+        let place = LIVE_PLACES.includes(g.place) || g.place === b + '-bed' ? g.place : b;
         let p = LIVE_POSES.includes(g.pose) ? g.pose : 'idle';
-        if (p === 'sleeping' && place !== b) p = 'idle'; // a bot only sleeps in its own bed
+        if ((p === 'sleeping' || p === 'awake') && place === b) place = b + '-bed'; // asleep / up: in its own bedroom
+        if ((p === 'sleeping' || p === 'awake') && place !== b + '-bed') p = 'idle'; // a bot only sleeps in its own bed
         next[b] = { place, pose: p, note: typeof g.note === 'string' ? g.note.trim().slice(0, 140) : '', live: true };
       });
     } catch (e) { statusFresh = false; }
@@ -735,7 +780,7 @@
     });
     const reset = document.createElement('button'); reset.type = 'button'; reset.className = 'pill pg-reset'; reset.textContent = 'Tidy blocks';
     reset.onclick = ev => { ev.stopPropagation(); store.set('pg-blocks', null); buildPlayFresh(); };
-    $('#playTools').replaceChildren(reset);
+    $('#playTools').replaceChildren(reset); playTools();
     // ball: flick it, or tap for a little kick
     const ball = document.createElement('div'); ball.className = 'ball'; ball.setAttribute('role', 'button'); ball.setAttribute('aria-label', 'Ball');
     const st = store.get('pg-ball', null) || { x: 58, y: 77 }; const bs = { x: st.x, y: st.y, vx: 0, vy: 0 };
@@ -762,6 +807,12 @@
       };
       ball.addEventListener('pointerup', up); ball.addEventListener('pointercancel', up);
     });
+  }
+  function playTools() { // v26: send Olithia out to play, or back home
+    const box = $('#playTools'); box.querySelectorAll('.pg-join').forEach(e => e.remove());
+    const here = locate(CFG.player).scene === curId, j = document.createElement('button'); j.type = 'button'; j.className = 'pill pg-join';
+    j.textContent = here ? 'Head home' : 'Join in'; j.onclick = ev => { ev.stopPropagation(); setOli(here ? CFG.player : curId, 'idle'); };
+    box.appendChild(j);
   }
   function buildPlayFresh() { $('#actors').querySelectorAll('.block,.ball,.swing,.pboard').forEach(e => e.remove()); buildPlay(); }
 
@@ -924,9 +975,9 @@
     $('#tint').style.background = `linear-gradient(to bottom, ${css(mixC(t0, t1, t))}, ${css(mixC(b0, b1, t))})`;
   }
   tint(); setInterval(tint, 60000);
-  setInterval(() => { if (cur && (cur.room.sleeping || cur.room.night)) { showRoom(applyBackdrop(), true); buildGuests(); } }, 60000); // crossfade at bedtime / wake-up
+  // (v26: pullLive below re-runs locate() for every scene each minute, so bedtimes and outings crossfade in on their own)
   pullLive(); setInterval(pullLive, 60000);
   if (location.hash) history.replaceState(null, '', location.pathname + location.search);
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');
-  window.__bt = { enter, go, cam, applyCam, where }; // handy for testing
+  window.__bt = { enter, go, cam, applyCam, where, locate, setOli, dayPlan, dayKey }; // handy for testing // handy for testing
 })();

@@ -44,3 +44,16 @@ A cozy phone web game (installable PWA). Plain HTML/CSS/JS — no build step.
 ## Testing tips
 - `?hour=22` previews the sky at that hour and moves the bots to where their schedule puts them then (when status.json is stale or missing). `?sleep=1` forces bedrooms asleep and `?night=1` the park at night. `?loaddelay=3000` slows the loading screen.
 - Run locally: `python3 -m http.server` then open http://localhost:8000.
+
+## v26: one of everyone, and days that run themselves
+
+- **One instance per character.** `locate(id)` in app.js is the single answer to "where is Gorbo / Loria / Scout / Olithia and what are they doing". Every scene (houses, bedrooms, the park, the playground, the burrow, map pins and chips) asks it, so a character shows in exactly one place. Anywhere else shows the empty painting.
+- **No pose buttons for the bots.** A bot follows a fresh `status.json` (under 6 hours old). Otherwise it follows its own generated day from `routines` in config.js: working blocks, idle and sitting breaks, outings to the park, the playground or a friend's house, a little time awake in its bedroom after waking and before bed, then sleep. The day is seeded by the date, so it changes daily but is the same all day. Bedtimes: Scout about 22:00–06:30, Gorbo about 23:00–07:00, and Loria, the night owl, about 01:00–09:00.
+  - `status.json` may also say `"place": "<bot>-bed"`, or `"pose": "awake"` or `"pose": "sleeping"`, to put a bot in its bedroom.
+- **Bedrooms by day.** Each bedroom has empty, awake and asleep paintings, each in a day and a night look (night is 20:00–07:00, set by `bedNight`). Gorbo reads on his bed, Loria reads beside her cat, Scout stretches in his basket bed, and Olithia brushes her hair at the vanity.
+- **Olithia is moved by tapping, not buttons.**
+  - In her cottage, tap the desk to work or the sofa to sit. Tap it again, or the floor, for idle.
+  - In her bedroom, tap the bed to sleep. It is only dark at night. Tap the vanity or the floor to get up.
+  - "Sit together" in a bot's house, the hill crest in the park, "Join in" at the playground and "Sit with" in the burrow all send her there.
+  - Wherever she is, her cottage shows empty. Her spot is saved in localStorage as `bt-olithia-at`.
+- **Testing:** `?hour=14.5`, `?day=2026-10-24` and `?night=1` or `?night=0`. In the console you can call `__bt.locate('loria')`, `__bt.dayPlan('loria', __bt.dayKey(0))` and `__bt.setOli('starfall', 'sitting')`.
