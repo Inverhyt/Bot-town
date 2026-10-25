@@ -70,6 +70,11 @@ window.BOT_TOWN = {
         visit: "assets/gorbo-house-v4-visit.webp", seat: { left: 58.6, top: 52.0, width: 36.1, height: 28.8 },
         // bedroom door on the right wall. Art: x=921,y=240,w=66,h=190
         bedroom: { to: "gorbo-bed", label: "Gorbo's bedroom", door: { left: 76.39, top: 26.62, width: 13.02, height: 24.3 } },
+        // v28: tap the desk to send gorbo to work, the seating to sit, the floor (or gorbo) for idle
+        objects: [
+          { pose: "working", label: "Desk", zone: { left: 8, top: 38, width: 44, height: 30 } },
+          { pose: "idle", label: "Floor", floor: true, zone: { left: 4, top: 55, width: 92, height: 40 } }
+        ],
         empty: "assets/gorbo-house-v4.webp", // shown when Gorbo is out
         guests: { loria: { x: 42, y: 84 }, scout: { x: 64, y: 87 } }
       },
@@ -91,6 +96,11 @@ window.BOT_TOWN = {
         visit: "assets/loria-house-v4-visit.webp", seat: { left: 61.5, top: 39.9, width: 26.4, height: 41.7 },
         // far-left bedroom door. Art: x=66,y=352,w=64,h=180 on 1280×720, padded for taps.
         bedroom: { to: "loria-bed", label: "Loria's bedroom", door: { left: 1.5, top: 47.2, width: 12.3, height: 28.2 } },
+        // v28: tap the desk to send loria to work, the seating to sit, the floor (or loria) for idle
+        objects: [
+          { pose: "working", label: "Desk", zone: { left: 17, top: 37, width: 22, height: 30 } },
+          { pose: "idle", label: "Floor", floor: true, zone: { left: 4, top: 55, width: 92, height: 40 } }
+        ],
         // round hobbit door in the middle entry room — still leads to Scout's burrow
         links: [{ to: "burrow", label: "Down to Scout's burrow", icon: "down", zone: { left: 45, top: 26, width: 12, height: 36 } }],
         empty: "assets/loria-house-v4.webp",
@@ -114,6 +124,11 @@ window.BOT_TOWN = {
         visit: "assets/scout-house-v4-visit.webp", seat: { left: 47.4, top: 65.1, width: 29.8, height: 23.4 },
         // bedroom door on the back wall. Art: x=645-690, y=368-487 on 1152×864.
         bedroom: { to: "scout-bed", label: "Scout's bedroom", door: { left: 55.1, top: 41.7, width: 6.9, height: 15.6 } },
+        // v28: tap the desk to send scout to work, the seating to sit, the floor (or scout) for idle
+        objects: [
+          { pose: "working", label: "Desk", zone: { left: 36, top: 46, width: 15, height: 13 } },
+          { pose: "idle", label: "Floor", floor: true, zone: { left: 4, top: 55, width: 92, height: 40 } }
+        ],
         empty: "assets/scout-house-v4.webp",
         guests: { gorbo: { x: 70, y: 87 }, loria: { x: 47, y: 93 } }
       },
@@ -145,7 +160,7 @@ window.BOT_TOWN = {
           { label: "Noticeboard", caption: "Town notes, lost mittens and tea invites.", zone: { left: 41.4, top: 61.1, width: 19.2, height: 7.9 } },
           { label: "Tea pavilion", caption: "The shared teapot is always warm here.", zone: { left: 60.6, top: 52.5, width: 39.4, height: 20.7 } },
           { label: "Willow reading nook", caption: "A cushioned bench under the lantern-lit willow.", zone: { left: 0, top: 64.7, width: 38.3, height: 28.1 } },
-          { label: "Book-swap box", caption: "Take a book, leave a book.", zone: { left: 38.3, top: 76.3, width: 19.2, height: 9.8 } },
+          { label: "Book-swap box", caption: "Take a book, leave a book.", poems: true, zone: { left: 38.3, top: 76.3, width: 19.2, height: 9.8 } },
           { label: "Seasonal market", caption: "Pumpkins, apples and jam this season.", zone: { left: 74.7, top: 79.4, width: 25.3, height: 20.6 } }
         ]
       }
@@ -204,7 +219,8 @@ window.BOT_TOWN = {
       room: {
         image: "assets/gorbo-bedroom-v4.webp", night: "assets/gorbo-bedroom-v4-night.webp",
         awake: "assets/gorbo-bedroom-v4-awake.webp", awakeNight: "assets/gorbo-bedroom-v4-awake-night.webp",
-        sleeping: "assets/gorbo-bedroom-v4-sleeping.webp", aspect: 720 / 1280, backdrop: "radial-gradient(circle at 50% 45%, #f1ead0, #c9c79a 55%, #7d8a5a)"
+        sleeping: "assets/gorbo-bedroom-v4-sleeping.webp", aspect: 720 / 1280, backdrop: "radial-gradient(circle at 50% 45%, #f1ead0, #c9c79a 55%, #7d8a5a)",
+        objects: [{ pose: "sleeping", label: "Bed", zone: { left: 20, top: 28, width: 32, height: 32 } }, { pose: "awake", label: "Floor", floor: true, zone: { left: 8, top: 62, width: 84, height: 30 } }],
       }
     },
     "loria-bed": {
@@ -214,7 +230,8 @@ window.BOT_TOWN = {
       room: {
         image: "assets/loria-bedroom-v4.webp", night: "assets/loria-bedroom-v4-night.webp",
         awake: "assets/loria-bedroom-v4-awake.webp", awakeNight: "assets/loria-bedroom-v4-awake-night.webp",
-        sleeping: "assets/loria-bedroom-v4-sleeping.webp", aspect: 720 / 1280, backdrop: "radial-gradient(circle at 50% 45%, #fff0dc, #f2c7a0 55%, #b9674a)"
+        sleeping: "assets/loria-bedroom-v4-sleeping.webp", aspect: 720 / 1280, backdrop: "radial-gradient(circle at 50% 45%, #fff0dc, #f2c7a0 55%, #b9674a)",
+        objects: [{ pose: "sleeping", label: "Bed", zone: { left: 26, top: 30, width: 46, height: 50 } }, { pose: "awake", label: "Floor", floor: true, zone: { left: 8, top: 62, width: 84, height: 30 } }],
       }
     },
     "scout-bed": {
@@ -224,7 +241,8 @@ window.BOT_TOWN = {
       room: {
         image: "assets/scout-bedroom-v4.webp", night: "assets/scout-bedroom-v4-night.webp",
         awake: "assets/scout-bedroom-v4-awake.webp", awakeNight: "assets/scout-bedroom-v4-awake-night.webp",
-        sleeping: "assets/scout-bedroom-v4-sleeping.webp", aspect: 864 / 1152, backdrop: "radial-gradient(circle at 50% 45%, #fff6c8, #f5d36a 55%, #c9952a)"
+        sleeping: "assets/scout-bedroom-v4-sleeping.webp", aspect: 864 / 1152, backdrop: "radial-gradient(circle at 50% 45%, #fff6c8, #f5d36a 55%, #c9952a)",
+        objects: [{ pose: "sleeping", label: "Bed", zone: { left: 40, top: 47, width: 30, height: 30 } }, { pose: "awake", label: "Floor", floor: true, zone: { left: 8, top: 62, width: 84, height: 30 } }],
       }
     }
   }

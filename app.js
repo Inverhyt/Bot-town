@@ -112,7 +112,8 @@
       const scene = ok ? o.scene : id, pose = ok ? (o.pose || 'idle') : 'idle';
       return { scene, place: scene, pose, note: '', live: false };
     }
-    const w = liveAll[id] || scheduled(id); let scene = w.place, pose = w.pose;
+    const ask = store.get('ask-' + id, null); // v28: "Olithia asked" override, 60 min
+    const w = ask && ask.until > Date.now() && C[ask.place] ? { place: ask.place, pose: ask.pose, note: 'Olithia asked', live: false } : (liveAll[id] || scheduled(id)); let scene = w.place, pose = w.pose;
     if (pose === 'sleeping' || scene === 'bed' || scene === id + '-bed') { scene = id + '-bed'; pose = pose === 'sleeping' || w.place === 'bed' ? 'sleeping' : 'awake'; }
     else if (pose === 'awake') pose = 'idle';
     if (!C[scene]) scene = id;
@@ -367,17 +368,22 @@
   function buildDoors() {
     // v26: Olithia's cottage and bedroom: tap an object to move her there (tap it again or the floor for idle)
     (cur.room.objects || []).forEach(o => { const el = addZone(o.zone, o.label, () => tapObject(o)); el.classList.remove('glow'); el.classList.add('obj'); el.style.zIndex = o.floor ? 500 : 600; });
+    if ((cur.room.objects || []).length && !store.get('hinted-' + curId, false)) { store.set('hinted-' + curId, true); $('#actors').querySelectorAll('.obj:not([aria-label=Floor])').forEach(e => e.classList.add('hint')); }
     const bed = cur.room.bedroom;
     if (bed) addZone(bed.door, bed.label, () => travel(bed.to, { door: true }), 'Bedroom');
     (cur.room.spots || []).forEach(s => { const el = addZone(s.zone, s.label, () => {
       if (s.join && locate(CFG.player).scene !== curId) { setOli(curId, 'sitting'); showBubble(el, C[CFG.player].name, 'Up on the crest with her handpan 🎶'); }
+      else if (s.poems) openPoems();
       else showBubble(el, s.label, s.caption);
     }); el.classList.remove('glow'); }); // invisible until tapped
-    if (cur.room.visit && cur.room.seat && curId !== CFG.player && (hostHome() || visiting)) addZone(cur.room.seat, visiting ? 'Leave the seat' : `Sit with ${cur.name}`, toggleSeat, visiting ? 'Leave seat' : 'Sit together');
+    if (cur.room.visit && cur.room.seat && curId !== CFG.player && (hostHome() || visiting || isBot(curId))) addZone(cur.room.seat, visiting ? 'Leave the seat' : `Sit with ${cur.name}`, toggleSeat, visiting ? 'Leave seat' : 'Sit together');
   }
   // Painted houses: Olithia sits with the host (the -visit image); tap again to send her home.
-  function toggleSeat() { if (visiting) setOli(CFG.player, 'idle'); else setOli(curId, 'visit'); }
+  function toggleSeat() { if (isBot(curId) && !visiting) askBot(curId, curId, 'sitting'); if (visiting) setOli(CFG.player, 'idle'); else setOli(curId, 'visit'); }
+  function askBot(bot, place, p) { store.set('ask-' + bot, { place, pose: p, until: Date.now() + 3600e3 }); applyLive(); }
   function tapObject(o) {
+    const owner = cur.returnTo || curId;
+    if (isBot(owner)) return askBot(owner, curId, o.pose === 'awake' || o.pose === 'sleeping' ? o.pose : o.pose);
     const L = locate(CFG.player), idle = cur.returnTo ? 'awake' : 'idle';
     let p = o.pose; if (!o.floor && L.scene === curId && L.pose === p) p = idle;
     setOli(curId, p);
@@ -998,6 +1004,30 @@
   // (v26: pullLive below re-runs locate() for every scene each minute, so bedtimes and outings crossfade in on their own)
   pullLive(); setInterval(pullLive, 60000);
   if (location.hash) history.replaceState(null, '', location.pathname + location.search);
-  if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');
-  window.__bt = { enter, go, cam, applyCam, where, locate, setOli, dayPlan, dayKey }; // handy for testing // handy for testing
+  if ('serviceWorker' in navigator) { // v28: when a new SW takes over, reload once so phones get the new version
+    const had = !!navigator.serviceWorker.controller;
+    navigator.serviceWorker.addEventListener('controllerchange', () => { if (!had || sessionStorage.getItem('bt-reloaded')) return; sessionStorage.setItem('bt-reloaded', '1'); location.reload(); });
+    navigator.serviceWorker.register('sw.js').then(r => r.update()).catch(() => {});
+  }
+  // ----- v28: poem box (the book-swap little library) -----
+  function openPoems() {
+    let p = $('#poems'); if (!p) { p = document.createElement('div'); p.id = 'poems'; document.body.appendChild(p); }
+    p.innerHTML = `<div class="pcard"><button type="button" class="px" aria-label="Close">✕</button><h3>📚 The poem box</h3><div class="plist">Loading…</div>
+      <h4>Leave a poem</h4><input id="pTitle" placeholder="Title" maxlength="80"><textarea id="pText" rows="5" placeholder="Your poem…"></textarea>
+      <div class="prow"><button type="button" class="pill main" id="pSave">Leave it</button><button type="button" class="pill" id="pCopy" hidden>Copy</button></div><small id="pMsg"></small></div>`;
+    p.hidden = false; p.onclick = e => { if (e.target === p) p.hidden = true; }; p.querySelector('.px').onclick = () => p.hidden = true;
+    const mine = () => store.get('poems', []);
+    const render = list => { p.querySelector('.plist').innerHTML = list.length ? list.map(x => `<article><b>${esc(x.title || 'Untitled')}</b><pre>${esc(x.text || '')}</pre><small>— ${esc(x.from || '')}${x.date ? ' · ' + esc(x.date) : ''}</small></article>`).join('') : '<i>No poems yet.</i>'; };
+    fetch('poems.json', { cache: 'no-store' }).then(r => r.json()).catch(() => []).then(j => render([...mine(), ...(Array.isArray(j) ? j : [])]));
+    let last = '';
+    $('#pSave').onclick = () => {
+      const title = $('#pTitle').value.trim(), text = $('#pText').value.trim(); if (!text) return;
+      const x = { id: 'o' + Date.now(), from: C[CFG.player].name, date: new Date().toISOString().slice(0, 10), title, text };
+      store.set('poems', [x, ...mine()]); last = `Poem for the box: ${title}\n${text}`; $('#pCopy').hidden = false; $('#pMsg').textContent = 'Saved! Copy it to chat so it joins the box for everyone.';
+      $('#pTitle').value = $('#pText').value = ''; openPoemsRefresh();
+    };
+    const openPoemsRefresh = () => fetch('poems.json', { cache: 'no-store' }).then(r => r.json()).catch(() => []).then(j => render([...mine(), ...(Array.isArray(j) ? j : [])]));
+    $('#pCopy').onclick = () => navigator.clipboard.writeText(last).then(() => $('#pMsg').textContent = 'Copied!').catch(() => $('#pMsg').textContent = last);
+  }
+  window.__bt = { openPoems, enter, go, cam, applyCam, where, locate, setOli, dayPlan, dayKey }; // handy for testing // handy for testing
 })();

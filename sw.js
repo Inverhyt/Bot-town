@@ -1,4 +1,4 @@
-const CACHE = 'bot-town-v27';
+const CACHE = 'bot-town-v28';
 const ASSETS = ['./', 'index.html', 'style.css', 'config.js', 'music.js', 'app.js', 'manifest.json',
   'assets/map-v3.webp', 'assets/starfall-hill-v3-empty.webp', 'assets/starfall-hill-v3-night-empty.webp', 'assets/park-olithia-day.webp', 'assets/park-olithia-night.webp',
   'assets/park-gorbo-day.webp', 'assets/park-gorbo-night.webp', 'assets/park-loria-day.webp', 'assets/park-loria-night.webp', 'assets/park-scout-day.webp', 'assets/park-scout-night.webp',
@@ -22,7 +22,7 @@ self.addEventListener('activate', e => { e.waitUntil(caches.keys().then(ks => Pr
 self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
   const path = new URL(e.request.url).pathname;
-  if (['/status.json', '/letters.json', '/tasks.json', '/board.json'].some(f => path.endsWith(f))) {
+  if (['/status.json', '/letters.json', '/tasks.json', '/board.json', '/poems.json'].some(f => path.endsWith(f))) {
     e.respondWith(fetch(e.request, { cache: 'no-store' })); // live files, never written into the cache
     return;
   }
