@@ -956,9 +956,13 @@
     const S = R.seesaw, pl = document.createElement('img'), po = document.createElement('img'); let tilt = 0;
     [pl, po].forEach((e, i) => { e.className = 'pg-ss'; e.draggable = false; e.alt = ''; e.src = i ? S.post : S.plank; Object.assign(e.style, { left: S.box.left + '%', top: S.box.top + '%', width: S.box.width + '%', height: S.box.height + '%', zIndex: 640 + i }); act.appendChild(e); });
     pl.style.transformOrigin = S.origin; pl.setAttribute('role', 'button'); pl.setAttribute('aria-label', 'Seesaw');
-    const tip = () => { tilt = tilt > 0 ? -9 : 9; buzz(10); pgNote(tilt > 0 ? 196 : 262, .5, 'sine', .12);
-      if (!motionOK) { pl.style.transform = `rotate(${tilt}deg)`; return; }
-      pl.animate([{ transform: pl.style.transform || 'rotate(0deg)' }, { transform: `rotate(${tilt * 1.15}deg)` }, { transform: `rotate(${tilt * .9}deg)` }, { transform: `rotate(${tilt}deg)` }], { duration: 650, easing: 'ease-out' }); pl.style.transform = `rotate(${tilt}deg)`; };
+    // v39: rests with one end on the grass; a tap tips it over to the other end with a gentle bump-and-settle
+    const sk = d => `skewY(${d.toFixed(2)}deg)`; let side = 'L'; pl.style.transform = sk(S.downL || -16);
+    const tip = () => { const from = side === 'L' ? S.downL : S.downR, to = side === 'L' ? S.downR : S.downL; side = side === 'L' ? 'R' : 'L'; buzz(10);
+      pgNote(side === 'R' ? 196 : 262, .5, 'sine', .12); pl.getAnimations().forEach(x => x.cancel()); pl.style.transform = sk(to);
+      if (!motionOK) return;
+      const at = f => sk(from + (to - from) * f);
+      pl.animate([{ transform: at(0), easing: 'cubic-bezier(.45,0,.9,.6)' }, { transform: at(1), offset: .55, easing: 'ease-out' }, { transform: at(.86), offset: .72, easing: 'ease-in' }, { transform: at(1), offset: .86, easing: 'ease-out' }, { transform: at(.97), offset: .93 }, { transform: at(1) }], { duration: 900 }); };
     [pl, po].forEach(e => e.onclick = ev => { ev.stopPropagation(); tip(); });
     // v35: tap the slide to sit at the top (or hop off)
     const sl = document.createElement('div'); sl.className = 'link zone pg-slide'; sl.setAttribute('role', 'button'); sl.setAttribute('aria-label', 'Slide');

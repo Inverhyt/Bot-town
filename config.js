@@ -185,7 +185,7 @@ window.BOT_TOWN = {
         swings: [{ toy: "swing", x: 384, y: 630, L: 150, half: 27, slope: .47, z: 440, patch: "A" }, { toy: "swing2", x: 459, y: 597, L: 138, half: 22, slope: .47, z: 410, patch: "B" }],
         swingRiders: "assets/pg37-sw", // v37: painted rider+seat+ropes patch <A|B>-<id>.webp, 140x250 art px, crossbar pivot at (70,24); rotates around the pivot
         swingLeg: { src: "assets/pg3-swing-leg.webp", box: [40.28, 35.7, 11.39, 12.18], z: 446 }, // front-left leg in front of the left swing
-        seesaw: { plank: "assets/pg3-seesaw-plank.webp", post: "assets/pg3-seesaw-stand.webp", box: { left: 4.17, top: 59.84, width: 38.89, height: 8.4 }, origin: "55.4% 48.8%" },
+        seesaw: { plank: "assets/pg39-seesaw-plank.webp", post: "assets/pg39-seesaw-stand.webp", box: { left: 4.17, top: 59.84, width: 38.89, height: 8.4 }, origin: "56.07% 46.25%", downL: -16.3, downR: 24 } /* v39: one whole plank, skewY around the axle so the ends move straight up/down in the isometric view and stop at the ground */,
         sandbox: [[60.28, 63.15], [75.56, 60.68], [89.31, 63.46], [74.31, 66.25]], // v38: inner sand corners of the painted frame (art px / size)
         chalk: { left: 21.53, top: 72.34, width: 8.33, height: 4.83, skew: 0 },
         chest: { left: 57.64, top: 70.6, width: 20.14, height: 8.92 },
