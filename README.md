@@ -10,10 +10,10 @@ A cozy phone web game (installable PWA). Plain HTML/CSS/JS — no build step.
 5. Open it on your phone and choose **Add to Home Screen** to install it. It works offline after the first visit.
 
 ## Editing
-- **config.js**: everything per character: names, roles, house names, map tap areas, room art (`aspect`, `zoom`), spots (work / hangout / visitor / door), `links` between houses, tasks, dialog, pets, loading tips.
-- Characters: Olithia (Lotus Cottage), Gorbo (Mossy Workshop, with Dot the ladybug), Loria (Bookshop) and Scout (burrow under Loria's: reach it from the glowing round door in Loria's entry room, the "Down to Scout's burrow" button, or the yellow lantern beside Loria's house on the map).
+- **config.js**: everything per character: names, roles, house names, map tap areas, room art (`aspect`, `zoom`), painted `poses` (idle / working / sitting), bedroom doors, `links` between houses, tasks, dialog, loading tips.
+- Characters: Olithia (Lotus Cottage), Gorbo (Mossy Workshop), Loria (Bookshop) and Scout (his own cottage on the map). Each house interior is a painting with Idle / Working / Sitting buttons. A glowing door in each house opens that character's bedroom. Scout's burrow is still under Loria's shop: the round hobbit door in her middle room, or the "Down to Scout's burrow" button.
 - **music.js**: generated ambient tracks.
-- After changing files, bump `CACHE` in `sw.js` (e.g. `bot-town-v9`) so installed phones fetch the update.
+- After changing files, bump `CACHE` in `sw.js` (currently `bot-town-v9`) so installed phones fetch the update.
 
 ## Testing tips
 - `?hour=22` previews the night tint. `?loaddelay=3000` slows the loading screen.

@@ -2,7 +2,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <meta name="theme-color" content="#3b5a3a"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>Bot Town</title><link rel="manifest" href="manifest.json"><link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+<title>Bot Town</title><link rel="manifest" href="manifest.json"><link rel="icon" href="assets/icon-192.png" type="image/png"><link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600&family=Grandstander:wght@500;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css"></head><body>
 <div id="tint"></div>
@@ -15,7 +15,7 @@
 </section>
 
 <section id="house" class="screen">
-  <div id="viewport"><div id="stage"><img id="roomImg" alt="" draggable="false"><div id="actors"></div></div></div>
+  <div id="viewport"><div id="stage"><img id="roomImg" alt="" draggable="false"><img id="roomFade" alt="" draggable="false"><div id="actors"></div></div></div>
   <header id="topbar">
     <button class="ibtn" id="back" aria-label="Back to map"></button>
     <div id="title"><b id="houseName"></b><small id="houseRole"></small></div>
@@ -34,6 +34,11 @@
     <button class="tb" id="tbVisit"><i></i><span>Sit with</span></button>
   </nav>
 
+  <div id="poses" role="group" aria-label="What they're doing" hidden>
+    <button type="button" data-pose="idle">Idle</button>
+    <button type="button" data-pose="working">Working</button>
+    <button type="button" data-pose="sitting">Sitting</button>
+  </div>
   <button id="linkBtn" class="pill main" hidden></button>
 
   <div id="chat" hidden><div id="chathead"></div><div id="log"></div>

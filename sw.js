@@ -1,6 +1,12 @@
-const CACHE = 'bot-town-v8';
+const CACHE = 'bot-town-v9';
 const ASSETS = ['./', 'index.html', 'style.css', 'config.js', 'music.js', 'app.js', 'manifest.json',
-  'assets/map.jpg', 'assets/olithia.png', 'assets/gorbo.png', 'assets/loria.png', 'assets/room-olithia.webp', 'assets/room-gorbo.webp', 'assets/room-loria.webp', 'assets/room-scout.webp', 'assets/scout.png', 'assets/dot.png',
+  'assets/map.jpg', 'assets/scout-house-exterior.webp',
+  'assets/olithia-house-v3-idle.webp', 'assets/olithia-house-v3-working.webp', 'assets/olithia-house-v3-sitting.webp',
+  'assets/gorbo-house-v3-idle.webp', 'assets/gorbo-house-v3-working.webp', 'assets/gorbo-house-v3-sitting.webp',
+  'assets/loria-house-v3-idle.webp', 'assets/loria-house-v3-working.webp', 'assets/loria-house-v3-sitting.webp',
+  'assets/scout-house-v3-idle.webp', 'assets/scout-house-v3-working.webp', 'assets/scout-house-v3-sitting.webp',
+  'assets/olithia-bedroom.webp', 'assets/gorbo-bedroom-v2.webp', 'assets/loria-bedroom.webp', 'assets/scout-bedroom.webp',
+  'assets/room-scout.webp', 'assets/olithia.png', 'assets/scout.png',
   'assets/icon-192.png', 'assets/icon-512.png', 'assets/apple-touch-icon.png'];
 self.addEventListener('install', e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS))); self.skipWaiting(); });
 self.addEventListener('activate', e => { e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== CACHE).map(k => caches.delete(k))))); self.clients.claim(); });

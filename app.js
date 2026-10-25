@@ -22,40 +22,93 @@
 
   // ---------- map ----------
   for (const [id, c] of Object.entries(C)) {
+    if (!c.hotspot) continue;
     const h = document.createElement('div'), s = c.hotspot;
-    h.className = 'hot'; h.dataset.id = id; h.setAttribute('role', 'button'); h.setAttribute('aria-label', 'Visit ' + c.name);
+    h.className = 'hot' + (c.mapImage ? ' building' : ''); h.dataset.id = id; h.setAttribute('role', 'button'); h.setAttribute('aria-label', 'Visit ' + c.name);
     Object.assign(h.style, { left: s.left + '%', top: s.top + '%', width: s.width + '%', height: s.height + '%' });
     if (c.mapMarker === 'lantern') h.classList.add('mini');
-    h.innerHTML = (c.mapMarker === 'lantern' ? '<i class="lantern"></i>' : '') + `<span class="label">${c.name}</span>`;
+    h.innerHTML = (c.mapImage ? `<img src="${c.mapImage}" alt="" draggable="false">` : '') + (c.mapMarker === 'lantern' ? '<i class="lantern"></i>' : '') + `<span class="label">${c.name}</span>`;
     h.addEventListener('click', () => { h.classList.remove('tap'); void h.offsetWidth; h.classList.add('tap'); setTimeout(() => enter(id), 380); });
     $('#hotspots').appendChild(h);
   }
 
   // ---------- house state ----------
-  let cur = null, curId = null, actors = {}, visiting = false;
+  let cur = null, curId = null, actors = {}, visiting = false, pose = 'idle';
+  const poseMemory = {};
   const stage = $('#stage'), vp = $('#viewport');
   let W = 0, H = 0, cam = { x: 0, y: 0, s: 1 };
   const tasksDone = id => store.get('tasks-' + id, []);
-  const isBusy = id => { const o = store.get('busy-' + id, null); return o !== null ? o : C[id].tasks.some((_, i) => !tasksDone(id)[i]); };
+  const isBusy = id => { const o = store.get('busy-' + id, null); return o !== null ? o : (C[id].tasks || []).some((_, i) => !tasksDone(id)[i]); };
 
-  function enter(id) {
+  function roomURL() {
+    if (cur.room.poses) return cur.room.poses[pose] || cur.room.poses.idle;
+    return cur.room.image;
+  }
+  let fadeGen = 0, frontPose = 0;
+  function showRoom(url, fade) {
+    const imgs = [$('#roomImg'), $('#roomFade')];
+    const token = ++fadeGen;
+    const show = imgs[frontPose], hide = imgs[1 - frontPose];
+    let painted = false;
+    const paint = () => {
+      if (painted || token !== fadeGen) return;
+      painted = true;
+      hide.style.zIndex = '1'; show.style.zIndex = '0';
+      hide.style.opacity = '1'; show.style.opacity = '0';
+      frontPose = 1 - frontPose;
+    };
+    if (!fade || !show.getAttribute('src')) {
+      show.src = url; show.style.opacity = '1'; show.style.zIndex = '1';
+      hide.style.opacity = '0'; hide.style.zIndex = '0';
+      return;
+    }
+    const abs = new URL(url, location.href).href;
+    if (show.src === abs) return;
+    hide.onload = paint;
+    hide.src = url;
+    if (hide.complete && hide.naturalWidth && hide.src === abs) paint();
+  }
+  function enter(id, opts = {}) {
     curId = id; cur = C[id]; visiting = false;
+    pose = cur.room.poses ? (poseMemory[id] || 'idle') : 'idle';
     $('#house').style.background = cur.room.backdrop;
-    $('#roomImg').src = cur.room.image;
+    $('#house').style.opacity = '';
+    showRoom(roomURL(), false);
+    $('#roomImg').alt = cur.house; $('#roomFade').alt = '';
     $('#houseName').textContent = cur.house; $('#houseRole').textContent = `${cur.name} · ${cur.role}`;
     $('#chat').hidden = true; $('#log').innerHTML = ''; hideBubble();
+    const painted = !!cur.room.poses, gallery = !!cur.gallery;
+    $('#house').classList.toggle('has-poses', painted);
+    $('#house').classList.toggle('gallery', gallery);
+    $('#poses').hidden = !painted;
+    $('#tbBusy').hidden = painted || gallery;
+    $('#tbVisit').hidden = painted || gallery;
     $('#tbVisit').disabled = id === CFG.player || !cur.room.visitor;
+    $('#tasks').hidden = gallery || !cur.tasks;
+    $('#statusChip').hidden = gallery;
     $('#tasks').classList.add('collapsed');
+    $('#back').setAttribute('aria-label', cur.returnTo ? ('Back to ' + C[cur.returnTo].house) : 'Back to map');
     $('#map').classList.remove('active'); $('#house').classList.add('active');
-    layout(); buildActors(); resetCam(false); buildLinks(); renderTasks(); updateMode(true);
-    history.pushState({ id }, '', '#' + id);
+    layout(); buildActors(); resetCam(false); buildLinks();
+    if (cur.tasks) renderTasks();
+    updateMode(true);
+    if (!opts.skipPush) history.pushState({ id }, '', '#' + id);
   }
   function toMap(fromPop) {
     $('#house').classList.remove('active'); $('#map').classList.add('active'); $('#music').hidden = true;
+    $('#house').style.opacity = '';
+    cur = null; curId = null;
     if (!fromPop && location.hash) history.back();
   }
-  $('#back').onclick = () => toMap(false);
-  window.addEventListener('popstate', () => { if ($('#house').classList.contains('active')) toMap(true); });
+  $('#back').onclick = () => {
+    if (cur && cur.returnTo) { $('#house').style.opacity = '0'; setTimeout(() => history.back(), 180); }
+    else toMap(false);
+  };
+  window.addEventListener('popstate', () => {
+    const id = history.state && history.state.id;
+    if (id && C[id]) enter(id, { skipPush: true });
+    else if ($('#house').classList.contains('active')) toMap(true);
+  });
 
   // ---------- camera: pan + pinch + wheel ----------
   function layout() { W = innerWidth; H = W * (cur.room.aspect || .75); stage.style.width = W + 'px'; stage.style.height = H + 'px'; }
@@ -67,7 +120,7 @@
   }
   function resetCam(anim = true) {
     const vw = innerWidth, vh = innerHeight; cam.s = cur.room.zoom || (innerWidth < 600 ? 1.32 : 1.12);
-    const fx = cur.room.zoom && actors.main ? actors.main._pos.x / 100 : .5; cam.x = vw / 2 - fx * W * cam.s; cam.y = (120 + (vh - 96)) / 2 - H * cam.s / 2 + 10;
+    const fx = cur.room.zoom && actors.main ? actors.main._pos.x / 100 : .5; cam.x = vw / 2 - fx * W * cam.s; cam.y = (galleryPad() + (vh - 96)) / 2 - H * cam.s / 2 + 10;
     if (anim) { stage.classList.add('anim'); setTimeout(() => stage.classList.remove('anim'), 500); }
     applyCam(); hideBubble();
   }
@@ -106,6 +159,7 @@
   function poke(el) { el.classList.remove('poke'); void el.offsetWidth; el.classList.add('poke'); }
   function buildActors() {
     $('#actors').innerHTML = ''; actors = {};
+    if (cur.room.poses || cur.gallery || !cur.sprite) return;
     actors.main = makeActor(curId, isBusy(curId) ? cur.room.work : cur.room.hangout);
     (cur.pets || []).forEach(p => {
       if (p.kind === 'attach') return;
@@ -130,13 +184,36 @@
     go();
   }
   function updateMode(initial) {
+    if (cur.gallery) return;
+    if (cur.room.poses) {
+      const done = tasksDone(curId), next = (cur.tasks || []).find((_, i) => !done[i]);
+      const line = pose === 'working'
+        ? ['Working on', next || 'Tidying up']
+        : pose === 'sitting'
+          ? ['Sitting', next ? 'Taking a cozy break' : 'All tasks done! Tea time']
+          : ['Relaxing', next ? 'A quiet idle moment' : 'All tasks done! Tea time'];
+      $('#statusChip').innerHTML = `<b>${line[0]}</b>${line[1]}`;
+      $('#poses').querySelectorAll('button').forEach(b => {
+        const on = b.dataset.pose === pose;
+        b.classList.toggle('on', on); b.setAttribute('aria-pressed', on ? 'true' : 'false');
+      });
+      return;
+    }
     const busy = isBusy(curId) && !visiting, target = busy ? cur.room.work : cur.room.hangout;
-    if (!initial) walk(actors.main, target);
-    const done = tasksDone(curId), next = cur.tasks.find((_, i) => !done[i]);
+    if (!initial && actors.main) walk(actors.main, target);
+    const done = tasksDone(curId), next = (cur.tasks || []).find((_, i) => !done[i]);
     $('#statusChip').innerHTML = busy ? `<b>Working on</b>${next || 'Tidying up'}` : visiting ? `<b>Hanging out</b>Chatting with ${C[CFG.player].name}` : `<b>Relaxing</b>${next ? 'Taking a cozy break' : 'All tasks done! Tea time'}`;
     const tb = $('#tbBusy'); tb.querySelector('i').innerHTML = isBusy(curId) ? IC.work : IC.relax; tb.querySelector('span').textContent = isBusy(curId) ? 'Working' : 'Relaxing'; tb.classList.toggle('on', isBusy(curId));
     $('#tbVisit').classList.toggle('on', visiting); $('#tbVisit span').textContent = visiting ? 'Leave seat' : 'Sit with';
   }
+  function galleryPad() { return cur && cur.gallery ? 80 : 120; }
+  $('#poses').onclick = e => {
+    const btn = e.target.closest('button'); if (!btn || !cur || !cur.room.poses) return;
+    const next = btn.dataset.pose; if (!next || next === pose) return;
+    pose = next; poseMemory[curId] = next;
+    showRoom(cur.room.poses[next], true);
+    updateMode(true);
+  };
   $('#tbBusy').onclick = () => { store.set('busy-' + curId, !isBusy(curId)); if (visiting) toggleVisit(); else updateMode(); };
   function toggleVisit() {
     if (curId === CFG.player || !cur.room.visitor) return;
@@ -148,20 +225,42 @@
   $('#tbVisit').onclick = toggleVisit;
 
   // ---------- links between houses (e.g. Loria's ↔ Scout's burrow) ----------
+  function addZone(zone, label, fn, tag) {
+    const el = document.createElement('div');
+    el.className = 'link zone glow';
+    Object.assign(el.style, { left: zone.left + '%', top: zone.top + '%', width: zone.width + '%', height: zone.height + '%' });
+    if (tag) el.innerHTML = `<span class="tag">${tag}</span>`;
+    el.setAttribute('role', 'button'); el.setAttribute('aria-label', label);
+    el.onclick = ev => { ev.stopPropagation(); fn(); };
+    $('#actors').appendChild(el);
+  }
+  function buildDoors() {
+    const bed = cur.room.bedroom;
+    if (bed) addZone(bed.door, bed.label, () => travel(bed.to), 'Bedroom');
+  }
   function buildLinks() {
+    buildDoors();
     const links = cur.room.links || [], btn = $('#linkBtn'); btn.hidden = !links.length;
     links.forEach((l, i) => {
-      if (i === 0) { btn.innerHTML = (IC[l.icon] || '') + `<span>${l.label}</span>`; btn.onclick = () => go(l.to); }
+      if (i === 0) { btn.innerHTML = (IC[l.icon] || '') + `<span>${l.label}</span>`; btn.onclick = () => travel(l.to, { replace: true }); }
       const el = document.createElement('div');
       if (l.zone) { el.className = 'link zone glow'; Object.assign(el.style, { left: l.zone.left + '%', top: l.zone.top + '%', width: l.zone.width + '%', height: l.zone.height + '%' }); }
       else if (l.badge) { el.className = 'link badge'; Object.assign(el.style, { left: l.badge.x + '%', top: l.badge.y + '%' }); el.innerHTML = IC.ladder; }
       else return;
       el.setAttribute('role', 'button'); el.setAttribute('aria-label', l.label);
-      el.onclick = ev => { ev.stopPropagation(); go(l.to); };
+      el.onclick = ev => { ev.stopPropagation(); travel(l.to, { replace: true }); };
       $('#actors').appendChild(el);
     });
   }
-  function go(to) { $('#house').style.opacity = 0; setTimeout(() => { history.replaceState(null, '', location.pathname + location.search); enter(to); history.replaceState({ id: to }, '', '#' + to); $('#house').style.opacity = ''; }, 250); }
+  function travel(to, opts = {}) {
+    $('#house').style.opacity = '0';
+    setTimeout(() => {
+      enter(to, { skipPush: !!opts.replace });
+      if (opts.replace) history.replaceState({ id: to }, '', '#' + to);
+      $('#house').style.opacity = '';
+    }, 220);
+  }
+  function go(to) { travel(to, { replace: true }); }
 
   // ---------- bubbles ----------
   let bubbleT;
@@ -187,7 +286,7 @@
   // ---------- chat ----------
   function say(who, text) { const m = document.createElement('div'); m.className = 'msg ' + who; m.textContent = text; $('#log').appendChild(m); $('#log').scrollTop = 1e6; }
   function openChat() {
-    poke(actors.main); $('#chathead').textContent = cur.name;
+    if (actors.main) poke(actors.main); $('#chathead').textContent = cur.name;
     if ($('#chat').hidden) { $('#chat').hidden = false; if (!$('#log').children.length) say('them', pick(cur.dialog)); } else say('them', pick(cur.dialog));
   }
   $('#tbChat').onclick = openChat;
@@ -212,7 +311,8 @@
 
   // ---------- loader ----------
   (function () {
-    const tips = CFG.loadingTips || [], urls = ['assets/map.jpg', ...Object.values(C).flatMap(c => [c.sprite, c.room.image, ...(c.pets || []).filter(p => p.sprite).map(p => p.sprite)])];
+    const tips = CFG.loadingTips || [];
+    const urls = ['assets/map.jpg', ...Object.values(C).flatMap(c => [c.sprite, c.mapImage, c.room && c.room.image, ...Object.values(c.room.poses || {}), ...(c.pets || []).filter(p => p.sprite).map(p => p.sprite)])].filter(Boolean);
     let done = 0, ti = 0; const t0 = Date.now(), slow = +(new URLSearchParams(location.search).get('loaddelay') || 0);
     const tipEl = $('#tip'); if (tips.length) tipEl.textContent = tips[0];
     const tipTimer = setInterval(() => { tipEl.style.opacity = 0; setTimeout(() => { ti = (ti + 1) % tips.length; tipEl.textContent = tips[ti]; tipEl.style.opacity = 1; }, 300); }, 1800);
