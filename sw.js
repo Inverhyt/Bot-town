@@ -1,4 +1,4 @@
-const CACHE = 'bot-town-v18';
+const CACHE = 'bot-town-v19';
 const ASSETS = ['./', 'index.html', 'style.css', 'config.js', 'music.js', 'app.js', 'manifest.json',
   'assets/map-v2.webp', 'assets/starfall-hill-scene.webp',
   'assets/olithia-house-v4.webp', 'assets/olithia-house-v4-exterior.webp',
@@ -7,8 +7,9 @@ const ASSETS = ['./', 'index.html', 'style.css', 'config.js', 'music.js', 'app.j
   'assets/gorbo-house-v4-idle.webp', 'assets/gorbo-house-v4-working.webp', 'assets/gorbo-house-v4-sitting.webp',
   'assets/loria-house-v4.webp',
   'assets/loria-house-v4-idle.webp', 'assets/loria-house-v4-working.webp', 'assets/loria-house-v4-sitting.webp',
-  'assets/scout-house-v3-idle.webp', 'assets/scout-house-v3-working.webp', 'assets/scout-house-v3-sitting.webp',
-  'assets/olithia-bedroom-v2.webp', 'assets/gorbo-bedroom-v4.webp', 'assets/loria-bedroom-v4.webp', 'assets/scout-bedroom.webp',
+  'assets/scout-house-v4.webp',
+  'assets/scout-house-v4-idle.webp', 'assets/scout-house-v4-working.webp', 'assets/scout-house-v4-sitting.webp',
+  'assets/olithia-bedroom-v2.webp', 'assets/gorbo-bedroom-v4.webp', 'assets/loria-bedroom-v4.webp', 'assets/scout-bedroom-v4.webp',
   'assets/room-scout.webp', 'assets/olithia.png', 'assets/scout.png',
   'assets/icon-192.png', 'assets/icon-512.png', 'assets/apple-touch-icon.png'];
 self.addEventListener('install', e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS))); self.skipWaiting(); });

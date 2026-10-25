@@ -68,12 +68,12 @@ window.BOT_TOWN = {
         aspect: 864 / 1152,
         backdrop: "radial-gradient(circle at 50% 45%, #fff6c8, #f5d36a 55%, #c9952a)",
         poses: {
-          idle: "assets/scout-house-v3-idle.webp",
-          working: "assets/scout-house-v3-working.webp",
-          sitting: "assets/scout-house-v3-sitting.webp"
+          idle: "assets/scout-house-v4-idle.webp",
+          working: "assets/scout-house-v4-working.webp",
+          sitting: "assets/scout-house-v4-sitting.webp"
         },
-        // bedroom door on the back wall. Art roughly x=652–698, y=380–505 on 1152×864, padded for taps.
-        bedroom: { to: "scout-bed", label: "Scout's bedroom", door: { left: 52.08, top: 40.51, width: 11.28, height: 20.83 } }
+        // bedroom door on the back wall. Art: x=645-690, y=368-487 on 1152×864.
+        bedroom: { to: "scout-bed", label: "Scout's bedroom", door: { left: 55.1, top: 41.7, width: 6.9, height: 15.6 } }
       },
       tasks: ["Research trending cozy games", "Summarize fan feedback for Loria", "Fact-check this week's posts", "Map out My Leisure Time competitors"],
       dialog: ["Ooh, a visitor! Want to hear a fun fact?", "I found three new sources this morning! *tail wag*", "Loria says I'm the best fact-fetcher in town. 🦊", "Did you know foxes can hear a watch ticking 40 yards away?", "My notes are a bit messy, but I know where everything is!", "The round door in Loria's shop still leads down to my burrow."]
@@ -122,7 +122,7 @@ window.BOT_TOWN = {
     "scout-bed": {
       name: "Scout", role: "Bedroom", house: "Scout's Cottage",
       gallery: true, returnTo: "scout",
-      room: { image: "assets/scout-bedroom.webp", aspect: 864 / 1152, backdrop: "radial-gradient(circle at 50% 45%, #fff6c8, #f5d36a 55%, #c9952a)" }
+      room: { image: "assets/scout-bedroom-v4.webp", aspect: 864 / 1152, backdrop: "radial-gradient(circle at 50% 45%, #fff6c8, #f5d36a 55%, #c9952a)" }
     }
   }
 };
