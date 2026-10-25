@@ -186,7 +186,7 @@ window.BOT_TOWN = {
         swingRiders: "assets/pg37-sw", // v37: painted rider+seat+ropes patch <A|B>-<id>.webp, 140x250 art px, crossbar pivot at (70,24); rotates around the pivot
         swingLeg: { src: "assets/pg3-swing-leg.webp", box: [40.28, 35.7, 11.39, 12.18], z: 446 }, // front-left leg in front of the left swing
         seesaw: { plank: "assets/pg3-seesaw-plank.webp", post: "assets/pg3-seesaw-stand.webp", box: { left: 4.17, top: 59.84, width: 38.89, height: 8.4 }, origin: "55.4% 48.8%" },
-        sandbox: [[61.94, 62.68], [72.22, 60.26], [90.0, 62.05], [89.17, 65.09], [62.78, 65.41]],
+        sandbox: [[60.28, 63.15], [75.56, 60.68], [89.31, 63.46], [74.31, 66.25]], // v38: inner sand corners of the painted frame (art px / size)
         chalk: { left: 21.53, top: 72.34, width: 8.33, height: 4.83, skew: 0 },
         chest: { left: 57.64, top: 70.6, width: 20.14, height: 8.92 },
         xylo: { left: 58.06, top: 23.36, width: 11.67, height: 2.52 }, chimes: { left: 62.5, top: 17.74, width: 5.0, height: 5.14 },

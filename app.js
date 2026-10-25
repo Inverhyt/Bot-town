@@ -966,13 +966,13 @@
     sl.onclick = ev => { ev.stopPropagation(); toyTap('slide', sl, 'Slide'); }; act.appendChild(sl);
     // sandbox: drag to draw, double-tap for a castle, press and hold to sit in it (saved)
     const P = R.sandbox, xs = P.map(p => p[0]), ys = P.map(p => p[1]), bx = Math.min(...xs), by = Math.min(...ys), bw = Math.max(...xs) - bx, bh = Math.max(...ys) - by;
-    const sand = document.createElement('canvas'); sand.className = 'pg-sand'; sand.width = 240; sand.height = Math.round(240 * bh / bw / (R.aspect || .75) * 1); 
+    const sand = document.createElement('canvas'); sand.className = 'pg-sand'; sand.width = Math.round(bw * R.artW / 50); sand.height = Math.round(bh * R.artH / 50); // v38: 2px per art px, true aspect (no stretched streaks)
     Object.assign(sand.style, { left: bx + '%', top: by + '%', width: bw + '%', height: bh + '%', zIndex: 20, clipPath: `polygon(${P.map(p => ((p[0] - bx) / bw * 100).toFixed(1) + '% ' + ((p[1] - by) / bh * 100).toFixed(1) + '%').join(',')})` });
     sand.setAttribute('aria-label', 'Sandbox: tap to dig for treasure, drag to draw, double-tap for a castle'); act.appendChild(sand);
-    const sc = sand.getContext('2d'), sv = store.get('pg-sand' + (R.stateKey || ''), null);
+    const sc = sand.getContext('2d'), sv = store.get('pg-sand-v38', null);
     if (sv) { const im = new Image(); im.onload = () => sc.drawImage(im, 0, 0); im.src = sv; }
     const sp = e => { const r = sand.getBoundingClientRect(); return [(e.clientX - r.left) / r.width * sand.width, (e.clientY - r.top) / r.height * sand.height]; };
-    const saveSand = () => { try { store.set('pg-sand' + (R.stateKey || ''), sand.toDataURL('image/png')); } catch (e) {} };
+    const saveSand = () => { try { store.set('pg-sand-v38', sand.toDataURL('image/png')); } catch (e) {} };
     const castle = (x, y) => { const c = sc; c.save(); c.translate(x, y);
       const body = (ox, w, h) => { c.fillStyle = '#c8a46a'; c.fillRect(ox - w / 2, -h, w, h); c.fillStyle = '#e2c48e'; c.fillRect(ox - w / 2, -h, w * .35, h); c.strokeStyle = '#8f6b3a'; c.lineWidth = 1; c.strokeRect(ox - w / 2, -h, w, h);
         for (let k = 0; k < 3; k++) { c.fillStyle = '#c8a46a'; c.fillRect(ox - w / 2 + k * w / 2.5, -h - 4, w / 5, 4); } };
@@ -985,11 +985,13 @@
       if (now - lastTap < 330) { moved = true; castle(p[0], p[1] + 10); buzz(16); saveSand(); lastTap = 0; drawing = null; return; } lastTap = now; drawing = p; });
     sand.addEventListener('pointermove', e => { if (hold0 && Math.hypot(e.clientX - hold0[0], e.clientY - hold0[1]) > 6) { clearTimeout(hold); hold0 = null; moved = true; } if (!drawing) return; const p = sp(e);
       sc.lineCap = 'round'; sc.lineJoin = 'round';
-      sc.strokeStyle = 'rgba(110,72,34,.42)'; sc.lineWidth = 4; sc.beginPath(); sc.moveTo(drawing[0], drawing[1]); sc.lineTo(p[0], p[1]); sc.stroke();
-      sc.strokeStyle = 'rgba(255,236,190,.55)'; sc.lineWidth = 1.4; sc.beginPath(); sc.moveTo(drawing[0] - 1, drawing[1] - 2.5); sc.lineTo(p[0] - 1, p[1] - 2.5); sc.stroke(); drawing = p; });
+      sc.save(); sc.filter = 'blur(1.2px)'; // v38: a soft groove: shaded lower lip, sunlit upper lip
+      sc.strokeStyle = 'rgba(150,100,48,.30)'; sc.lineWidth = 6.5; sc.beginPath(); sc.moveTo(drawing[0], drawing[1]); sc.lineTo(p[0], p[1]); sc.stroke();
+      sc.strokeStyle = 'rgba(118,76,34,.24)'; sc.lineWidth = 3; sc.beginPath(); sc.moveTo(drawing[0], drawing[1] + 1); sc.lineTo(p[0], p[1] + 1); sc.stroke();
+      sc.strokeStyle = 'rgba(255,232,180,.32)'; sc.lineWidth = 1.6; sc.beginPath(); sc.moveTo(drawing[0], drawing[1] - 2.6); sc.lineTo(p[0], p[1] - 2.6); sc.stroke(); sc.restore(); drawing = p; });
     const endSand = e => { clearTimeout(hold); hold0 = null; if (drawing && moved) saveSand(); drawing = null; if (!moved && e && e.type === 'pointerup') openT = setTimeout(() => openDig(), 340); };
     sand.addEventListener('pointerup', endSand); sand.addEventListener('pointercancel', endSand);
-    pgSmooth = () => { sc.clearRect(0, 0, sand.width, sand.height); store.set('pg-sand' + (R.stateKey || ''), null); };
+    pgSmooth = () => { sc.clearRect(0, 0, sand.width, sand.height); store.set('pg-sand-v38', null); };
     // chalkboard: shows her doodle; tap to draw
     const C = R.chalk, ch = document.createElement('canvas'); ch.className = 'pg-chalk'; ch.width = 150; ch.height = 200;
     Object.assign(ch.style, { left: C.left + '%', top: C.top + '%', width: C.width + '%', height: C.height + '%', transform: `skewY(${C.skew}deg)`, zIndex: 760 }); ch.setAttribute('role', 'button'); ch.setAttribute('aria-label', 'Chalkboard');
