@@ -1,6 +1,8 @@
-const CACHE = 'bot-town-v24';
+const CACHE = 'bot-town-v25';
 const ASSETS = ['./', 'index.html', 'style.css', 'config.js', 'music.js', 'app.js', 'manifest.json',
-  'assets/map-v2.webp', 'assets/starfall-hill-scene.webp', 'assets/starfall-hill-v2.webp', 'assets/starfall-hill-v2-night.webp',
+  'assets/map-v3.webp', 'assets/starfall-hill-v2-empty.webp', 'assets/starfall-hill-v2-night-empty.webp',
+  'assets/park-gorbo-day.webp', 'assets/park-gorbo-night.webp', 'assets/park-loria-day.webp', 'assets/park-loria-night.webp', 'assets/park-scout-day.webp', 'assets/park-scout-night.webp',
+  'assets/sprite-gorbo.webp', 'assets/sprite-loria.webp', 'assets/sprite-scout.webp', 'assets/face-gorbo.webp', 'assets/face-loria.webp', 'assets/face-scout.webp', 'assets/playground-v1.webp', 'assets/playground-swing.webp', 'assets/scout-house-v4-working-v2.webp',
   'assets/olithia-house-v4.webp', 'assets/olithia-house-v4-exterior.webp',
   'assets/olithia-house-v4-idle.webp', 'assets/olithia-house-v4-working.webp', 'assets/olithia-house-v4-sitting.webp',
   'assets/gorbo-house-v4.webp',
@@ -19,7 +21,7 @@ self.addEventListener('activate', e => { e.waitUntil(caches.keys().then(ks => Pr
 self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
   const path = new URL(e.request.url).pathname;
-  if (path.endsWith('/status.json') || path.endsWith('/letters.json')) {
+  if (['/status.json', '/letters.json', '/tasks.json', '/board.json'].some(f => path.endsWith(f))) {
     e.respondWith(fetch(e.request, { cache: 'no-store' })); // live files, never written into the cache
     return;
   }

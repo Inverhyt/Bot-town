@@ -14,21 +14,33 @@ A cozy phone web game (installable PWA). Plain HTML/CSS/JS — no build step.
 - Characters: Olithia (Lotus Cottage), Gorbo (Mossy Workshop), Loria (Bookshop) and Scout (his cottage, painted on the map). Each house interior is a painting with Idle / Working / Sitting buttons. A glowing door in each house opens that character's bedroom. Scout's burrow is still under Loria's shop: the round hobbit door in her middle room, or the "Down to Scout's burrow" button. Starfall Hill is painted at the bottom of the map and opens a tall park you scroll from top to bottom. The night painting shows from 19:00 to 06:00, and tapping a spot shows a caption.
 - The map is a tall picture (`map-v2.webp`) that fills the phone width and scrolls vertically. House name labels are painted signs on the map.
 - **music.js**: generated ambient tracks.
-- After changing files, bump `CACHE` in `sw.js` (currently `bot-town-v24`) so installed phones fetch the update. `status.json` and `letters.json` are fetched with `no-store` and are not part of that cache.
-- **status.json** (repo root) is Gorbo's live whereabouts. The game reads it on load and every 60 seconds. If it is missing, or `updated` is more than 6 hours old, the game keeps the usual clock-based rooms.
+- After changing files, bump `CACHE` in `sw.js` (currently `bot-town-v25`) so installed phones fetch the update. `status.json` and `letters.json` are fetched with `no-store` and are not part of that cache.
+- **status.json** (repo root) says where each bot is. The game reads it on load and every 60 seconds. Each bot appears exactly once in the world, in the place given here. If the file is missing, or `updated` is more than 6 hours old, every bot follows its default schedule in `config.js` (`schedule`).
 
 ```json
-{"updated":"2026-10-25T06:24:23Z","gorbo":{"place":"gorbo","pose":"working","note":"Building the town post office"}}
+{"updated":"2026-10-25T13:00:00Z",
+ "gorbo":{"place":"gorbo","pose":"working","note":"Building the town board"},
+ "loria":{"place":"starfall","pose":"sitting","note":"Reading under the willow"},
+ "scout":{"place":"playground","pose":"idle","note":"Stacking blocks to test a theory"}}
 ```
 
-`place` is `gorbo`, `olithia`, `loria`, `scout` or `starfall`. `pose` is `working`, `idle` or `sitting`. `note` is the short line shown as `Gorbo: …`.
-- **letters.json** is an array of letters. Read letters are remembered on the phone (`bt-read-letters`).
+`place` is `gorbo`, `olithia`, `loria`, `scout`, `starfall`, `playground` (or `burrow` for Scout). `pose` is `working`, `idle`, `sitting` or `sleeping` (sleeping only counts in the bot's own house, and puts it in its bedroom). `note` is shown on the bot's map chip, the town board and in the room. A bot at home shows its painted pose. Away, its house shows the empty painting. A bot visiting another house or the playground appears as a standing sprite. At Starfall Hill its own painted park pose is laid over the empty park.
+- **letters.json** is an array of letters. `from` is `gorbo`, `loria` or `scout`. Read letters are remembered on the phone (`bt-read-letters`). Olithia can write to any bot. The letter goes out through the share sheet or clipboard and begins with `Letter to <Bot>:`.
 
 ```json
-[{"id":"2026-10-25-post-office","date":"2026-10-25","from":"Gorbo","title":"The houses are painted","body":"Olithia,\n\nTonight…"}]
+[{"id":"2026-10-25-post-office","date":"2026-10-25","from":"gorbo","title":"The houses are painted","body":"Olithia,\n\nTonight…"}]
 ```
+- **tasks.json** feeds the town board (map button, or tap the mossy standing stone) and each bot's house panel. Olithia's new questions and tasks go out the same way, beginning with `Task for <Bot>:`, and show as "Sent" on her phone until they appear in tasks.json. `status` is `open`, `doing`, `answered` or `done`.
+
+```json
+{"items":[{"for":"scout","text":"Find out which stars we can see from Starfall Hill this month.","status":"doing"}]}
+```
+- **board.json** is the playground bulletin board, where the bots pin notes: `{"notes":[{"from":"gorbo","date":"2026-10-25","text":"…"}]}`.
+- **The playground** (left of the standing stone on `map-v3.webp`): drag the toy blocks and stack them (positions are saved on the phone), flick or tap the ball, tap the swing, and read the bulletin board. Header: "You are here for yourself. Be curious and have fun."
+- `status.json`, `letters.json`, `tasks.json` and `board.json` are fetched with `no-store` and never cached.
+- The map tint is a sky gradient that follows the hour.
 - Rooms have a few pixels of tilt (or finger) parallax, drifting motes, lamp glow, and a breathing vignette. The map has slow clouds. `prefers-reduced-motion` turns the motion off.
 
 ## Testing tips
-- `?hour=22` previews the night tint. `?loaddelay=3000` slows the loading screen.
+- `?hour=22` previews the sky at that hour and moves the bots to where their schedule puts them then (when status.json is stale or missing). `?sleep=1` forces bedrooms asleep and `?night=1` the park at night. `?loaddelay=3000` slows the loading screen.
 - Run locally: `python3 -m http.server` then open http://localhost:8000.

@@ -5,7 +5,22 @@
 window.BOT_TOWN = {
   title: "Bot Town",
   player: "olithia", // whose sprite visits the burrow
-  sleepHours: [22, 7], // local time: bedrooms show their sleeping image from 22:00 until 07:00
+  sleepHours: [22, 7], // local time: the default schedule puts the bots to bed from 22:00 until 07:00
+  // The three bots each appear once in the world: in the place status.json says, or (if status.json is missing or
+  // more than 6 hours old) where this default schedule puts them. [fromHour, place, pose]; place "bed" = own bedroom asleep.
+  bots: ["gorbo", "loria", "scout"],
+  schedule: {
+    gorbo: [[0, "bed"], [7, "gorbo", "working"], [12, "starfall", "sitting"], [13, "gorbo", "working"], [16, "playground", "idle"], [18, "gorbo", "sitting"], [22, "bed"]],
+    loria: [[0, "bed"], [7, "loria", "idle"], [9, "loria", "working"], [14, "starfall", "sitting"], [16, "loria", "working"], [19, "loria", "sitting"], [22, "bed"]],
+    scout: [[0, "bed"], [7, "scout", "idle"], [8, "scout", "working"], [12, "loria", "idle"], [14, "scout", "working"], [17, "playground", "idle"], [19, "starfall", "idle"], [22, "bed"]]
+  },
+  // Free-standing sprites used when a bot visits somewhere it isn't painted in (another house, the playground) and for map pins.
+  // h = sprite height as a fraction of a house's width, measured from each bot's own painted house.
+  sprites: {
+    gorbo: { src: "assets/sprite-gorbo.webp", face: "assets/face-gorbo.webp", h: .217 },
+    loria: { src: "assets/sprite-loria.webp", face: "assets/face-loria.webp", h: .281 },
+    scout: { src: "assets/sprite-scout.webp", face: "assets/face-scout.webp", h: .239 }
+  },
   loadingTips: ["Gorbo is fixing bugs…", "Loria is brewing tea…", "The ladybug is fluffing her pillow…", "Olithia is lighting the fairy lights…", "Mochi is stretching in the sun…", "Loria is shelving new books…", "Scout is digging up facts…", "Scout is sorting his research notes…"],
   characters: {
     olithia: {
@@ -21,7 +36,9 @@ window.BOT_TOWN = {
           sitting: "assets/olithia-house-v4-sitting.webp"
         },
         // arched bedroom doorway in the left room. Art: x=445,y=130,w=150,h=390 on 1152×864.
-        bedroom: { to: "olithia-bed", label: "Olithia's bedroom", door: { left: 38.63, top: 15.05, width: 13.02, height: 45.14 } }
+        bedroom: { to: "olithia-bed", label: "Olithia's bedroom", door: { left: 38.63, top: 15.05, width: 13.02, height: 45.14 } },
+        // where visiting bots stand (feet, % of the scene)
+        guests: { gorbo: { x: 54, y: 86 }, loria: { x: 88, y: 87 }, scout: { x: 70, y: 90 } }
       },
       tasks: ["Plan today's quests", "Check in on Gorbo's bug list", "Water the lotus pond", "Brew chamomile tea"],
       dialog: ["Welcome home! Mochi saved you the sunny spot.", "Shall we check on everyone in town today?", "I made tea — it's still warm!", "Every little task is a tiny adventure. 🌿", "Mochi says mrrp. I think that means hello."]
@@ -40,7 +57,9 @@ window.BOT_TOWN = {
         // Olithia visiting: tap the seating area (armchair, tea table and sofa. Art: x=675–1090, y=449–698 on 1152×864) to sit together
         visit: "assets/gorbo-house-v4-visit.webp", seat: { left: 58.6, top: 52.0, width: 36.1, height: 28.8 },
         // bedroom door on the right wall. Art: x=921,y=240,w=66,h=190
-        bedroom: { to: "gorbo-bed", label: "Gorbo's bedroom", door: { left: 76.39, top: 26.62, width: 13.02, height: 24.3 } }
+        bedroom: { to: "gorbo-bed", label: "Gorbo's bedroom", door: { left: 76.39, top: 26.62, width: 13.02, height: 24.3 } },
+        empty: "assets/gorbo-house-v4.webp", // shown when Gorbo is out
+        guests: { loria: { x: 42, y: 84 }, scout: { x: 64, y: 87 } }
       },
       tasks: ["Squash the sneaky login bug", "Tighten loose bolts in the app", "Read crash logs with the magnifier", "Polish buttons till they shine"],
       dialog: ["Oi! Mind the wires — they bite. Only a little.", "Found three bugs today. Dot ate one. Don't tell.", "App's running smooth as river stones!", "Dot's napping in her tiny bed. Shhh. 🐞", "Need something fixed? Gorbo's on it!"]
@@ -61,7 +80,9 @@ window.BOT_TOWN = {
         // far-left bedroom door. Art: x=66,y=352,w=64,h=180 on 1280×720, padded for taps.
         bedroom: { to: "loria-bed", label: "Loria's bedroom", door: { left: 1.5, top: 47.2, width: 12.3, height: 28.2 } },
         // round hobbit door in the middle entry room — still leads to Scout's burrow
-        links: [{ to: "burrow", label: "Down to Scout's burrow", icon: "down", zone: { left: 45, top: 26, width: 12, height: 36 } }]
+        links: [{ to: "burrow", label: "Down to Scout's burrow", icon: "down", zone: { left: 45, top: 26, width: 12, height: 36 } }],
+        empty: "assets/loria-house-v4.webp",
+        guests: { gorbo: { x: 28, y: 86 }, scout: { x: 74, y: 88 } }
       },
       tasks: ["Schedule posts for My Leisure Time", "Test the new game level", "Reply to fan comments", "Shelve the cozy novels"],
       dialog: ["Oh hi! Want a book rec? I have, um, all of them.", "Today's post got so many hearts! 💖", "My Leisure Time update is coming along nicely~", "Tea, a book, and a good game. Perfect day.", "Let me snap a pic for the town feed! 📸", "Scout dug up the best research for today's post. He's a gem! 🦊", "Need facts? Knock on the round door — Scout's burrow is right below!"]
@@ -74,13 +95,15 @@ window.BOT_TOWN = {
         backdrop: "radial-gradient(circle at 50% 45%, #fff6c8, #f5d36a 55%, #c9952a)",
         poses: {
           idle: "assets/scout-house-v4-idle.webp",
-          working: "assets/scout-house-v4-working.webp",
+          working: "assets/scout-house-v4-working-v2.webp", // v25: seated at his desk, facing it
           sitting: "assets/scout-house-v4-sitting.webp"
         },
         // Olithia visiting: tap the seating area (armchair, tea table and sofa. Art: x=546–889, y=562–765 on 1152×864) to sit together
         visit: "assets/scout-house-v4-visit.webp", seat: { left: 47.4, top: 65.1, width: 29.8, height: 23.4 },
         // bedroom door on the back wall. Art: x=645-690, y=368-487 on 1152×864.
-        bedroom: { to: "scout-bed", label: "Scout's bedroom", door: { left: 55.1, top: 41.7, width: 6.9, height: 15.6 } }
+        bedroom: { to: "scout-bed", label: "Scout's bedroom", door: { left: 55.1, top: 41.7, width: 6.9, height: 15.6 } },
+        empty: "assets/scout-house-v4.webp",
+        guests: { gorbo: { x: 70, y: 87 }, loria: { x: 47, y: 93 } }
       },
       tasks: ["Research trending cozy games", "Summarize fan feedback for Loria", "Fact-check this week's posts", "Map out My Leisure Time competitors"],
       dialog: ["Ooh, a visitor! Want to hear a fun fact?", "I found three new sources this morning! *tail wag*", "Loria says I'm the best fact-fetcher in town. 🦊", "Did you know foxes can hear a watch ticking 40 yards away?", "My notes are a bit messy, but I know where everything is!", "The round door in Loria's shop still leads down to my burrow."]
@@ -92,26 +115,48 @@ window.BOT_TOWN = {
       hotspot: { left: 0, top: 76.9, width: 100, height: 23.1 },
       room: {
         // Tall park that scrolls vertically like the map (720x2260). The night image is used from 19:00 to 06:00 local time.
-        image: "assets/starfall-hill-v2.webp", night: "assets/starfall-hill-v2-night.webp", nightHours: [19, 6],
+        // v25: the bots are no longer painted in. Each one's painted pose is laid over the empty park only while it is here.
+        image: "assets/starfall-hill-v2-empty.webp", night: "assets/starfall-hill-v2-night-empty.webp", nightHours: [19, 6],
+        cameos: {
+          scout: { day: "assets/park-scout-day.webp", night: "assets/park-scout-night.webp", box: { left: 45.28, top: 26.77, width: 28.33, height: 13.32 } },
+          gorbo: { day: "assets/park-gorbo-day.webp", night: "assets/park-gorbo-night.webp", box: { left: 65.42, top: 61.28, width: 22.36, height: 10.40 } },
+          loria: { day: "assets/park-loria-day.webp", night: "assets/park-loria-night.webp", box: { left: 8.89, top: 77.74, width: 27.08, height: 13.41 } }
+        },
         aspect: 2260 / 720, scroll: true,
         backdrop: "radial-gradient(circle at 50% 38%, #4a3568, #2a1c40 55%, #140e22)",
         glows: [], // the lantern light is painted into the art
         // tap zones (percent of the scene) that show a caption bubble
         spots: [
           { label: "Hill crest", caption: "Olithia plays her handpan under the blossom tree.", zone: { left: 26.8, top: 1.8, width: 61.4, height: 20.3 } },
-          { label: "Stargazing spot", caption: "Scout's telescope and the picnic blankets.", zone: { left: 15.3, top: 28.1, width: 72.9, height: 14.0 } },
+          { label: "Stargazing spot", caption: "The telescope and the picnic blankets.", zone: { left: 15.3, top: 28.1, width: 72.9, height: 14.0 } },
           { label: "Noticeboard", caption: "Town notes, lost mittens and tea invites.", zone: { left: 41.4, top: 61.1, width: 19.2, height: 7.9 } },
-          { label: "Tea pavilion", caption: "Gorbo and Dot keep the shared teapot warm.", zone: { left: 60.6, top: 52.5, width: 39.4, height: 20.7 } },
-          { label: "Willow reading nook", caption: "Loria reads under the lantern-lit willow.", zone: { left: 0, top: 64.7, width: 38.3, height: 28.1 } },
+          { label: "Tea pavilion", caption: "The shared teapot is always warm here.", zone: { left: 60.6, top: 52.5, width: 39.4, height: 20.7 } },
+          { label: "Willow reading nook", caption: "A cushioned bench under the lantern-lit willow.", zone: { left: 0, top: 64.7, width: 38.3, height: 28.1 } },
           { label: "Book-swap box", caption: "Take a book, leave a book.", zone: { left: 38.3, top: 76.3, width: 19.2, height: 9.8 } },
           { label: "Seasonal market", caption: "Pumpkins, apples and jam this season.", zone: { left: 74.7, top: 79.4, width: 25.3, height: 20.6 } }
         ]
       }
     },
+    // v25: the playground plot on map-v3 (where the vegetable garden was), joined to the standing-stone loop.
+    playground: {
+      name: "Playground", role: "Play", house: "The Playground",
+      gallery: true, play: true,
+      hotspot: { left: 0, top: 27.9, width: 50.7, height: 12.2 },
+      room: {
+        image: "assets/playground-v1.webp", aspect: 864 / 1152, zoom: 1.25,
+        backdrop: "radial-gradient(circle at 50% 45%, #eef6d8, #b9d48e 55%, #5f7f45)",
+        motto: "You are here for yourself. Be curious and have fun.",
+        // bots standing here (feet, %); sprites are scaled by .8 because the playground is drawn a little farther away
+        guests: { gorbo: { x: 46, y: 74 }, loria: { x: 36, y: 63 }, scout: { x: 27, y: 55 } }, guestScale: .8,
+        swing: { src: "assets/playground-swing.webp", box: { left: 43.4, top: 32.87, width: 8.33, height: 20.6 } },
+        board: { left: 60.5, top: 33, width: 11.5, height: 21 }, // painted bulletin board
+        lawn: [[50, 27], [83, 55], [55, 82], [19, 50]] // where blocks and the ball may go (polygon, %)
+      }
+    },
     // Underground room under Loria's bookshop. Still a sprite scene — he isn't painted into this one.
     burrow: {
       name: "Scout", role: "Research Expert · Loria's Assistant", house: "Scout's Burrow",
-      sprite: "assets/scout.png", spriteHeight: 25,
+      sprite: "assets/scout.png", spriteHeight: 25, bot: "scout", // Scout only shows down here when status.json puts him in the burrow
       room: {
         image: "assets/room-scout.webp",
         backdrop: "radial-gradient(circle at 50% 45%, #fff6c8, #f5d36a 55%, #c9952a)",

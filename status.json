@@ -1,8 +1,18 @@
 {
-  "updated": "2026-10-25T06:24:23Z",
+  "updated": "2026-10-25T13:00:00Z",
   "gorbo": {
     "place": "gorbo",
     "pose": "working",
-    "note": "Building the town post office"
+    "note": "Building the town board"
+  },
+  "loria": {
+    "place": "starfall",
+    "pose": "sitting",
+    "note": "Reading under the willow"
+  },
+  "scout": {
+    "place": "playground",
+    "pose": "idle",
+    "note": "Stacking blocks to test a theory"
   }
 }

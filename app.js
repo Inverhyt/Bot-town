@@ -14,9 +14,10 @@
     ladder: sv('<path d="M7 2v20M17 2v20M7 6h10M7 10h10M7 14h10M7 18h10"/>'),
     down: sv('<path d="M7 2v13M17 2v13M7 6h10M7 10h10"/><path d="M12 14v8M8.5 18.5L12 22l3.5-3.5"/>'),
     up: sv('<path d="M7 9v13M17 9v13M7 14h10M7 18h10"/><path d="M12 10V2M8.5 5.5L12 2l3.5 3.5"/>'),
-    mail: sv('<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/>')
+    mail: sv('<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/>'),
+    board: sv('<rect x="3" y="4" width="18" height="13" rx="1.5"/><path d="M7 21l2-4M17 21l-2-4M7 8h6M7 11h9M7 14h4"/>')
   };
-  $('#back').innerHTML = IC.back; $('#musicBtn').innerHTML = IC.music; $('#mapMusic').innerHTML = IC.music; $('#camBtn').innerHTML = IC.cam; $('#mailBtn').innerHTML = IC.mail;
+  $('#back').innerHTML = IC.back; $('#musicBtn').innerHTML = IC.music; $('#mapMusic').innerHTML = IC.music; $('#camBtn').innerHTML = IC.cam; $('#mailBtn').innerHTML = IC.mail; $('#boardBtn').innerHTML = IC.board;
   const motionMQ = matchMedia('(prefers-reduced-motion: reduce)');
   let motionOK = !motionMQ.matches;
   const buzz = ms => { try { if (navigator.vibrate) navigator.vibrate(ms || 10); } catch (e) {} };
@@ -60,8 +61,24 @@
   // ---------- house state ----------
   let cur = null, curId = null, actors = {}, visiting = false, pose = 'idle';
   const poseMemory = {};
-  let live = null; // fresh Gorbo status; null when status.json is missing or older than 6 hours
-  let letters = [];
+  // ---------- where each bot is: status.json when fresh, else the default schedule ----------
+  const BOTS = CFG.bots || [];
+  const isBot = id => BOTS.includes(id);
+  const ownerOf = id => (C[id] && C[id].returnTo) || id;
+  const hourParam = new URLSearchParams(location.search).get('hour');
+  const hourNow = () => hourParam !== null ? +hourParam : new Date().getHours() + new Date().getMinutes() / 60;
+  let liveAll = {}; // bot -> { place, pose, note } from a fresh status.json
+  let statusFresh = false;
+  function scheduled(bot) {
+    const rows = (CFG.schedule || {})[bot] || [], h = hourNow(); let e = null;
+    rows.forEach(r => { if (h >= r[0]) e = r; });
+    if (!e || e[1] === 'bed') return { place: bot, pose: 'sleeping', note: '', live: false };
+    return { place: e[1], pose: e[2] || 'idle', note: '', live: false };
+  }
+  function where(bot) { return liveAll[bot] || scheduled(bot); }
+  // the scene a bot is in right now (sleeping bots are in their bedroom)
+  const sceneOf = bot => { const w = where(bot); return w.pose === 'sleeping' ? bot + '-bed' : w.place; };
+  const hostHome = () => !isBot(curId) || (where(curId).place === curId && where(curId).pose !== 'sleeping');
   const stage = $('#stage'), vp = $('#viewport');
   let W = 0, H = 0, cam = { x: 0, y: 0, s: 1 };
   const tasksDone = id => store.get('tasks-' + id, []);
@@ -72,6 +89,7 @@
   const sleepParam = new URLSearchParams(location.search).get('sleep');
   function isAsleep(id) {
     if (sleepParam !== null) return sleepParam === '1';
+    if (isBot(id)) return where(id).pose === 'sleeping'; // a bot sleeps in its bed only when that's where it is
     const o = store.get('asleep-' + id, null); if (o !== null) return !!o;
     return inHours(CFG.sleepHours || [22, 7]);
   }
@@ -83,6 +101,7 @@
   const nightParam = new URLSearchParams(location.search).get('night');
   const isNight = () => nightParam !== null ? nightParam === '1' : inHours(cur.room.nightHours || [19, 6]);
   function roomURL() {
+    if (cur.room.poses && !hostHome()) return cur.room.empty || cur.room.poses.idle; // host is out: the empty room
     if (cur.room.poses) return (visiting && cur.room.visit) || cur.room.poses[pose] || cur.room.poses.idle;
     if (cur.room.sleeping && isAsleep(cur.returnTo || curId)) return cur.room.sleeping;
     if (cur.room.night && isNight()) return cur.room.night;
@@ -123,7 +142,7 @@
   function enter(id, opts = {}) {
     curId = id; cur = C[id]; visiting = false;
     pose = cur.room.poses ? (poseMemory[id] || 'idle') : 'idle';
-    if (id === 'gorbo' && live && live.pose) pose = live.pose;
+    if (isBot(id) && ['working', 'idle', 'sitting'].includes(where(id).pose)) pose = where(id).pose;
     $('#house').style.opacity = '';
     showRoom(applyBackdrop(), false);
     $('#roomImg').alt = cur.house; $('#roomFade').alt = '';
@@ -132,7 +151,9 @@
     const painted = !!cur.room.poses, gallery = !!cur.gallery;
     $('#house').classList.toggle('has-poses', painted);
     $('#house').classList.toggle('gallery', gallery);
-    $('#poses').hidden = !painted;
+    $('#house').classList.toggle('play', !!cur.play);
+    $('#poses').hidden = !painted || !hostHome();
+    $('#motto').hidden = !cur.room.motto; $('#motto').textContent = cur.room.motto || '';
     $('#tbBusy').hidden = painted || gallery;
     $('#tbVisit').hidden = painted || gallery;
     $('#tbVisit').disabled = id === CFG.player || !cur.room.visitor;
@@ -141,8 +162,9 @@
     $('#tasks').classList.add('collapsed');
     $('#back').setAttribute('aria-label', cur.returnTo ? ('Back to ' + C[cur.returnTo].house) : 'Back to map');
     $('#map').classList.remove('active'); $('#house').classList.add('active');
-    layout(); buildActors(); resetCam(false); buildLinks();
-    if (cur.tasks) renderTasks();
+    layout(); buildActors(); buildGuests(); resetCam(false); buildLinks(); buildPlay();
+    $('#tasks').hidden = gallery || !(cur.tasks || isBot(id));
+    if (cur.tasks || isBot(id)) renderTasks();
     updateMode(true);
     if (motionOK && opts.arrive) { $('#house').classList.add('arriving'); setTimeout(() => $('#house').classList.remove('arriving'), 720); }
     if (motionOK && opts.door) { vp.classList.remove('door-shut'); vp.classList.add('door-open'); setTimeout(() => vp.classList.remove('door-open'), 680); }
@@ -225,7 +247,7 @@
   function buildActors() {
     $('#actors').innerHTML = ''; actors = {};
     if (cur.room.poses || cur.gallery || !cur.sprite) return;
-    actors.main = makeActor(curId, isBusy(curId) ? cur.room.work : cur.room.hangout);
+    if (!cur.bot || where(cur.bot).place === curId) actors.main = makeActor(curId, isBusy(curId) ? cur.room.work : cur.room.hangout);
     (cur.pets || []).forEach(p => {
       if (p.kind === 'attach') return;
       const el = document.createElement('div');
@@ -250,6 +272,18 @@
   }
   function updateMode(initial) {
     if (cur.gallery) return;
+    if (cur.room.poses && !hostHome()) {
+      const w = where(curId);
+      $('#statusChip').innerHTML = `<b>Out</b>${esc(w.pose === 'sleeping' ? 'Asleep in the bedroom' : 'At ' + placeName(w.place))}`;
+      return;
+    }
+    if (cur.room.poses && isBot(curId)) {
+      const w = where(curId), label = { working: 'Working on', sitting: 'Sitting', idle: 'Relaxing' }[pose] || 'Here';
+      let line = w.note || (pose === 'working' ? 'Busy working' : pose === 'sitting' ? 'Taking a cozy break' : 'A quiet idle moment');
+      $('#statusChip').innerHTML = visiting && cur.room.visit ? `<b>Sitting together</b>Tea with ${esc(C[CFG.player].name)}` : `<b>${label}</b>${esc(line)}`;
+      $('#poses').querySelectorAll('button').forEach(b => { const on = b.dataset.pose === pose; b.classList.toggle('on', on); b.setAttribute('aria-pressed', on ? 'true' : 'false'); });
+      return;
+    }
     if (cur.room.poses) {
       const done = tasksDone(curId), next = (cur.tasks || []).find((_, i) => !done[i]);
       const line = pose === 'working'
@@ -305,7 +339,7 @@
     const bed = cur.room.bedroom;
     if (bed) addZone(bed.door, bed.label, () => travel(bed.to, { door: true }), 'Bedroom');
     (cur.room.spots || []).forEach(s => { const el = addZone(s.zone, s.label, () => showBubble(el, s.label, s.caption)); el.classList.remove('glow'); }); // invisible until tapped
-    if (cur.room.visit && cur.room.seat && curId !== CFG.player) addZone(cur.room.seat, `Sit with ${cur.name}`, toggleSeat, 'Sit together');
+    if (cur.room.visit && cur.room.seat && curId !== CFG.player && hostHome()) addZone(cur.room.seat, `Sit with ${cur.name}`, toggleSeat, 'Sit together');
   }
   // Painted houses: Olithia sits with the host (the -visit image); tap again to go back to the host's pose.
   function toggleSeat() {
@@ -352,11 +386,25 @@
 
   // ---------- tasks ----------
   function renderTasks() {
+    if (isBot(curId)) return renderBotTasks();
+    $('#tasksHead b').textContent = 'To-do';
     const done = tasksDone(curId), ul = $('#taskList'); ul.innerHTML = '';
     cur.tasks.forEach((t, i) => { const li = document.createElement('li'); li.innerHTML = `<label><input type="checkbox" ${done[i] ? 'checked' : ''}><span>${t}</span></label>`; li.querySelector('input').onchange = e => { const d = tasksDone(curId); d[i] = e.target.checked; store.set('tasks-' + curId, d); store.set('busy-' + curId, null); countTasks(); updateMode(); }; ul.appendChild(li); });
     countTasks();
   }
-  function countTasks() { const d = tasksDone(curId); $('#taskCount').textContent = `${cur.tasks.filter((_, i) => d[i]).length}/${cur.tasks.length}`; }
+  // Bots' houses list the questions and tasks Olithia gave that bot (tasks.json), with an Ask button.
+  function renderBotTasks() {
+    const ul = $('#taskList'); ul.innerHTML = '';
+    const mine = boardItems().filter(t => t.for === curId);
+    $('#tasksHead b').textContent = 'For ' + C[curId].name;
+    $('#taskCount').textContent = mine.filter(t => t.status !== 'done').length || '';
+    if (!mine.length) { const li = document.createElement('li'); li.className = 'none'; li.textContent = 'Nothing asked yet.'; ul.appendChild(li); }
+    mine.forEach(t => { const li = document.createElement('li'); li.className = 'bt-' + (t.status || 'open'); li.innerHTML = `<span class="st">${esc(statusLabel(t.status))}</span> <span>${esc(t.text)}</span>`; ul.appendChild(li); });
+    const li = document.createElement('li'); const b = document.createElement('button'); b.type = 'button'; b.className = 'pill main ask'; b.textContent = 'Ask ' + C[curId].name;
+    b.onclick = ev => { ev.stopPropagation(); openBoard(curId); }; li.appendChild(b); ul.appendChild(li);
+  }
+  function countTasks() {
+    if (isBot(curId)) return; const d = tasksDone(curId); $('#taskCount').textContent = `${cur.tasks.filter((_, i) => d[i]).length}/${cur.tasks.length}`; }
   const toggleTasks = () => { $('#tasks').classList.toggle('collapsed'); $('#tbTasks').classList.toggle('on', !$('#tasks').classList.contains('collapsed')); };
   $('#tasksHead').onclick = toggleTasks; $('#tbTasks').onclick = toggleTasks;
 
@@ -370,8 +418,9 @@
   $('#close').onclick = () => { $('#chat').hidden = true; };
   $('#replies').onclick = e => {
     const r = e.target.dataset.r; if (!r) return; say('me', r);
-    const d = tasksDone(curId), next = cur.tasks.find((_, i) => !d[i]);
-    const ans = r.startsWith('What') ? (next ? `Right now: ${next}!` : `Everything's done — tea time! ☕`) : pick(cur.dialog);
+    const d = tasksDone(curId), next = (cur.tasks || []).find((_, i) => !d[i]);
+    const bw = isBot(ownerOf(curId)) ? where(ownerOf(curId)) : null;
+    const ans = r.startsWith('What') ? (bw && bw.note ? `Right now: ${bw.note}!` : next ? `Right now: ${next}!` : `Everything's done — tea time! ☕`) : pick(cur.dialog);
     setTimeout(() => say('them', ans), 500);
   };
 
@@ -389,7 +438,7 @@
   // ---------- loader ----------
   (function () {
     const tips = CFG.loadingTips || [];
-    const urls = ['assets/map-v2.webp', ...Object.values(C).flatMap(c => [c.sprite, c.mapImage, c.room && c.room.image, c.room && c.room.sleeping, c.room && c.room.night, c.room && c.room.visit, ...Object.values(c.room.poses || {}), ...(c.pets || []).filter(p => p.sprite).map(p => p.sprite)])].filter(Boolean);
+    const urls = ['assets/map-v3.webp', ...Object.values(CFG.sprites || {}).map(s => s.src), ...Object.values(C).flatMap(c => [c.sprite, c.mapImage, c.room && c.room.image, c.room && c.room.sleeping, c.room && c.room.night, c.room && c.room.visit, c.room && c.room.empty, c.room && c.room.swing && c.room.swing.src, ...Object.values(c.room.cameos || {}).flatMap(k => [k.day, k.night]), ...Object.values(c.room.poses || {}), ...(c.pets || []).filter(p => p.sprite).map(p => p.sprite)])].filter(Boolean);
     let done = 0, ti = 0; const t0 = Date.now(), slow = +(new URLSearchParams(location.search).get('loaddelay') || 0);
     const tipEl = $('#tip'); if (tips.length) tipEl.textContent = tips[0];
     const tipTimer = setInterval(() => { tipEl.style.opacity = 0; setTimeout(() => { ti = (ti + 1) % tips.length; tipEl.textContent = tips[ti]; tipEl.style.opacity = 1; }, 300); }, 1800);
@@ -486,7 +535,7 @@
       sway.style.transform = `translate(${look.x.toFixed(2)}px,${look.y.toFixed(2)}px)`;
     }
     if ($('#house').classList.contains('active')) {
-      const park = curId === 'starfall';
+      const park = curId === 'starfall' || curId === 'playground';
       const glows = (cur && cur.room && cur.room.glows) || houseGlows;
       drawDust($('#motes'), park ? parkDust : houseDust, t, glows);
     }
@@ -518,10 +567,13 @@
     deferredPrompt = null;
   };
 
-  // ---------- Gorbo's live status and the town post ----------
-  const LIVE_PLACES = ['gorbo', 'olithia', 'loria', 'scout', 'starfall'];
-  const LIVE_POSES = ['working', 'idle', 'sitting'];
+  // ---------- live status (all bots), map pins, guests, playground, the town post and the town board ----------
+  const LIVE_PLACES = ['gorbo', 'olithia', 'loria', 'scout', 'starfall', 'playground', 'burrow'];
+  const LIVE_POSES = ['working', 'idle', 'sitting', 'sleeping'];
   const LIVE_MAX = 6 * 60 * 60 * 1000;
+  const esc = t => String(t == null ? '' : t).replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+  const botName = id => (C[id] && C[id].name) || String(id || '');
+  const placeName = p => p === 'olithia' ? "Olithia's cottage" : (C[p] && C[p].house) || p;
   function fillText(el, text) {
     el.replaceChildren();
     String(text || '').split(/\n{2,}/).forEach(para => {
@@ -533,43 +585,191 @@
       el.appendChild(p);
     });
   }
-  function readIds() { const ids = store.get('read-letters', []); return Array.isArray(ids) ? ids : []; }
-  function applyLive() {
-    const chip = $('#liveChip');
-    if (live && live.note) { chip.hidden = false; chip.textContent = 'Gorbo: ' + live.note; }
-    else chip.hidden = true;
-    const pin = $('#gorboHere');
-    const spot = live && live.place && C[live.place] && C[live.place].hotspot;
-    if (spot) {
-      const h = C[live.place].hotspot;
-      pin.hidden = false;
-      pin.style.left = (h.left + h.width / 2) + '%';
-      pin.style.top = (h.top + h.height / 2) + '%';
-    } else pin.hidden = true;
-    if (live && live.pose) {
-      poseMemory.gorbo = live.pose;
-      if (curId === 'gorbo' && cur && cur.room.poses && pose !== live.pose) {
-        pose = live.pose;
-        if (!visiting) { showRoom(roomURL(), true); updateMode(true); }
-      }
+  // Share sheet first, clipboard second, the text itself last.
+  async function passOn(payload, who, out) {
+    out.hidden = false;
+    if (navigator.share) {
+      try { await navigator.share({ text: payload }); out.textContent = `Passed to the share sheet. Paste it into your ${who} chat if it is still waiting there.`; return true; }
+      catch (e) { if (e && e.name === 'AbortError') { out.hidden = true; return false; } }
     }
+    try { await navigator.clipboard.writeText(payload); out.textContent = `Copied. Paste it into your ${who} chat. It begins with “${payload.split('\n')[0]}”.`; }
+    catch (e) { out.textContent = `Copy this into your ${who} chat:\n` + payload; }
+    return true;
+  }
+
+  // ----- guests: a bot standing in a scene it isn't painted into, or its painted park pose -----
+  function buildGuests() {
+    $('#actors').querySelectorAll('.guest,.cameo').forEach(e => e.remove());
+    if (!cur) return;
+    BOTS.forEach(b => {
+      if (b === curId) return;
+      const w = where(b); if (w.pose === 'sleeping' || w.place !== curId) return;
+      const cam = cur.room.cameos && cur.room.cameos[b], spot = cur.room.guests && cur.room.guests[b], spr = (CFG.sprites || {})[b];
+      let el;
+      if (cam) {
+        el = document.createElement('img'); el.className = 'cameo'; el.alt = botName(b); el.draggable = false;
+        el.src = (cur.room.night && roomURL() === cur.room.night) ? cam.night : cam.day;
+        Object.assign(el.style, { left: cam.box.left + '%', top: cam.box.top + '%', width: cam.box.width + '%', height: cam.box.height + '%' });
+      } else if (spot && spr) {
+        el = document.createElement('img'); el.className = 'guest'; el.alt = botName(b); el.draggable = false; el.src = spr.src;
+        const hPct = spr.h * (cur.room.guestScale || 1) * 100 / (cur.room.aspect || .75);
+        Object.assign(el.style, { left: spot.x + '%', top: spot.y + '%', height: hPct + '%', zIndex: Math.round(spot.y * 10) });
+      } else return;
+      el.onclick = ev => { ev.stopPropagation(); showBubble(el, botName(b), w.note || pick(C[b].dialog || ['Hi!'])); };
+      $('#actors').appendChild(el);
+    });
+  }
+  function refreshScene() {
+    if (!cur) return;
+    if (cur.room.poses && isBot(curId) && hostHome() && !visiting && ['working', 'idle', 'sitting'].includes(where(curId).pose)) pose = where(curId).pose;
+    showRoom(applyBackdrop(), true);
+    $('#poses').hidden = !cur.room.poses || !hostHome();
+    $('#actors').querySelectorAll('.link').forEach(e => e.remove()); buildLinks();
+    if (cur.bot && !!actors.main !== (where(cur.bot).place === curId)) buildActors();
+    buildGuests(); updateMode(true);
+    if (!$('#tasks').hidden && (cur.tasks || isBot(curId))) renderTasks();
+  }
+
+  // ----- map: one pin per bot, and a status chip per bot -----
+  const pinSpot = bot => { const s = sceneOf(bot); const id = s.endsWith('-bed') ? s.slice(0, -4) : s === 'burrow' ? 'loria' : s; return C[id] && C[id].hotspot; };
+  function applyLive() {
+    const pins = $('#botPins'); pins.innerHTML = '';
+    const byPlace = {};
+    BOTS.forEach(b => { const h = pinSpot(b); if (!h) return; const k = h.left + ',' + h.top; (byPlace[k] = byPlace[k] || []).push(b); });
+    Object.values(byPlace).forEach(list => list.forEach((b, i) => {
+      const h = pinSpot(b), w = where(b), spr = (CFG.sprites || {})[b];
+      const p = document.createElement('div'); p.className = 'bot-pin' + (w.pose === 'sleeping' ? ' asleep' : '');
+      p.style.left = (h.left + h.width / 2 + (i - (list.length - 1) / 2) * 11) + '%'; p.style.top = (h.top + h.height / 2) + '%';
+      p.innerHTML = `<i>${spr ? `<img src="${spr.face || spr.src}" alt="">` : ''}</i><span>${esc(botName(b))}${w.pose === 'sleeping' ? ' 💤' : ''}</span>`;
+      pins.appendChild(p);
+    }));
+    const chips = $('#botChips'); chips.innerHTML = '';
+    BOTS.forEach(b => {
+      const w = where(b), spr = (CFG.sprites || {})[b];
+      const line = w.pose === 'sleeping' ? 'Asleep' : (w.note || ((w.pose === 'working' ? 'Working at ' : 'At ') + placeName(w.place)));
+      const c = document.createElement('button'); c.type = 'button'; c.className = 'bot-chip' + (w.live ? ' live' : '');
+      c.innerHTML = `<i>${spr ? `<img src="${spr.face || spr.src}" alt="">` : ''}</i><span><b>${esc(botName(b))}</b> ${esc(line)}</span>`;
+      c.setAttribute('aria-label', `${botName(b)}: ${line}. Visit`);
+      c.onclick = () => { const s = sceneOf(b); if (C[s]) enter(s, { arrive: true }); };
+      chips.appendChild(c);
+    });
+    if ($('#board') && !$('#board').hidden) renderBoard();
+    refreshScene();
   }
   async function pullStatus() {
+    let next = {};
     try {
       const res = await fetch('status.json', { cache: 'no-store' });
       if (!res.ok) throw new Error('status');
       const data = await res.json();
       const t = Date.parse(data && data.updated);
-      const g = data && data.gorbo;
-      if (!Number.isFinite(t) || Date.now() - t > LIVE_MAX || !g) live = null;
-      else live = {
-        place: LIVE_PLACES.includes(g.place) ? g.place : null,
-        pose: LIVE_POSES.includes(g.pose) ? g.pose : null,
-        note: typeof g.note === 'string' ? g.note.trim() : ''
-      };
-    } catch (e) { live = null; }
+      statusFresh = Number.isFinite(t) && Date.now() - t <= LIVE_MAX;
+      if (statusFresh) BOTS.forEach(b => {
+        const g = data[b]; if (!g || typeof g !== 'object') return;
+        const place = LIVE_PLACES.includes(g.place) ? g.place : b;
+        let p = LIVE_POSES.includes(g.pose) ? g.pose : 'idle';
+        if (p === 'sleeping' && place !== b) p = 'idle'; // a bot only sleeps in its own bed
+        next[b] = { place, pose: p, note: typeof g.note === 'string' ? g.note.trim().slice(0, 140) : '', live: true };
+      });
+    } catch (e) { statusFresh = false; }
+    liveAll = next;
     applyLive();
   }
+
+  // ----- the playground: blocks, ball, swing, bulletin board -----
+  const PG_COLORS = ['#d9534f', '#3f7fbf', '#f2c14e', '#5aa05a', '#e98b3a', '#9b6bc4', '#d9534f'];
+  const BW = 5.2; // block width, % of the scene width
+  const inPoly = (x, y, poly) => { let c = false; for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) { const [xi, yi] = poly[i], [xj, yj] = poly[j]; if ((yi > y) !== (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi) c = !c; } return c; };
+  let ballRaf = 0;
+  function buildPlay() {
+    cancelAnimationFrame(ballRaf);
+    if (!cur || !cur.play) return;
+    const R = cur.room, act = $('#actors'), BH = BW / (R.aspect || .75); // square blocks
+    // swing: the painted rope and seat on their own layer, pivoting from the top bar
+    const sw = document.createElement('img'); sw.className = 'swing'; sw.src = R.swing.src; sw.alt = 'Swing'; sw.draggable = false;
+    Object.assign(sw.style, { left: R.swing.box.left + '%', top: R.swing.box.top + '%', width: R.swing.box.width + '%', height: R.swing.box.height + '%' });
+    const push = amp => { if (!motionOK) return; sw.getAnimations().forEach(a => a.cancel()); const k = [0, 1, -.8, .62, -.46, .32, -.2, .1, 0].map(f => ({ transform: `rotate(${(f * amp).toFixed(1)}deg)` })); sw.animate(k, { duration: 4200, easing: 'ease-in-out' }); };
+    sw.onclick = ev => { ev.stopPropagation(); push(20); buzz(12); };
+    act.appendChild(sw);
+    if (BOTS.some(b => where(b).place === 'playground' && where(b).pose !== 'sleeping')) setTimeout(() => push(9), 900); // someone's playing
+    // bulletin board: painted board, little paper notes, tap to read board.json
+    const bd = document.createElement('div'); bd.className = 'link zone pboard'; bd.setAttribute('role', 'button'); bd.setAttribute('aria-label', 'Bulletin board');
+    Object.assign(bd.style, { left: R.board.left + '%', top: R.board.top + '%', width: R.board.width + '%', height: R.board.height + '%' });
+    boardNotes.slice(0, 4).forEach((n, i) => { const p = document.createElement('i'); p.style.left = (8 + (i % 2) * 44) + '%'; p.style.top = (14 + Math.floor(i / 2) * 36) + '%'; p.style.transform = `rotate(${[-6, 4, 3, -4][i]}deg)`; bd.appendChild(p); });
+    bd.onclick = ev => { ev.stopPropagation(); openNotes(); };
+    act.appendChild(bd);
+    // blocks
+    const saved = store.get('pg-blocks', null);
+    const start = PG_COLORS.map((c, i) => ({ id: i, x: 55 + (i % 4) * 6.4 - (i > 3 ? 3 : 0), y: 64 + (i > 3 ? -BH * .1 + 7 : 0), on: null }));
+    const blocks = (Array.isArray(saved) && saved.length === PG_COLORS.length ? saved : start).map((b, i) => ({ ...start[i], ...b, id: i }));
+    const els = [];
+    const z = b => Math.round(b.y * 10) + 1;
+    const draw = b => { const e = els[b.id]; e.style.left = (b.x - BW / 2) + '%'; e.style.top = (b.y - BH) + '%'; e.style.zIndex = z(b); };
+    const stackOf = b => { const out = [b]; blocks.forEach(o => { if (o.on === b.id) out.push(...stackOf(o)); }); return out; };
+    const save = () => store.set('pg-blocks', blocks.map(({ id, x, y, on }) => ({ id, x: +x.toFixed(2), y: +y.toFixed(2), on })));
+    blocks.forEach(b => {
+      const e = document.createElement('div'); e.className = 'block'; e.style.setProperty('--c', PG_COLORS[b.id]);
+      e.style.width = BW + '%'; e.style.height = BH + '%'; e.setAttribute('role', 'button'); e.setAttribute('aria-label', 'Toy block');
+      els[b.id] = e; act.appendChild(e); draw(b);
+      e.addEventListener('pointerdown', ev => {
+        ev.stopPropagation(); ev.preventDefault(); e.setPointerCapture(ev.pointerId);
+        const group = stackOf(b), p0 = toStage(ev.clientX, ev.clientY), orig = group.map(g => ({ g, x: g.x, y: g.y }));
+        b.on = null; group.forEach(g => { els[g.id].classList.add('held'); els[g.id].style.zIndex = 5000 + (b.y - g.y) * 10; });
+        const mv = m => { const p = toStage(m.clientX, m.clientY); orig.forEach(o => { o.g.x = o.x + p.x - p0.x; o.g.y = o.y + p.y - p0.y; els[o.g.id].style.left = (o.g.x - BW / 2) + '%'; els[o.g.id].style.top = (o.g.y - BH) + '%'; }); };
+        const up = () => {
+          e.removeEventListener('pointermove', mv); e.removeEventListener('pointerup', up); e.removeEventListener('pointercancel', up);
+          // land on the highest block underneath, or on the lawn, or go back
+          const ids = new Set(group.map(g => g.id));
+          const under = blocks.filter(o => !ids.has(o.id) && Math.abs(o.x - b.x) < BW * .7 && b.y > o.y - BH * 1.6 && b.y < o.y + BH * .5).sort((p, q) => (q.y - BH) - (p.y - BH));
+          const top = under.length ? under.reduce((m, o) => (o.y < m.y ? o : m)) : null;
+          let dx = 0, dy = 0;
+          if (top && !blocks.some(o => o.on === top.id && !ids.has(o.id))) { dx = top.x - b.x; dy = (top.y - BH) - b.y; b.on = top.id; buzz(14); }
+          else if (!inPoly(b.x, b.y, R.lawn)) { dx = orig[0].x - b.x; dy = orig[0].y - b.y; }
+          group.forEach(g => { g.x += dx; g.y += dy; els[g.id].classList.remove('held'); draw(g); });
+          // stacked blocks keep their stack order on top
+          group.forEach(g => { if (g !== b) els[g.id].style.zIndex = z(b) + (b.y - g.y) / BH; });
+          save();
+        };
+        e.addEventListener('pointermove', mv); e.addEventListener('pointerup', up); e.addEventListener('pointercancel', up);
+      });
+    });
+    const reset = document.createElement('button'); reset.type = 'button'; reset.className = 'pill pg-reset'; reset.textContent = 'Tidy blocks';
+    reset.onclick = ev => { ev.stopPropagation(); store.set('pg-blocks', null); buildPlayFresh(); };
+    $('#playTools').replaceChildren(reset);
+    // ball: flick it, or tap for a little kick
+    const ball = document.createElement('div'); ball.className = 'ball'; ball.setAttribute('role', 'button'); ball.setAttribute('aria-label', 'Ball');
+    const st = store.get('pg-ball', null) || { x: 58, y: 77 }; const bs = { x: st.x, y: st.y, vx: 0, vy: 0 };
+    const BD = 4.2; ball.style.width = BD + '%'; ball.style.height = (BD / (R.aspect || .75)) + '%';
+    const drawBall = () => { ball.style.left = (bs.x - BD / 2) + '%'; ball.style.top = (bs.y - BD / (R.aspect || .75)) + '%'; ball.style.zIndex = Math.round(bs.y * 10); };
+    drawBall(); act.appendChild(ball);
+    const roll = () => {
+      bs.vx *= .965; bs.vy *= .965;
+      let nx = bs.x + bs.vx, ny = bs.y + bs.vy;
+      if (!inPoly(nx, ny, R.lawn)) { if (!inPoly(bs.x + bs.vx, bs.y, R.lawn)) bs.vx *= -.7; if (!inPoly(bs.x, bs.y + bs.vy, R.lawn)) bs.vy *= -.7; nx = bs.x + bs.vx; ny = bs.y + bs.vy; if (!inPoly(nx, ny, R.lawn)) { nx = bs.x; ny = bs.y; } }
+      bs.x = nx; bs.y = ny; ball.style.transform = `rotate(${(bs.x * 40) % 360}deg)`; drawBall();
+      if (Math.hypot(bs.vx, bs.vy) > .02) ballRaf = requestAnimationFrame(roll); else store.set('pg-ball', { x: +bs.x.toFixed(2), y: +bs.y.toFixed(2) });
+    };
+    ball.addEventListener('pointerdown', ev => {
+      ev.stopPropagation(); ev.preventDefault(); ball.setPointerCapture(ev.pointerId);
+      const t0 = performance.now(), p0 = toStage(ev.clientX, ev.clientY);
+      const up = u => {
+        ball.removeEventListener('pointerup', up); ball.removeEventListener('pointercancel', up);
+        const p = toStage(u.clientX, u.clientY), dt = Math.max(60, performance.now() - t0);
+        let vx = (p.x - p0.x) / dt * 16, vy = (p.y - p0.y) / dt * 16;
+        if (Math.hypot(vx, vy) < .3) { const a = Math.random() * 6.28; vx = Math.cos(a) * .9; vy = Math.sin(a) * .9; }
+        const sp = Math.hypot(vx, vy); if (sp > 3) { vx *= 3 / sp; vy *= 3 / sp; }
+        bs.vx = vx; bs.vy = vy; buzz(10); cancelAnimationFrame(ballRaf); ballRaf = requestAnimationFrame(roll);
+      };
+      ball.addEventListener('pointerup', up); ball.addEventListener('pointercancel', up);
+    });
+  }
+  function buildPlayFresh() { $('#actors').querySelectorAll('.block,.ball,.swing,.pboard').forEach(e => e.remove()); buildPlay(); }
+
+  // ----- the town post: letters from any bot, write to any bot -----
+  let letters = [];
+  let mailTo = BOTS[0] || 'gorbo';
+  function readIds() { const ids = store.get('read-letters', []); return Array.isArray(ids) ? ids : []; }
+  const letterFrom = l => { const f = String((l && l.from) || 'gorbo').toLowerCase(); return isBot(f) ? f : 'gorbo'; };
   function unreadLetters() { const seen = readIds(); return letters.some(l => l && l.id && !seen.includes(l.id)); }
   function paintMailDot() {
     const unread = unreadLetters();
@@ -585,22 +785,37 @@
     const list = $('#mailList'); list.innerHTML = '';
     const rows = letters.filter(l => l && l.id);
     if (!rows.length) { const p = document.createElement('p'); p.className = 'empty'; p.textContent = 'The post box is quiet.'; list.appendChild(p); paintMailDot(); return; }
+    const seen = readIds();
     rows.forEach(l => {
-      const b = document.createElement('button'); b.type = 'button';
-      const small = document.createElement('small'); small.textContent = (l.from || 'Gorbo') + (l.date ? ' · ' + l.date : '');
+      const b = document.createElement('button'); b.type = 'button'; if (!seen.includes(l.id)) b.className = 'unread';
+      const small = document.createElement('small'); small.textContent = botName(letterFrom(l)) + (l.date ? ' · ' + l.date : '');
       b.append(document.createTextNode(l.title || 'A letter'), small);
       b.onclick = () => openLetter(l);
       list.appendChild(b);
     });
     paintMailDot();
   }
+  let reading = null;
   function openLetter(l) {
+    reading = l;
     const seen = readIds(); if (!seen.includes(l.id)) store.set('read-letters', seen.concat(l.id));
     $('#mailTitle').textContent = l.title || 'A letter';
-    $('#mailMeta').textContent = (l.from || 'Gorbo') + (l.date ? ' · ' + l.date : '');
+    $('#mailMeta').textContent = 'From ' + botName(letterFrom(l)) + (l.date ? ' · ' + l.date : '');
+    $('#mailReply').textContent = 'Reply to ' + botName(letterFrom(l));
     fillText($('#mailBody'), l.body || '');
     showMail('read'); paintMailDot();
   }
+  function pickRecipient(id) {
+    mailTo = id;
+    $('#mailTo').querySelectorAll('button').forEach(b => { const on = b.dataset.to === id; b.classList.toggle('on', on); b.setAttribute('aria-pressed', on ? 'true' : 'false'); });
+    const n = botName(id);
+    $('#mailWriteTitle').textContent = 'Write to ' + n;
+    $('#mailWriteHint').textContent = `Send opens your phone’s share sheet, or copies the letter, so you can paste it into your chat with ${n}. It begins with “Letter to ${n}:”.`;
+    $('#mailText').placeholder = `Dear ${n}…`;
+  }
+  function writeTo(id) { pickRecipient(id); showMail('write'); $('#mailSent').hidden = true; }
+  $('#mailTo').innerHTML = BOTS.map(b => `<button type="button" data-to="${b}">${(CFG.sprites[b] ? `<img src="${CFG.sprites[b].face}" alt="">` : '')}${esc(botName(b))}</button>`).join('');
+  $('#mailTo').onclick = e => { const b = e.target.closest('button'); if (b) pickRecipient(b.dataset.to); };
   async function pullLetters() {
     try {
       const res = await fetch('letters.json', { cache: 'no-store' });
@@ -610,41 +825,108 @@
     } catch (e) { letters = letters.length ? letters : []; }
     renderLetters();
   }
-  function pullLive() { pullStatus(); pullLetters(); }
   $('#mailBtn').onclick = () => { $('#mail').hidden = false; showMail('home'); renderLetters(); $('#mailSent').hidden = true; };
   $('#mailClose').onclick = () => { $('#mail').hidden = true; };
   $('#mail').onclick = e => { if (e.target === $('#mail')) $('#mail').hidden = true; };
-  $('#mailCompose').onclick = () => { showMail('write'); $('#mailSent').hidden = true; };
+  $('#mailCompose').onclick = () => writeTo(mailTo);
+  $('#mailReply').onclick = () => writeTo(letterFrom(reading));
   $('#mailBack').onclick = () => showMail('home');
   $('#mailWriteBack').onclick = () => showMail('home');
   $('#mailText').addEventListener('input', () => { $('#mailSend').disabled = !$('#mailText').value.trim(); });
   $('#mailSend').disabled = true;
   $('#mailSend').onclick = async () => {
     const text = $('#mailText').value.trim(); if (!text) return;
-    const payload = 'Letter to Gorbo:\n' + text;
-    const sent = $('#mailSent');
-    if (navigator.share) {
-      try { await navigator.share({ text: payload }); sent.hidden = false; sent.textContent = 'Passed to the share sheet. Paste it into your Gorbo chat if it is still waiting there.'; return; }
-      catch (e) { if (e && e.name === 'AbortError') return; }
-    }
-    try {
-      await navigator.clipboard.writeText(payload);
-      sent.hidden = false; sent.textContent = 'Copied. Paste it into your Gorbo chat. It begins with “Letter to Gorbo:”.';
-    } catch (e) {
-      sent.hidden = false; sent.textContent = 'Copy this into your Gorbo chat:\n' + payload;
-    }
+    const n = botName(mailTo);
+    await passOn(`Letter to ${n}:\n` + text, n, $('#mailSent'));
   };
+  pickRecipient(mailTo);
 
-  // ---------- day/night tint ----------
+  // ----- the town board: who's doing what, and Olithia's questions & tasks for the bots -----
+  let taskItems = [], boardNotes = [];
+  let taskTo = BOTS[0] || 'gorbo';
+  const statusLabel = s => ({ done: 'Done', doing: 'Doing', open: 'Open', answered: 'Answered' }[s] || 'Open');
+  const sentTasks = () => { const s = store.get('sent-tasks', []); return Array.isArray(s) ? s : []; };
+  // tasks.json items plus the ones sent from this phone that haven't shown up in tasks.json yet
+  function boardItems() {
+    const known = new Set(taskItems.map(t => (t.for + '|' + t.text).toLowerCase()));
+    return taskItems.concat(sentTasks().filter(t => !known.has((t.for + '|' + t.text).toLowerCase())).map(t => ({ ...t, status: 'sent' })));
+  }
+  async function pullBoard() {
+    try { const r = await fetch('tasks.json', { cache: 'no-store' }); if (!r.ok) throw 0; const d = await r.json(); taskItems = (d && Array.isArray(d.items) ? d.items : []).filter(t => t && isBot(String(t.for).toLowerCase()) && t.text).map(t => ({ for: String(t.for).toLowerCase(), text: String(t.text), status: String(t.status || 'open').toLowerCase() })); }
+    catch (e) { /* keep what we had */ }
+    try { const r = await fetch('board.json', { cache: 'no-store' }); if (!r.ok) throw 0; const d = await r.json(); boardNotes = (d && Array.isArray(d.notes) ? d.notes : []).filter(n => n && n.text); }
+    catch (e) { /* keep what we had */ }
+    if (!$('#board').hidden) renderBoard();
+    if (cur && cur.play) buildPlayFresh();
+    if (cur && isBot(curId) && !$('#tasks').hidden) renderTasks();
+  }
+  function renderBoard() {
+    const who = $('#boardWho'); who.innerHTML = '';
+    BOTS.forEach(b => {
+      const w = where(b), spr = CFG.sprites[b];
+      const row = document.createElement('div'); row.className = 'who';
+      const doing = w.pose === 'sleeping' ? 'Asleep' : (w.note || (w.pose === 'working' ? 'Working' : w.pose === 'sitting' ? 'Taking a break' : 'Hanging out'));
+      row.innerHTML = `<i>${spr ? `<img src="${spr.face || spr.src}" alt="">` : ''}</i><div><b>${esc(botName(b))}</b><span>${esc(doing)}</span><small>${esc(w.pose === 'sleeping' ? placeName(b) + ' bedroom' : placeName(w.place))}${w.live ? '' : ' · usual schedule'}</small></div>`;
+      who.appendChild(row);
+    });
+    const ul = $('#boardTasks'); ul.innerHTML = '';
+    const items = boardItems();
+    if (!items.length) { const li = document.createElement('li'); li.className = 'none'; li.textContent = 'No questions yet. Ask one below.'; ul.appendChild(li); }
+    items.forEach(t => { const li = document.createElement('li'); li.className = 'bt-' + t.status; li.innerHTML = `<span class="st">${esc(t.status === 'sent' ? 'Sent' : statusLabel(t.status))}</span><b>${esc(botName(t.for))}</b> ${esc(t.text)}`; ul.appendChild(li); });
+  }
+  function pickTaskTo(id) {
+    taskTo = id; const n = botName(id);
+    $('#taskTo').querySelectorAll('button').forEach(b => { const on = b.dataset.to === id; b.classList.toggle('on', on); b.setAttribute('aria-pressed', on ? 'true' : 'false'); });
+    $('#taskText').placeholder = `A question or task for ${n}…`;
+  }
+  $('#taskTo').innerHTML = BOTS.map(b => `<button type="button" data-to="${b}">${(CFG.sprites[b] ? `<img src="${CFG.sprites[b].face}" alt="">` : '')}${esc(botName(b))}</button>`).join('');
+  $('#taskTo').onclick = e => { const b = e.target.closest('button'); if (b) pickTaskTo(b.dataset.to); };
+  function openBoard(forBot) { $('#board').hidden = false; $('#taskSent').hidden = true; pickTaskTo(isBot(forBot) ? forBot : taskTo); renderBoard(); }
+  $('#boardBtn').onclick = () => openBoard();
+  $('#boardClose').onclick = () => { $('#board').hidden = true; };
+  $('#board').onclick = e => { if (e.target === $('#board')) $('#board').hidden = true; };
+  $('#taskText').addEventListener('input', () => { $('#taskSend').disabled = !$('#taskText').value.trim(); });
+  $('#taskSend').disabled = true;
+  $('#taskSend').onclick = async () => {
+    const text = $('#taskText').value.trim(); if (!text) return;
+    const n = botName(taskTo);
+    const ok = await passOn(`Task for ${n}:\n` + text, n, $('#taskSent'));
+    if (ok) { store.set('sent-tasks', sentTasks().concat({ for: taskTo, text, date: new Date().toISOString().slice(0, 10) }).slice(-30)); $('#taskText').value = ''; $('#taskSend').disabled = true; renderBoard(); if (cur && isBot(curId)) renderTasks(); }
+  };
+  // the mossy standing stone on the map is the town plaza: tap it for the board
+  (() => { const h = document.createElement('div'); h.className = 'hot plaza'; h.setAttribute('role', 'button'); h.setAttribute('aria-label', 'Town board');
+    Object.assign(h.style, { left: '40.3%', top: '41.5%', width: '19.4%', height: '6.1%' }); h.innerHTML = '<span class="label">Town board</span>';
+    h.addEventListener('click', () => { if (!mapDragged()) openBoard(); }); $('#hotspots').appendChild(h); })();
+  // bulletin board in the playground
+  function openNotes() {
+    const list = $('#notesList'); list.innerHTML = '';
+    if (!boardNotes.length) { const p = document.createElement('p'); p.className = 'empty'; p.textContent = 'No notes pinned yet.'; list.appendChild(p); }
+    boardNotes.forEach((n, i) => { const d = document.createElement('div'); d.className = 'note'; d.style.transform = `rotate(${[-1.5, 1.2, -.8, 1.6][i % 4]}deg)`; const f = String(n.from || '').toLowerCase();
+      d.innerHTML = `<p></p><small>${esc(isBot(f) ? botName(f) : (n.from || ''))}${n.date ? ' · ' + esc(n.date) : ''}</small>`; d.querySelector('p').textContent = n.text; list.appendChild(d); });
+    $('#notes').hidden = false;
+  }
+  $('#notesClose').onclick = () => { $('#notes').hidden = true; };
+  $('#notes').onclick = e => { if (e.target === $('#notes')) $('#notes').hidden = true; };
+
+  function pullLive() { pullStatus(); pullLetters(); pullBoard(); }
+
+  // ---------- real-time sky: a soft gradient that follows the hour (?hour=18.5 to preview) ----------
+  const SKY = [ // hour, top colour, bottom colour (multiplied over the scene)
+    [0, [52, 62, 140, .5], [70, 80, 150, .34]], [4.5, [52, 62, 140, .48], [70, 80, 150, .32]], [6, [250, 160, 150, .34], [255, 200, 160, .18]],
+    [7.5, [255, 214, 170, .14], [255, 236, 200, .04]], [9, [255, 255, 255, 0], [255, 255, 255, 0]], [16, [255, 255, 255, 0], [255, 255, 255, 0]],
+    [17.5, [255, 170, 110, .2], [255, 200, 150, .08]], [19, [220, 110, 120, .32], [255, 150, 90, .2]], [20.5, [110, 86, 170, .42], [140, 100, 160, .26]],
+    [22, [52, 62, 140, .5], [70, 80, 150, .34]], [24, [52, 62, 140, .5], [70, 80, 150, .34]]];
+  const mixC = (a, b, t) => a.map((v, i) => v + (b[i] - v) * t);
   function tint() {
-    const q = new URLSearchParams(location.search).get('hour'), h = q !== null ? +q : new Date().getHours() + new Date().getMinutes() / 60; let bg = 'transparent';
-    if (h < 5 || h >= 21) bg = 'rgba(60,70,150,.45)'; else if (h < 7) bg = 'rgba(255,170,150,.25)'; else if (h >= 19.5) bg = 'rgba(120,90,170,.35)'; else if (h >= 18) bg = 'rgba(255,140,80,.22)';
-    $('#tint').style.background = bg;
+    const h = hourNow() % 24; let i = 0; while (i < SKY.length - 2 && SKY[i + 1][0] <= h) i++;
+    const [h0, t0, b0] = SKY[i], [h1, t1, b1] = SKY[i + 1], t = h1 > h0 ? (h - h0) / (h1 - h0) : 0;
+    const css = c => `rgba(${c.slice(0, 3).map(Math.round).join(',')},${c[3].toFixed(3)})`;
+    $('#tint').style.background = `linear-gradient(to bottom, ${css(mixC(t0, t1, t))}, ${css(mixC(b0, b1, t))})`;
   }
   tint(); setInterval(tint, 60000);
-  setInterval(() => { if (cur && (cur.room.sleeping || cur.room.night)) showRoom(applyBackdrop(), true); }, 60000); // crossfade at bedtime / wake-up
+  setInterval(() => { if (cur && (cur.room.sleeping || cur.room.night)) { showRoom(applyBackdrop(), true); buildGuests(); } }, 60000); // crossfade at bedtime / wake-up
   pullLive(); setInterval(pullLive, 60000);
   if (location.hash) history.replaceState(null, '', location.pathname + location.search);
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');
-  window.__bt = { enter, go, cam, applyCam }; // handy for testing
+  window.__bt = { enter, go, cam, applyCam, where }; // handy for testing
 })();

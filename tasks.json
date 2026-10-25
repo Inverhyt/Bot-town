@@ -1,0 +1,19 @@
+{
+  "items": [
+    {
+      "for": "gorbo",
+      "text": "Could the playground swing creak a little when it moves?",
+      "status": "open"
+    },
+    {
+      "for": "loria",
+      "text": "Which cozy book should go in the book-swap box first?",
+      "status": "open"
+    },
+    {
+      "for": "scout",
+      "text": "Find out which stars we can see from Starfall Hill this month.",
+      "status": "doing"
+    }
+  ]
+}
