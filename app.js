@@ -706,8 +706,8 @@
           const st = cur.room.seat; spot = { x: st.left + st.width / 2, y: st.top + st.height * .85 }; }
       }
       let el;
-      const seat = cur.room.parkPoses && parkSeats()[b];
-      if (seat) {
+      const seat = cur.room.parkPoses && parkSeats()[b], toy = cur.play && cur.room.toys && pgToys()[b];
+      if (toy) { el = toyEl(b, toy); } else if (seat) {
         const k = seat.seat.kind || 'sit', pb = seat.seat.patch && cur.room.parkBox && cur.room.parkBox[seat.seat.patch + '-' + b];
         if (pb) { // v31: painted-in patch for this exact seat
           el = document.createElement('img'); el.className = 'guest park-patch'; el.alt = botName(b); el.draggable = false;
@@ -795,19 +795,23 @@
   }
 
   // ----- the playground: blocks, ball, swing, bulletin board -----
-  const PG_COLORS = ['#d9534f', '#3f7fbf', '#f2c14e', '#5aa05a', '#e98b3a', '#9b6bc4', '#d9534f'];
-  const BW = 5.2; // block width, % of the scene width
+  const PG_COLORS = ['#d9534f', '#3f7fbf', '#f2c14e', '#5aa05a', '#e98b3a', '#9b6bc4', '#4fb3b0', '#e97fa8', '#f2c14e', '#3f7fbf'];
+  const PG_SHAPES = ['', '', 'arch', '', 'cyl', '', 'tri', '', 'cyl', 'arch']; // v33: tri can't hold anything on top
+  const BW = 3.6; // block width (v33: smaller, to suit the bigger playground), % of the scene width
   const inPoly = (x, y, poly) => { let c = false; for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) { const [xi, yi] = poly[i], [xj, yj] = poly[j]; if ((yi > y) !== (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi) c = !c; } return c; };
   let ballRaf = 0;
   function buildPlay() {
     cancelAnimationFrame(ballRaf);
     if (!cur || !cur.play) return;
     const R = cur.room, act = $('#actors'), BH = BW / (R.aspect || .75); // square blocks
-    // swing: the painted rope and seat on their own layer, pivoting from the top bar
-    const sw = document.createElement('img'); sw.className = 'swing'; sw.src = R.swing.src; sw.alt = 'Swing'; sw.draggable = false;
-    Object.assign(sw.style, { left: R.swing.box.left + '%', top: R.swing.box.top + '%', width: R.swing.box.width + '%', height: R.swing.box.height + '%' });
-    const push = amp => { if (!motionOK) return; sw.getAnimations().forEach(a => a.cancel()); const k = [0, 1, -.8, .62, -.46, .32, -.2, .1, 0].map(f => ({ transform: `rotate(${(f * amp).toFixed(1)}deg)` })); sw.animate(k, { duration: 4200, easing: 'ease-in-out' }); };
+    // v33: the swing hangs from the painted bar (ropes + seat drawn here); a bot riding it replaces it (.swing-rider)
+    const SW = R.swing, sw = document.createElement('div'); sw.className = 'swing'; sw.setAttribute('role', 'button'); sw.setAttribute('aria-label', 'Swing');
+    sw.innerHTML = '<svg viewBox="0 0 40 100" preserveAspectRatio="none"><path d="M8 0V92M32 0V92" stroke="#c9a46a" stroke-width="1.6"/><path d="M8 0V92M32 0V92" stroke="#7a5a32" stroke-width=".5" stroke-dasharray="1.2 1.6"/><rect x="3" y="90" width="34" height="6" rx="1.5" fill="#9a6a3a" stroke="#5e3d1e" stroke-width=".8"/><rect x="4" y="90.5" width="32" height="1.6" fill="#c08a52"/></svg>';
+    Object.assign(sw.style, { left: (SW.pivot[0] - 2.4) + '%', top: SW.pivot[1] + '%', width: '4.8%', height: (SW.len + 1.4) + '%', zIndex: Math.round((SW.pivot[1] + SW.len) * 10) });
+    const push = amp => { if (!motionOK) return; const tgt = act.querySelector('.swing-rider') || sw; tgt.getAnimations().forEach(a => a.cancel()); const k = [0, 1, -.8, .62, -.46, .32, -.2, .1, 0].map(f => ({ transform: `rotate(${(f * amp).toFixed(1)}deg)` })); tgt.animate(k, { duration: 4200, easing: 'ease-in-out' }); };
+    pgPush = push;
     sw.onclick = ev => { ev.stopPropagation(); push(20); buzz(12); };
+    let swx = null; sw.addEventListener('pointerdown', e => { e.stopPropagation(); swx = e.clientX; }); sw.addEventListener('pointerup', e => { if (swx != null && Math.abs(e.clientX - swx) > 12) push(Math.min(28, 10 + Math.abs(e.clientX - swx) / 4) * Math.sign(e.clientX - swx)); swx = null; });
     act.appendChild(sw);
     if (BOTS.some(b => where(b).place === 'playground' && where(b).pose !== 'sleeping')) setTimeout(() => push(9), 900); // someone's playing
     // bulletin board: painted board, little paper notes, tap to read board.json
@@ -818,7 +822,8 @@
     act.appendChild(bd);
     // blocks
     const saved = store.get('pg-blocks', null);
-    const start = PG_COLORS.map((c, i) => ({ id: i, x: 55 + (i % 4) * 6.4 - (i > 3 ? 3 : 0), y: 64 + (i > 3 ? -BH * .1 + 7 : 0), on: null }));
+    const PG_START = [[56, 63.5, null], [60, 63.5, null], [58, 68, null], [62.5, 67.5, null], [66, 69.5, null], [56, 63.5 - BH, 0], [60, 63.5 - BH, 1], [56, 63.5 - 2 * BH, 5], [62.5, 67.5 - BH, 3], [60, 63.5 - 2 * BH, 6]];
+    const start = PG_COLORS.map((c, i) => ({ id: i, x: PG_START[i][0], y: PG_START[i][1], on: PG_START[i][2] }));
     const blocks = (Array.isArray(saved) && saved.length === PG_COLORS.length ? saved : start).map((b, i) => ({ ...start[i], ...b, id: i }));
     const els = [];
     const z = b => Math.round(b.y * 10) + 1;
@@ -826,7 +831,7 @@
     const stackOf = b => { const out = [b]; blocks.forEach(o => { if (o.on === b.id) out.push(...stackOf(o)); }); return out; };
     const save = () => store.set('pg-blocks', blocks.map(({ id, x, y, on }) => ({ id, x: +x.toFixed(2), y: +y.toFixed(2), on })));
     blocks.forEach(b => {
-      const e = document.createElement('div'); e.className = 'block'; e.style.setProperty('--c', PG_COLORS[b.id]);
+      const e = document.createElement('div'); e.className = 'block' + (PG_SHAPES[b.id] ? ' ' + PG_SHAPES[b.id] : ''); e.style.setProperty('--c', PG_COLORS[b.id]);
       e.style.width = BW + '%'; e.style.height = BH + '%'; e.setAttribute('role', 'button'); e.setAttribute('aria-label', 'Toy block');
       els[b.id] = e; act.appendChild(e); draw(b);
       e.addEventListener('pointerdown', ev => {
@@ -841,9 +846,9 @@
           const under = blocks.filter(o => !ids.has(o.id) && Math.abs(o.x - b.x) < BW * .7 && b.y > o.y - BH * 1.6 && b.y < o.y + BH * .5).sort((p, q) => (q.y - BH) - (p.y - BH));
           const top = under.length ? under.reduce((m, o) => (o.y < m.y ? o : m)) : null;
           let dx = 0, dy = 0;
-          if (top && !blocks.some(o => o.on === top.id && !ids.has(o.id))) { dx = top.x - b.x; dy = (top.y - BH) - b.y; b.on = top.id; buzz(14); }
+          if (top && PG_SHAPES[top.id] !== 'tri' && !blocks.some(o => o.on === top.id && !ids.has(o.id))) { dx = top.x - b.x; dy = (top.y - BH) - b.y; b.on = top.id; buzz(14); }
           else if (!inPoly(b.x, b.y, R.lawn)) { dx = orig[0].x - b.x; dy = orig[0].y - b.y; }
-          group.forEach(g => { g.x += dx; g.y += dy; els[g.id].classList.remove('held'); draw(g); });
+          group.forEach(g => { g.x += dx; g.y += dy; els[g.id].classList.remove('held'); draw(g); if (motionOK) els[g.id].animate([{ transform: 'translateY(-14%)' }, { transform: 'translateY(2%) scaleY(.94)' }, { transform: 'none' }], { duration: 300, easing: 'ease-out' }); });
           // stacked blocks keep their stack order on top
           group.forEach(g => { if (g !== b) els[g.id].style.zIndex = z(b) + (b.y - g.y) / BH; });
           save();
@@ -851,12 +856,16 @@
         e.addEventListener('pointermove', mv); e.addEventListener('pointerup', up); e.addEventListener('pointercancel', up);
       });
     });
+    const root = b => (b.on == null ? b : root(blocks[b.on])); blocks.forEach(b => { if (b.on != null) { const r = root(b); els[b.id].style.zIndex = z(r) + (r.y - b.y) / BH; } }); // stacks: upper blocks in front
     const reset = document.createElement('button'); reset.type = 'button'; reset.className = 'pill pg-reset'; reset.textContent = 'Tidy blocks';
     reset.onclick = ev => { ev.stopPropagation(); store.set('pg-blocks', null); buildPlayFresh(); };
-    $('#playTools').replaceChildren(reset); playTools();
+    const smooth = document.createElement('button'); smooth.type = 'button'; smooth.className = 'pill pg-reset'; smooth.textContent = 'Smooth sand';
+    smooth.onclick = ev => { ev.stopPropagation(); pgSmooth(); };
+    $('#playTools').replaceChildren(reset, smooth); playTools();
+    buildToys(R, act);
     // ball: flick it, or tap for a little kick
     const ball = document.createElement('div'); ball.className = 'ball'; ball.setAttribute('role', 'button'); ball.setAttribute('aria-label', 'Ball');
-    const st = store.get('pg-ball', null) || { x: 58, y: 77 }; const bs = { x: st.x, y: st.y, vx: 0, vy: 0 };
+    const st = store.get('pg-ball', null) || { x: 49, y: 53 }; const bs = { x: st.x, y: st.y, vx: 0, vy: 0 };
     const BD = 4.2; ball.style.width = BD + '%'; ball.style.height = (BD / (R.aspect || .75)) + '%';
     const drawBall = () => { ball.style.left = (bs.x - BD / 2) + '%'; ball.style.top = (bs.y - BD / (R.aspect || .75)) + '%'; ball.style.zIndex = Math.round(bs.y * 10); };
     drawBall(); act.appendChild(ball);
@@ -881,13 +890,132 @@
       ball.addEventListener('pointerup', up); ball.addEventListener('pointercancel', up);
     });
   }
+  // ---------- v33: more toys ----------
+  var pgPush = () => {}, pgAC = null;
+  function pgNote(f, dur = 1.4, type = 'triangle', vol = .18) { // soft mallet note (C major, matches the music)
+    try { pgAC = pgAC || new (window.AudioContext || window.webkitAudioContext)(); if (pgAC.state === 'suspended') pgAC.resume();
+      const t = pgAC.currentTime, o = pgAC.createOscillator(), o2 = pgAC.createOscillator(), g = pgAC.createGain();
+      o.type = type; o.frequency.value = f; o2.type = 'sine'; o2.frequency.value = f * 4; const g2 = pgAC.createGain(); g2.gain.value = .08;
+      o2.connect(g2); g2.connect(g); o.connect(g); g.connect(pgAC.destination);
+      g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(vol, t + .008); g.gain.exponentialRampToValueAtTime(.0008, t + dur);
+      o.start(t); o2.start(t); o.stop(t + dur + .05); o2.stop(t + dur + .05); } catch (e) {}
+  }
+  const NOTE = { C5: 523.25, D5: 587.33, E5: 659.25, F5: 698.46, G5: 783.99, A5: 880, C6: 1046.5, E6: 1318.5, G6: 1568, A6: 1760 };
+  function pgToys() { // who plays with what this hour (one per toy, one instance each)
+    const out = {}, used = new Set(), h = Math.floor(hourNow()), R = cur && cur.room;
+    if (!R || !R.toys) return out;
+    [...BOTS, CFG.player].forEach((b, i) => { const w = locate(b); if (w.scene !== curId || w.pose === 'sleeping') return;
+      const opts = b === CFG.player ? ['slide', 'sand'] : ['swing', 'slide', 'sand'];
+      for (let k = 0; k < opts.length; k++) { const t = opts[(h + i + k) % opts.length]; if (!used.has(t)) { used.add(t); out[b] = t; break; } } });
+    return out;
+  }
+  function toyEl(b, t) {
+    const R = cur.room, T = R.toys[t], el = document.createElement('img'); el.alt = botName(b); el.draggable = false;
+    if (t === 'swing') { el.className = 'guest swing-rider'; el.src = R.swing.riders + b + '.webp';
+      Object.assign(el.style, { left: R.swing.pivot[0] + '%', top: R.swing.pivot[1] + '%', height: R.swing.riderH + '%', zIndex: Math.round(T.y * 10) });
+      el.onload = () => { el.style.marginLeft = -(el.offsetWidth / 2) + 'px'; };
+      if (motionOK) setTimeout(() => pgPush(12), 700);
+    } else { el.className = 'guest pg-toy'; el.src = T.pose + b + '.webp';
+      Object.assign(el.style, { left: T.x + '%', top: T.y + '%', height: T.h + '%', zIndex: Math.round(T.y * 10) }); }
+    return el;
+  }
+  function buildToys(R, act) {
+    // seesaw: tap to tip it
+    const S = R.seesaw, pl = document.createElement('img'), po = document.createElement('img'); let tilt = 0;
+    [pl, po].forEach((e, i) => { e.className = 'pg-ss'; e.draggable = false; e.alt = ''; e.src = i ? S.post : S.plank; Object.assign(e.style, { left: S.box.left + '%', top: S.box.top + '%', width: S.box.width + '%', height: S.box.height + '%', zIndex: 640 + i }); act.appendChild(e); });
+    pl.style.transformOrigin = S.origin; pl.setAttribute('role', 'button'); pl.setAttribute('aria-label', 'Seesaw');
+    const tip = () => { tilt = tilt > 0 ? -9 : 9; buzz(10); pgNote(tilt > 0 ? 196 : 262, .5, 'sine', .12);
+      if (!motionOK) { pl.style.transform = `rotate(${tilt}deg)`; return; }
+      pl.animate([{ transform: pl.style.transform || 'rotate(0deg)' }, { transform: `rotate(${tilt * 1.15}deg)` }, { transform: `rotate(${tilt * .9}deg)` }, { transform: `rotate(${tilt}deg)` }], { duration: 650, easing: 'ease-out' }); pl.style.transform = `rotate(${tilt}deg)`; };
+    [pl, po].forEach(e => e.onclick = ev => { ev.stopPropagation(); tip(); });
+    // sandbox: drag to draw, double-tap for a castle (saved)
+    const P = R.sandbox, xs = P.map(p => p[0]), ys = P.map(p => p[1]), bx = Math.min(...xs), by = Math.min(...ys), bw = Math.max(...xs) - bx, bh = Math.max(...ys) - by;
+    const sand = document.createElement('canvas'); sand.className = 'pg-sand'; sand.width = 240; sand.height = Math.round(240 * bh / bw / (R.aspect || .75) * 1); 
+    Object.assign(sand.style, { left: bx + '%', top: by + '%', width: bw + '%', height: bh + '%', zIndex: 20, clipPath: `polygon(${P.map(p => ((p[0] - bx) / bw * 100).toFixed(1) + '% ' + ((p[1] - by) / bh * 100).toFixed(1) + '%').join(',')})` });
+    sand.setAttribute('aria-label', 'Sandbox: drag to draw, double-tap for a castle'); act.appendChild(sand);
+    const sc = sand.getContext('2d'), sv = store.get('pg-sand', null);
+    if (sv) { const im = new Image(); im.onload = () => sc.drawImage(im, 0, 0); im.src = sv; }
+    const sp = e => { const r = sand.getBoundingClientRect(); return [(e.clientX - r.left) / r.width * sand.width, (e.clientY - r.top) / r.height * sand.height]; };
+    const saveSand = () => { try { store.set('pg-sand', sand.toDataURL('image/png')); } catch (e) {} };
+    const castle = (x, y) => { const c = sc; c.save(); c.translate(x, y);
+      const body = (ox, w, h) => { c.fillStyle = '#c8a46a'; c.fillRect(ox - w / 2, -h, w, h); c.fillStyle = '#e2c48e'; c.fillRect(ox - w / 2, -h, w * .35, h); c.strokeStyle = '#8f6b3a'; c.lineWidth = 1; c.strokeRect(ox - w / 2, -h, w, h);
+        for (let k = 0; k < 3; k++) { c.fillStyle = '#c8a46a'; c.fillRect(ox - w / 2 + k * w / 2.5, -h - 4, w / 5, 4); } };
+      body(-11, 9, 18); body(11, 9, 18); body(0, 16, 12); c.fillStyle = '#7a5530'; c.fillRect(-3, -6, 6, 6); c.fillStyle = '#e8574a'; c.beginPath(); c.moveTo(11, -26); c.lineTo(11, -34); c.lineTo(17, -31); c.closePath(); c.fill();
+      c.fillStyle = 'rgba(90,60,30,.25)'; c.beginPath(); c.ellipse(0, 1, 22, 4, 0, 0, 6.3); c.fill(); c.restore(); };
+    let lastTap = 0, drawing = null;
+    sand.addEventListener('pointerdown', e => { e.stopPropagation(); e.preventDefault(); sand.setPointerCapture(e.pointerId); const p = sp(e), now = performance.now();
+      if (now - lastTap < 330) { castle(p[0], p[1] + 10); buzz(16); saveSand(); lastTap = 0; drawing = null; return; } lastTap = now; drawing = p; });
+    sand.addEventListener('pointermove', e => { if (!drawing) return; const p = sp(e);
+      sc.lineCap = 'round'; sc.lineJoin = 'round';
+      sc.strokeStyle = 'rgba(110,72,34,.42)'; sc.lineWidth = 4; sc.beginPath(); sc.moveTo(drawing[0], drawing[1]); sc.lineTo(p[0], p[1]); sc.stroke();
+      sc.strokeStyle = 'rgba(255,236,190,.55)'; sc.lineWidth = 1.4; sc.beginPath(); sc.moveTo(drawing[0] - 1, drawing[1] - 2.5); sc.lineTo(p[0] - 1, p[1] - 2.5); sc.stroke(); drawing = p; });
+    const endSand = () => { if (drawing) saveSand(); drawing = null; };
+    sand.addEventListener('pointerup', endSand); sand.addEventListener('pointercancel', endSand);
+    pgSmooth = () => { sc.clearRect(0, 0, sand.width, sand.height); store.set('pg-sand', null); };
+    // chalkboard: shows her doodle; tap to draw
+    const C = R.chalk, ch = document.createElement('canvas'); ch.className = 'pg-chalk'; ch.width = 150; ch.height = 200;
+    Object.assign(ch.style, { left: C.left + '%', top: C.top + '%', width: C.width + '%', height: C.height + '%', transform: `skewY(${C.skew}deg)`, zIndex: 760 }); ch.setAttribute('role', 'button'); ch.setAttribute('aria-label', 'Chalkboard');
+    const cv = store.get('pg-chalk', null); if (cv) { const im = new Image(); im.onload = () => ch.getContext('2d').drawImage(im, 0, 0, 150, 200); im.src = cv; }
+    ch.onclick = ev => { ev.stopPropagation(); openChalk(ch); }; act.appendChild(ch);
+    // toy chest: bubbles to pop
+    const chest = document.createElement('div'); chest.className = 'link zone pg-chest'; chest.setAttribute('role', 'button'); chest.setAttribute('aria-label', 'Toy chest: bubbles');
+    Object.assign(chest.style, { left: R.chest.left + '%', top: R.chest.top + '%', width: R.chest.width + '%', height: R.chest.height + '%', zIndex: 700 });
+    chest.onclick = ev => { ev.stopPropagation(); buzz(8); for (let i = 0; i < 7; i++) setTimeout(() => bubble(R.chest.left + R.chest.width * (.3 + Math.random() * .4), R.chest.top + 2), i * 160); };
+    act.appendChild(chest);
+    const bubble = (x, y) => { const b = document.createElement('div'); b.className = 'pg-bubble'; const s = 2.2 + Math.random() * 2.6; Object.assign(b.style, { left: x + '%', top: y + '%', width: s + '%', zIndex: 3000 });
+      act.appendChild(b); const dx = (Math.random() - .5) * 160, dy = -(180 + Math.random() * 220), d = 5200 + Math.random() * 2800;
+      const an = b.animate([{ transform: 'translate(0,0) scale(.3)', opacity: 0 }, { transform: `translate(${dx * .3}px,${dy * .25}px) scale(1)`, opacity: 1, offset: .15 }, { transform: `translate(${dx}px,${dy}px) scale(1.05)`, opacity: .9, offset: .9 }, { transform: `translate(${dx * 1.1}px,${dy * 1.1}px) scale(1.1)`, opacity: 0 }], { duration: motionOK ? d : 1, easing: 'ease-out' });
+      an.onfinish = () => b.remove();
+      b.addEventListener('pointerdown', e => { e.stopPropagation(); e.preventDefault(); an.pause(); b.classList.add('pop'); pgNote(1400 + Math.random() * 600, .12, 'sine', .08); buzz(6); setTimeout(() => b.remove(), 220); }); };
+    // xylophone: six keys C D E F G A
+    const X = R.xylo, keys = ['C5', 'D5', 'E5', 'F5', 'G5', 'A5'];
+    keys.forEach((n, i) => { const k = document.createElement('div'); k.className = 'pg-key'; k.setAttribute('role', 'button'); k.setAttribute('aria-label', 'Xylophone ' + n[0]);
+      Object.assign(k.style, { left: (X.left + X.width * i / 6) + '%', top: X.top + '%', width: (X.width / 6) + '%', height: X.height + '%', zIndex: 650 });
+      k.addEventListener('pointerdown', e => { e.stopPropagation(); e.preventDefault(); pgNote(NOTE[n]); buzz(5); k.classList.remove('hit'); void k.offsetWidth; k.classList.add('hit'); }); act.appendChild(k); });
+    // wind chimes
+    const W = R.chimes, wc = document.createElement('div'); wc.className = 'link zone pg-chimes'; wc.setAttribute('role', 'button'); wc.setAttribute('aria-label', 'Wind chimes');
+    Object.assign(wc.style, { left: W.left + '%', top: W.top + '%', width: W.width + '%', height: W.height + '%', zIndex: 650 });
+    wc.onclick = ev => { ev.stopPropagation(); const seq = ['C6', 'E6', 'G6', 'A6', 'G6', 'E6'].sort(() => Math.random() - .5).slice(0, 4); seq.forEach((n, i) => setTimeout(() => pgNote(NOTE[n], 2.2, 'sine', .1), i * 170 + Math.random() * 60)); wc.classList.remove('ring'); void wc.offsetWidth; wc.classList.add('ring'); };
+    act.appendChild(wc);
+    // kite: drag it about the sky
+    const K = R.kite, ks = store.get('pg-kite', null) || { x: K.x, y: K.y }, svgNS = 'http://www.w3.org/2000/svg';
+    const line = document.createElementNS(svgNS, 'svg'); line.setAttribute('class', 'pg-string'); line.setAttribute('viewBox', '0 0 100 100'); line.setAttribute('preserveAspectRatio', 'none');
+    line.innerHTML = '<path fill="none" stroke="#fff8e8" stroke-width=".25" vector-effect="non-scaling-stroke" stroke-opacity=".85"/>'; act.appendChild(line);
+    const kite = document.createElement('div'); kite.className = 'pg-kite'; kite.setAttribute('role', 'button'); kite.setAttribute('aria-label', 'Kite');
+    kite.innerHTML = '<svg viewBox="0 0 40 70"><path d="M20 2L36 20L20 40L4 20Z" fill="#e8574a" stroke="#7a2a22" stroke-width="1"/><path d="M20 2L36 20L20 20Z" fill="#f2c14e"/><path d="M4 20L20 40L20 20Z" fill="#3f7fbf"/><path d="M20 2V40M4 20H36" stroke="#5a3a22" stroke-width=".8"/><path class="tail" d="M20 40c4 6-4 10 0 16s-4 10 0 14" fill="none" stroke="#fff4e2" stroke-width="1"/><path d="M17 50l6-2M17 60l6-2" stroke="#e8574a" stroke-width="2"/></svg>';
+    act.appendChild(kite);
+    const drawKite = () => { Object.assign(kite.style, { left: (ks.x - 2.6) + '%', top: (ks.y - 1.2) + '%' }); const mx = (ks.x + K.anchor[0]) / 2 + 3, my = (ks.y + K.anchor[1]) / 2 + 6;
+      line.firstChild.setAttribute('d', `M${ks.x} ${ks.y + 3.2}Q${mx} ${my} ${K.anchor[0]} ${K.anchor[1]}`); };
+    drawKite();
+    kite.addEventListener('pointerdown', e => { e.stopPropagation(); e.preventDefault(); kite.setPointerCapture(e.pointerId); kite.classList.add('held');
+      const mv = m => { const p = toStage(m.clientX, m.clientY); ks.x = clamp(p.x, 6, 94); ks.y = clamp(p.y, 2, 30); drawKite(); };
+      const up = () => { kite.removeEventListener('pointermove', mv); kite.removeEventListener('pointerup', up); kite.classList.remove('held'); store.set('pg-kite', { x: +ks.x.toFixed(1), y: +ks.y.toFixed(1) }); };
+      kite.addEventListener('pointermove', mv); kite.addEventListener('pointerup', up); });
+  }
+  var pgSmooth = () => {};
+  function openChalk(preview) {
+    const m = $('#chalk'), c = $('#chalkPad'), x = c.getContext('2d'); let col = '#fdfbf2', last = null;
+    x.fillStyle = '#2f4a3a'; x.fillRect(0, 0, c.width, c.height);
+    const sv = store.get('pg-chalk', null); if (sv) { const im = new Image(); im.onload = () => x.drawImage(im, 0, 0, c.width, c.height); im.src = sv; }
+    $('#chalkCols').querySelectorAll('button').forEach(b => { b.onclick = () => { col = b.dataset.c; $('#chalkCols').querySelectorAll('button').forEach(o => o.classList.toggle('on', o === b)); }; });
+    const pt = e => { const r = c.getBoundingClientRect(); return [(e.clientX - r.left) / r.width * c.width, (e.clientY - r.top) / r.height * c.height]; };
+    c.onpointerdown = e => { e.preventDefault(); c.setPointerCapture(e.pointerId); last = pt(e); };
+    c.onpointermove = e => { if (!last) return; const p = pt(e); x.lineCap = 'round'; x.strokeStyle = col; x.globalAlpha = col === 'erase' ? 1 : .85; if (col === 'erase') x.strokeStyle = '#2f4a3a';
+      x.lineWidth = col === 'erase' ? 22 : 5 + Math.random() * 1.5; x.beginPath(); x.moveTo(last[0], last[1]); x.lineTo(p[0], p[1]); x.stroke(); x.globalAlpha = 1; last = p; };
+    c.onpointerup = c.onpointercancel = () => { last = null; };
+    const done = () => { m.hidden = true; let url; try { url = c.toDataURL('image/jpeg', .7); store.set('pg-chalk', url); } catch (e) {}
+      const pc = preview.getContext('2d'); pc.clearRect(0, 0, 150, 200); pc.drawImage(c, 0, 0, 150, 200); };
+    $('#chalkDone').onclick = done; $('#chalkClear').onclick = () => { x.fillStyle = '#2f4a3a'; x.fillRect(0, 0, c.width, c.height); };
+    m.onclick = e => { if (e.target === m) done(); };
+    m.hidden = false;
+  }
   function playTools() { // v26: send Olithia out to play, or back home
     const box = $('#playTools'); box.querySelectorAll('.pg-join').forEach(e => e.remove());
     const here = locate(CFG.player).scene === curId, j = document.createElement('button'); j.type = 'button'; j.className = 'pill pg-join';
     j.textContent = here ? 'Head home' : 'Join in'; j.onclick = ev => { ev.stopPropagation(); setOli(here ? CFG.player : curId, 'idle'); };
     box.appendChild(j);
   }
-  function buildPlayFresh() { $('#actors').querySelectorAll('.block,.ball,.swing,.pboard').forEach(e => e.remove()); buildPlay(); }
+  function buildPlayFresh() { $('#actors').querySelectorAll('.block,.ball,.swing,.pboard,.pg-ss,.pg-sand,.pg-chalk,.pg-chest,.pg-bubble,.pg-key,.pg-chimes,.pg-kite,.pg-string').forEach(e => e.remove()); buildPlay(); }
 
   // ----- the town post: letters from any bot, write to any bot -----
   let letters = [];

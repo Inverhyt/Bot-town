@@ -71,6 +71,14 @@
   </div>
 </div>
 
+<div id="chalk" class="modal" hidden>
+  <div class="sheet parchment chalksheet">
+    <div class="mailhead"><b>Chalkboard</b><button type="button" id="chalkDone" aria-label="Done">✓</button></div>
+    <canvas id="chalkPad" width="300" height="400"></canvas>
+    <div id="chalkCols"><button type="button" class="on" data-c="#fdfbf2" style="--c:#fdfbf2" aria-label="White"></button><button type="button" data-c="#ffe27a" style="--c:#ffe27a" aria-label="Yellow"></button><button type="button" data-c="#ff9fb8" style="--c:#ff9fb8" aria-label="Pink"></button><button type="button" data-c="#8fd0ff" style="--c:#8fd0ff" aria-label="Blue"></button><button type="button" data-c="#a6e39a" style="--c:#a6e39a" aria-label="Green"></button><button type="button" data-c="erase" class="er" aria-label="Eraser">⌫</button><button type="button" id="chalkClear" class="er" aria-label="Wipe board">🧽</button></div>
+  </div>
+</div>
+
 <section id="house" class="screen">
   <div id="viewport"><div id="sway"><div id="stage"><img id="roomImg" alt="" draggable="false"><img id="roomFade" alt="" draggable="false"><div id="actors"></div></div><canvas id="motes" aria-hidden="true"></canvas></div><div id="vignette" aria-hidden="true"></div></div>
   <header id="topbar">

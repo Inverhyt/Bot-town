@@ -176,15 +176,22 @@ window.BOT_TOWN = {
       gallery: true, play: true,
       hotspot: { left: 0, top: 27.9, width: 50.7, height: 12.2 },
       room: {
-        image: "assets/playground-v1.webp", aspect: 864 / 1152, zoom: 1.25,
+        image: "assets/playground-v2.webp", aspect: 864 / 1152, zoom: 1.25, // v33: richer playground (slide, seesaw, sandbox, treehouse, chalkboard, toy chest, chimes, xylophone)
         backdrop: "radial-gradient(circle at 50% 45%, #eef6d8, #b9d48e 55%, #5f7f45)",
         motto: "You are here for yourself. Be curious and have fun.",
-        // bots standing here (feet, %); sprites are scaled by .8 because the playground is drawn a little farther away
-        guests: { gorbo: { x: 46, y: 74 }, loria: { x: 36, y: 63 }, scout: { x: 27, y: 55 }, olithia: { x: 76, y: 60 } }, guestScale: .8,
-        // v26: the "Join in" / "Head home" pill next to "Tidy blocks" sends Olithia here or home
-        swing: { src: "assets/playground-swing.webp", box: { left: 43.4, top: 32.87, width: 8.33, height: 20.6 } },
-        board: { left: 60.5, top: 33, width: 11.5, height: 21 }, // painted bulletin board
-        lawn: [[50, 27], [83, 55], [55, 82], [19, 50]] // where blocks and the ball may go (polygon, %)
+        guests: { gorbo: { x: 46, y: 74 }, loria: { x: 36, y: 63 }, scout: { x: 30, y: 52 }, olithia: { x: 41, y: 55 } }, guestScale: .5, // bots normally play on a toy (toys below)
+        // swing: hangs from the middle of the painted top bar (pivot %, rope length % of scene height)
+        swing: { pivot: [55.3, 34.6], len: 16.4, riders: "assets/pg-swing-", riderH: 21.2 }, // riders: <id>.webp, seat at 76% of the sprite
+        seesaw: { plank: "assets/pg-seesaw-plank.webp", post: "assets/pg-seesaw-post.webp", box: { left: 34.72, top: 56.71, width: 17.36, height: 15.05 }, origin: "50% 47.7%" },
+        sandbox: [[70.1, 49.5], [78.1, 56.4], [69.8, 64], [62.3, 56.3]], // inner sand (polygon %): drag to draw, double-tap for a castle
+        chalk: { left: 42.9, top: 76.2, width: 5.4, height: 9.6, skew: -7.5 }, // the blank chalkboard easel
+        chest: { left: 51.7, top: 68.3, width: 6.9, height: 12.5 }, // toy chest: bubbles
+        xylo: { left: 54.7, top: 20.6, width: 6.2, height: 5.4 }, chimes: { left: 56.6, top: 10.8, width: 3, height: 9.4 },
+        kite: { x: 84, y: 8, anchor: [80, 52] },
+        // bots playing: a toy per hour (one per toy); h = sprite height % of scene height, feet at x,y
+        toys: { swing: { x: 55.3, y: 54 }, slide: { x: 25.2, y: 36.4, h: 10.5, pose: "assets/park-sit-" }, sand: { x: 70.6, y: 58.6, h: 10.5, pose: "assets/park-sit-" } },
+        board: { left: 70.1, top: 32.9, width: 8, height: 17.2 }, // painted bulletin board
+        lawn: [[44, 37], [70, 43], [79, 62], [57, 80], [24, 61], [31, 44]] // where blocks and the ball may go (polygon, %)
       }
     },
     // Underground room under Loria's bookshop. Still a sprite scene — he isn't painted into this one.
