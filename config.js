@@ -13,7 +13,7 @@ window.BOT_TOWN = {
       hotspot: { left: 9.7, top: 1.3, width: 45.8, height: 15.3 },
       room: {
         aspect: 864 / 1152,
-        backdrop: "radial-gradient(circle at 50% 45%, #fff1d6, #f3cfa0 55%, #c98f5e)",
+        backdrop: "transparent",
         poses: {
           idle: "assets/olithia-house-v4-idle.webp",
           working: "assets/olithia-house-v4-working.webp",
@@ -30,14 +30,14 @@ window.BOT_TOWN = {
       hotspot: { left: 52.8, top: 14.4, width: 47.2, height: 19.2 },
       room: {
         aspect: 864 / 1152, zoom: 1.18, // wide enough that the right-hand bedroom door starts on screen
-        backdrop: "radial-gradient(circle at 50% 45%, #f1ead0, #c9c79a 55%, #7d8a5a)",
+        backdrop: "transparent",
         poses: {
-          idle: "assets/gorbo-house-v3-idle.webp",
-          working: "assets/gorbo-house-v3-working.webp",
-          sitting: "assets/gorbo-house-v3-sitting.webp"
+          idle: "assets/gorbo-house-v4-idle.webp",
+          working: "assets/gorbo-house-v4-working.webp",
+          sitting: "assets/gorbo-house-v4-sitting.webp"
         },
-        // bedroom door on the right wall. Art: x=922,y=250,w=68,h=180 on 1152×864, padded for taps.
-        bedroom: { to: "gorbo-bed", label: "Gorbo's bedroom", door: { left: 76.39, top: 26.62, width: 13.02, height: 25.46 } }
+        // bedroom door on the right wall. Art: x=921,y=240,w=66,h=190
+        bedroom: { to: "gorbo-bed", label: "Gorbo's bedroom", door: { left: 76.39, top: 26.62, width: 13.02, height: 24.3 } }
       },
       tasks: ["Squash the sneaky login bug", "Tighten loose bolts in the app", "Read crash logs with the magnifier", "Polish buttons till they shine"],
       dialog: ["Oi! Mind the wires — they bite. Only a little.", "Found three bugs today. Dot ate one. Don't tell.", "App's running smooth as river stones!", "Dot's napping in her tiny bed. Shhh. 🐞", "Need something fixed? Gorbo's on it!"]
@@ -107,12 +107,12 @@ window.BOT_TOWN = {
     "olithia-bed": {
       name: "Olithia", role: "Bedroom", house: "Lotus Cottage",
       gallery: true, returnTo: "olithia",
-      room: { image: "assets/olithia-bedroom-v2.webp", aspect: 720 / 1280, backdrop: "radial-gradient(circle at 50% 45%, #fff1d6, #f3cfa0 55%, #c98f5e)" }
+      room: { image: "assets/olithia-bedroom-v2.webp", aspect: 720 / 1280, backdrop: "transparent" }
     },
     "gorbo-bed": {
       name: "Gorbo", role: "Bedroom", house: "Mossy Workshop",
       gallery: true, returnTo: "gorbo",
-      room: { image: "assets/gorbo-bedroom-v2.webp", aspect: 720 / 1280, backdrop: "radial-gradient(circle at 50% 45%, #f1ead0, #c9c79a 55%, #7d8a5a)" }
+      room: { image: "assets/gorbo-bedroom-v4.webp", aspect: 720 / 1280, backdrop: "transparent" }
     },
     "loria-bed": {
       name: "Loria", role: "Bedroom", house: "Loria's Bookshop",
