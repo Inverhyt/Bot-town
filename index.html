@@ -1,0 +1,44 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="theme-color" content="#3b5a3a"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Bot Town</title><link rel="manifest" href="manifest.json"><link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600&family=Grandstander:wght@500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css"></head><body>
+<div id="tint"></div>
+<div id="loader"><div class="om">ॐ</div><h1>Bot Town</h1><div class="bar"><i id="fill"></i></div><p id="pct">0%</p><p id="tip">Waking up the neighborhood…</p></div>
+
+<section id="map" class="screen active">
+  <div id="mapwrap"><img src="assets/map.jpg" alt="Bot Town map" draggable="false"><div id="hotspots"></div></div>
+  <header class="banner">Bot Town</header>
+  <button class="ibtn" id="mapMusic" style="position:absolute;right:12px;bottom:calc(env(safe-area-inset-bottom) + 14px)" aria-label="Music"></button>
+</section>
+
+<section id="house" class="screen">
+  <div id="viewport"><div id="stage"><img id="roomImg" alt="" draggable="false"><div id="actors"></div></div></div>
+  <header id="topbar">
+    <button class="ibtn" id="back" aria-label="Back to map"></button>
+    <div id="title"><b id="houseName"></b><small id="houseRole"></small></div>
+    <button class="ibtn" id="musicBtn" aria-label="Music"></button>
+    <button class="ibtn" id="camBtn" aria-label="Reset camera"></button>
+  </header>
+  <div id="statusChip"></div>
+  <aside id="tasks" class="parchment collapsed"><button id="tasksHead"><span class="pin"></span><b>To-do</b><span id="taskCount"></span><i class="chev"></i></button><ul id="taskList"></ul></aside>
+  <div id="music" class="parchment pop" hidden><b>Music</b><div id="tracks"></div><small>Gentle loops made on your phone</small></div>
+  <div id="bubble" hidden></div>
+
+  <nav id="toolbar">
+    <button class="tb" id="tbTasks"><i></i><span>Tasks</span></button>
+    <button class="tb" id="tbChat"><i></i><span>Chat</span></button>
+    <button class="tb" id="tbBusy"><i></i><span>Working</span></button>
+    <button class="tb" id="tbVisit"><i></i><span>Sit with</span></button>
+  </nav>
+
+  <button id="linkBtn" class="pill main" hidden></button>
+
+  <div id="chat" hidden><div id="chathead"></div><div id="log"></div>
+    <div id="replies"><button data-r="Hi! 👋">Hi! 👋</button><button data-r="What are you working on?">Working on?</button><button data-r="Tell me something nice">Something nice</button></div>
+    <button id="close" aria-label="Close">✕</button></div>
+</section>
+<script src="config.js"></script><script src="music.js"></script><script src="app.js"></script>
+</body></html>
