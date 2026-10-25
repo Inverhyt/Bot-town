@@ -1,7 +1,7 @@
 <!doctype html><html lang="en"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover,user-scalable=no">
 <meta name="theme-color" content="#3b5a3a"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="apple-mobile-web-app-title" content="Bot Town">
 <title>Bot Town</title><link rel="manifest" href="manifest.json"><link rel="icon" href="assets/icon-192.png" type="image/png"><link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600&family=Grandstander:wght@500;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css"></head><body>
@@ -10,15 +10,26 @@
 
 <section id="map" class="screen active">
   <div id="mapwrap"><img src="assets/map.jpg" alt="Bot Town map" draggable="false"><div id="hotspots"></div></div>
+  <div id="clouds" aria-hidden="true"><span></span><span></span><span></span></div>
+  <canvas id="mapMotes" aria-hidden="true"></canvas>
   <header class="banner">Bot Town</header>
-  <button class="ibtn" id="mapMusic" style="position:absolute;right:12px;bottom:calc(env(safe-area-inset-bottom) + 14px)" aria-label="Music"></button>
+  <div id="mapTools">
+    <button class="ibtn" id="mapAir" aria-label="Room tone" aria-pressed="false"></button>
+    <button class="ibtn" id="mapMusic" aria-label="Music"></button>
+  </div>
+  <div id="install" class="toast" hidden>
+    <b>Keep Bot Town handy</b>
+    <p id="installText">Add it to your home screen and it opens like an app.</p>
+    <div><button type="button" class="yes" id="installYes">Install</button><button type="button" id="installNo">Not now</button></div>
+  </div>
 </section>
 
 <section id="house" class="screen">
-  <div id="viewport"><div id="stage"><img id="roomImg" alt="" draggable="false"><img id="roomFade" alt="" draggable="false"><div id="actors"></div></div></div>
+  <div id="viewport"><div id="sway"><div id="stage"><img id="roomImg" alt="" draggable="false"><img id="roomFade" alt="" draggable="false"><div id="actors"></div></div><canvas id="motes" aria-hidden="true"></canvas></div><div id="vignette" aria-hidden="true"></div></div>
   <header id="topbar">
     <button class="ibtn" id="back" aria-label="Back to map"></button>
     <div id="title"><b id="houseName"></b><small id="houseRole"></small></div>
+    <button class="ibtn" id="airBtn" aria-label="Room tone" aria-pressed="false"></button>
     <button class="ibtn" id="musicBtn" aria-label="Music"></button>
     <button class="ibtn" id="camBtn" aria-label="Reset camera"></button>
   </header>
@@ -40,6 +51,12 @@
     <button type="button" data-pose="sitting">Sitting</button>
   </div>
   <button id="linkBtn" class="pill main" hidden></button>
+
+  <div id="tiltAsk" class="toast" hidden>
+    <b>A little depth</b>
+    <p>Tilt your phone and the room shifts, just a few pixels. A finger drag works too.</p>
+    <div><button type="button" class="yes" id="tiltYes">Allow tilt</button><button type="button" id="tiltNo">Not now</button></div>
+  </div>
 
   <div id="chat" hidden><div id="chathead"></div><div id="log"></div>
     <div id="replies"><button data-r="Hi! 👋">Hi! 👋</button><button data-r="What are you working on?">Working on?</button><button data-r="Tell me something nice">Something nice</button></div>

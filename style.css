@@ -1,18 +1,28 @@
 :root{--ink:#4a2f1d;--wood:#b07a45;--cream:#fff8ec;--parch:#f6e7c8;--accent:#e9a15a}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
-html,body{margin:0;height:100%;overflow:hidden;background:#2f4a2c;font-family:Fredoka,system-ui,sans-serif;color:var(--ink);overscroll-behavior:none}
-button{font-family:inherit;color:inherit;cursor:pointer}
+html,body{margin:0;height:100%;height:100dvh;overflow:hidden;background:#2f4a2c;font-family:Fredoka,system-ui,sans-serif;color:var(--ink);overscroll-behavior:none;position:fixed;inset:0;width:100%;touch-action:manipulation}
+button{font-family:inherit;color:inherit;cursor:pointer;touch-action:manipulation}
 .screen{position:fixed;inset:0;opacity:0;pointer-events:none;transition:opacity .35s ease}
 .screen.active{opacity:1;pointer-events:auto}
 /* map */
-#mapwrap{position:absolute;left:50%;top:50%;width:max(100vw,calc(100dvh*9/16));aspect-ratio:9/16;transform:translate(-50%,-50%)}
+#mapwrap{position:absolute;left:50%;top:50%;width:max(100vw,calc(100dvh*9/16));aspect-ratio:9/16;transform:translate(-50%,-50%);transition:transform .55s cubic-bezier(.2,.75,.2,1)}
+#map.zooming #mapwrap{transform:translate(-50%,-50%) scale(1.16)}
 #mapwrap img{width:100%;height:100%;display:block}
 .hot{position:absolute;border-radius:40%;cursor:pointer}
 .hot .label{position:absolute;left:50%;bottom:6%;transform:translateX(-50%);background:#fff8ecdd;border:2px solid var(--wood);border-radius:14px;padding:3px 10px;font:600 14px Grandstander,cursive;white-space:nowrap;box-shadow:0 2px 6px #0004;animation:bob 3s ease-in-out infinite}
 .hot.tap{animation:glow .45s ease}
 @keyframes glow{50%{box-shadow:0 0 40px 20px #ffe9a0aa;background:#ffe9a033;transform:scale(1.04)}}
 @keyframes bob{0%,100%{translate:0 0}50%{translate:0 -5px}}
-.banner{position:absolute;top:calc(env(safe-area-inset-top) + 10px);left:50%;transform:translateX(-50%);background:var(--cream);border:3px solid var(--wood);border-radius:20px;padding:6px 18px;font:700 22px Grandstander,cursive;color:#6b3f1f;box-shadow:0 3px 10px #0005;white-space:nowrap}
+.banner{position:absolute;z-index:4;top:calc(env(safe-area-inset-top) + 10px);left:50%;transform:translateX(-50%);background:var(--cream);border:3px solid var(--wood);border-radius:20px;padding:6px 18px;font:700 22px Grandstander,cursive;color:#6b3f1f;box-shadow:0 3px 10px #0005;white-space:nowrap}
+#mapTools{position:absolute;z-index:4;right:12px;bottom:calc(env(safe-area-inset-bottom) + 14px);display:flex;gap:8px}
+#clouds{position:absolute;inset:0 0 55% 0;overflow:hidden;pointer-events:none;z-index:2}
+#clouds span{position:absolute;top:18%;height:34px;width:120px;border-radius:40px;background:radial-gradient(ellipse at 30% 40%,#fff,rgba(255,255,255,.15) 70%);opacity:.42;filter:blur(.2px);animation:drift 62s linear infinite}
+#clouds span::before,#clouds span::after{content:"";position:absolute;background:inherit;border-radius:50%}
+#clouds span::before{width:46px;height:46px;left:18px;top:-22px}
+#clouds span::after{width:64px;height:40px;left:48px;top:-16px}
+#clouds span:nth-child(2){top:46%;width:86px;height:26px;opacity:.32;animation-duration:48s;animation-delay:-22s}
+#clouds span:nth-child(3){top:8%;width:160px;height:40px;opacity:.28;animation-duration:78s;animation-delay:-40s}
+@keyframes drift{from{transform:translateX(-40vw)}to{transform:translateX(120vw)}}
 #tint{position:fixed;inset:0;pointer-events:none;z-index:50;mix-blend-mode:multiply;transition:background 2s}
 /* loader */
 #loader{position:fixed;inset:0;z-index:100;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;background:radial-gradient(circle at 50% 40%,#fff3d6,#f2d1a8 60%,#d9a46c);transition:opacity .7s}
@@ -25,9 +35,10 @@ button{font-family:inherit;color:inherit;cursor:pointer}
 #pct{margin:0;font-weight:600;color:#8a5a33}#tip{margin:0;min-height:1.4em;color:#6b3f1f;font-size:16px;transition:opacity .3s}
 /* house */
 #viewport{position:absolute;inset:0;overflow:hidden;touch-action:none}
+#sway{position:absolute;inset:0;will-change:transform}
 #stage{position:absolute;left:0;top:0;transform-origin:0 0;will-change:transform}
 #stage.anim{transition:transform .45s cubic-bezier(.3,.8,.3,1)}
-#roomImg,#roomFade{position:absolute;inset:0;width:100%;height:100%;display:block;pointer-events:none;filter:drop-shadow(0 10px 18px #0003);transition:opacity .5s ease}
+#roomImg,#roomFade{position:absolute;inset:0;width:100%;height:100%;display:block;pointer-events:none;filter:drop-shadow(0 10px 18px #0003);transition:opacity .7s cubic-bezier(.4,0,.2,1)}
 #roomFade{opacity:0}
 #actors{position:absolute;inset:0;z-index:2}
 #actors{pointer-events:none}
@@ -49,7 +60,7 @@ button{font-family:inherit;color:inherit;cursor:pointer}
 #title{flex:1;min-width:0;background:var(--cream);border:2.5px solid var(--wood);border-radius:18px;padding:4px 12px;box-shadow:0 3px 8px #0003;text-align:center}
 #title b{display:block;font:700 18px Grandstander,cursive;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 #title small{display:block;font-size:11px;color:#8a5a33;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.ibtn{width:44px;height:44px;flex:none;border-radius:50%;background:var(--cream);border:2.5px solid var(--wood);box-shadow:0 3px 0 #8a5a33,0 4px 8px #0003;display:grid;place-items:center;padding:0;transition:transform .1s}
+.ibtn{width:48px;height:48px;flex:none;border-radius:50%;background:var(--cream);border:2.5px solid var(--wood);box-shadow:0 3px 0 #8a5a33,0 4px 8px #0003;display:grid;place-items:center;padding:0;transition:transform .1s}
 .ibtn:active,.tb:active,.pill:active{transform:translateY(2px) scale(.95)}
 .ibtn svg{width:22px;height:22px}
 .ibtn.on{background:#ffe2a8}
@@ -95,7 +106,7 @@ button{font-family:inherit;color:inherit;cursor:pointer}
 #poses button.on{background:#f2c14e;border-color:#c98f1e;box-shadow:0 3px 0 #a8731a,0 4px 8px #0003}
 #house.gallery #toolbar,#house.gallery #tasks,#house.gallery #statusChip,#house.gallery #poses{display:none!important}
 /* links between houses */
-#linkBtn{position:absolute;z-index:6;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom) + 92px);white-space:nowrap;font:600 15px Fredoka;padding:10px 16px;min-height:44px;border-radius:18px;display:flex;align-items:center;gap:6px}
+#linkBtn{position:absolute;z-index:6;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom) + 92px);white-space:nowrap;font:600 15px Fredoka;padding:10px 16px;min-height:48px;border-radius:18px;display:flex;align-items:center;gap:6px}
 #house.has-poses #linkBtn{bottom:calc(env(safe-area-inset-bottom) + 144px)}
 #linkBtn svg{width:20px;height:20px}
 #linkBtn:active{transform:translateX(-50%) translateY(2px)}
@@ -126,4 +137,33 @@ button{font-family:inherit;color:inherit;cursor:pointer}
 .msg.me{background:#cfe6c8;align-self:flex-end;border-bottom-right-radius:4px}
 #replies{display:flex;gap:6px}
 #replies button{flex:1;font:500 14px Fredoka;background:#fff;border:2px solid #d4a373;border-radius:14px;padding:8px 6px;color:#6b3f1f}
-#close{position:absolute;top:8px;right:10px;border:none;background:none;font-size:20px;color:#8a5a33}
+#close{position:absolute;top:4px;right:6px;width:44px;height:44px;border:none;background:none;font-size:20px;color:#8a5a33}
+#replies button{min-height:44px}
+#motes,#mapMotes{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:3}
+#vignette{position:absolute;inset:0;z-index:4;pointer-events:none;background:radial-gradient(ellipse at center,transparent 52%,rgba(48,28,12,.32) 100%);opacity:.8;animation:breathe 9s ease-in-out infinite}
+@keyframes breathe{50%{opacity:.5}}
+#house.arriving #viewport{animation:arrive .7s cubic-bezier(.16,.84,.28,1)}
+@keyframes arrive{from{transform:scale(1.07)}to{transform:scale(1)}}
+#viewport.door-shut{transform:scale(1.04);transition:transform .34s ease}
+#viewport.door-open{animation:doorOpen .65s cubic-bezier(.16,.8,.2,1)}
+@keyframes doorOpen{from{transform:scale(1.05)}to{transform:none}}
+#viewport.door-open::after{content:"";position:absolute;inset:0;z-index:5;pointer-events:none;background:radial-gradient(circle,#fff4dc,transparent 68%);animation:flash .6s ease forwards}
+@keyframes flash{from{opacity:.5}to{opacity:0}}
+.toast{position:absolute;z-index:30;left:50%;top:46%;transform:translate(-50%,-50%);width:min(320px,calc(100% - 36px));padding:14px 14px 12px;text-align:center}
+#install.toast{top:auto;bottom:calc(env(safe-area-inset-bottom) + 78px);left:12px;right:12px;width:auto;transform:none}
+#tiltAsk.toast{top:calc(env(safe-area-inset-top) + 74px);left:12px;right:12px;width:auto;transform:none}
+.toast b{font:700 18px Grandstander,cursive}
+.toast p{margin:6px 0 12px;font-size:14px;line-height:1.35}
+.toast div{display:flex;gap:8px}
+.toast button{flex:1;min-height:48px;border-radius:14px;border:2.5px solid var(--wood);background:#fffaf0;font:600 15px Fredoka;box-shadow:0 3px 0 #8a5a33}
+.toast button.yes{background:#f2c14e;border-color:#c98f1e}
+.hot.building{transform-origin:50% 100%;animation:sway 7s ease-in-out infinite}
+.hot.building.tap{animation:glow .45s ease}
+@keyframes sway{50%{rotate:.5deg}}
+@media (prefers-reduced-motion: reduce){
+  #clouds,#motes,#mapMotes{display:none!important}
+  #vignette{animation:none;opacity:.55}
+  .hot .label,.hot.building,.actor img,.link.zone.glow,.link.badge,#loader .om{animation:none!important}
+  #house.arriving #viewport,#viewport.door-open{animation:none}
+  #mapwrap{transition:none}
+}

@@ -13,9 +13,16 @@
     visit: sv('<path d="M3 12v5h18v-5a2 2 0 00-4 0v2H7v-2a2 2 0 00-4 0z"/><path d="M5 10V8a3 3 0 013-3h8a3 3 0 013 3v2M5 17v2M19 17v2"/>'),
     ladder: sv('<path d="M7 2v20M17 2v20M7 6h10M7 10h10M7 14h10M7 18h10"/>'),
     down: sv('<path d="M7 2v13M17 2v13M7 6h10M7 10h10"/><path d="M12 14v8M8.5 18.5L12 22l3.5-3.5"/>'),
-    up: sv('<path d="M7 9v13M17 9v13M7 14h10M7 18h10"/><path d="M12 10V2M8.5 5.5L12 2l3.5 3.5"/>')
+    up: sv('<path d="M7 9v13M17 9v13M7 14h10M7 18h10"/><path d="M12 10V2M8.5 5.5L12 2l3.5 3.5"/>'),
+    air: sv('<path d="M4 9h10a2.5 2.5 0 010 5H9"/><path d="M3 5h14a2 2 0 010 4"/><path d="M6 18h8"/><circle cx="18" cy="16" r="1.2" fill="#6b3f1f" stroke="none"/>')
   };
   $('#back').innerHTML = IC.back; $('#musicBtn').innerHTML = IC.music; $('#mapMusic').innerHTML = IC.music; $('#camBtn').innerHTML = IC.cam;
+  $('#airBtn').innerHTML = IC.air; $('#mapAir').innerHTML = IC.air;
+  const motionMQ = matchMedia('(prefers-reduced-motion: reduce)');
+  let motionOK = !motionMQ.matches;
+  const buzz = ms => { try { if (navigator.vibrate) navigator.vibrate(ms || 10); } catch (e) {} };
+  document.addEventListener('pointerdown', e => { if (e.target.closest('button, .hot, .link')) buzz(8); }, { passive: true });
+  document.addEventListener('gesturestart', e => e.preventDefault());
   $('#tbTasks i').innerHTML = IC.tasks; $('#tbChat i').innerHTML = IC.chat; $('#tbVisit i').innerHTML = IC.visit;
   Object.keys(localStorage).filter(k => k.startsWith('bt-decor-')).forEach(k => localStorage.removeItem(k)); // clean up old decorate-mode saves
   const sprAspect = {}; // width/height of each sprite, filled by preloader
@@ -28,7 +35,16 @@
     Object.assign(h.style, { left: s.left + '%', top: s.top + '%', width: s.width + '%', height: s.height + '%' });
     if (c.mapMarker === 'lantern') h.classList.add('mini');
     h.innerHTML = (c.mapImage ? `<img src="${c.mapImage}" alt="" draggable="false">` : '') + (c.mapMarker === 'lantern' ? '<i class="lantern"></i>' : '') + `<span class="label">${c.name}</span>`;
-    h.addEventListener('click', () => { h.classList.remove('tap'); void h.offsetWidth; h.classList.add('tap'); setTimeout(() => enter(id), 380); });
+    h.addEventListener('click', () => {
+      h.classList.remove('tap'); void h.offsetWidth; h.classList.add('tap');
+      const map = $('#map'), wrap = $('#mapwrap');
+      if (motionOK) {
+        const hr = h.getBoundingClientRect(), wr = wrap.getBoundingClientRect();
+        wrap.style.transformOrigin = ((hr.left + hr.width / 2 - wr.left) / wr.width * 100) + '% ' + ((hr.top + hr.height / 2 - wr.top) / wr.height * 100) + '%';
+        map.classList.add('zooming');
+      }
+      setTimeout(() => { map.classList.remove('zooming'); wrap.style.transformOrigin = ''; enter(id, { arrive: true }); }, motionOK ? 460 : 160);
+    });
     $('#hotspots').appendChild(h);
   }
 
@@ -92,6 +108,9 @@
     layout(); buildActors(); resetCam(false); buildLinks();
     if (cur.tasks) renderTasks();
     updateMode(true);
+    if (motionOK && opts.arrive) { $('#house').classList.add('arriving'); setTimeout(() => $('#house').classList.remove('arriving'), 720); }
+    if (motionOK && opts.door) { vp.classList.remove('door-shut'); vp.classList.add('door-open'); setTimeout(() => vp.classList.remove('door-open'), 680); }
+    maybeTiltPrompt();
     if (!opts.skipPush) history.pushState({ id }, '', '#' + id);
   }
   function toMap(fromPop) {
@@ -100,13 +119,18 @@
     cur = null; curId = null;
     if (!fromPop && location.hash) history.back();
   }
+  let doorReturn = false;
   $('#back').onclick = () => {
-    if (cur && cur.returnTo) { $('#house').style.opacity = '0'; setTimeout(() => history.back(), 180); }
-    else toMap(false);
+    if (cur && cur.returnTo) {
+      if (motionOK) vp.classList.add('door-shut');
+      $('#house').style.opacity = '0';
+      doorReturn = true;
+      setTimeout(() => history.back(), motionOK ? 320 : 0);
+    } else toMap(false);
   };
   window.addEventListener('popstate', () => {
     const id = history.state && history.state.id;
-    if (id && C[id]) enter(id, { skipPush: true });
+    if (id && C[id]) { const door = doorReturn; doorReturn = false; enter(id, { skipPush: true, door }); }
     else if ($('#house').classList.contains('active')) toMap(true);
   });
 
@@ -136,10 +160,10 @@
   vp.addEventListener('pointerdown', e => { if (ptrs.size === 0) moved = false; ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY }); startGesture(); });
   addEventListener('pointermove', e => {
     if (!ptrs.has(e.pointerId) || !gest) return; ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY }); const p = [...ptrs.values()];
-    if (gest.type === 'pan') { const dx = p[0].x - gest.sx, dy = p[0].y - gest.sy; if (Math.hypot(dx, dy) > 7) moved = true; if (moved) { cam.x = gest.cx + dx; cam.y = gest.cy + dy; applyCam(); hideBubble(); } }
+    if (gest.type === 'pan') { const dx = p[0].x - gest.sx, dy = p[0].y - gest.sy; if (Math.hypot(dx, dy) > 7) moved = true; if (moved) { cam.x = gest.cx + dx; cam.y = gest.cy + dy; applyCam(); hideBubble(); if (motionOK && !tiltFresh()) { lookT.x = clamp((p[0].x / innerWidth - .5) * 22, -11, 11); lookT.y = clamp((p[0].y / innerHeight - .5) * 16, -8, 8); } } }
     else if (p.length >= 2) { moved = true; const mx = (p[0].x + p[1].x) / 2, my = (p[0].y + p[1].y) / 2; cam.s = gest.s * Math.hypot(p[0].x - p[1].x, p[0].y - p[1].y) / gest.d; cam.s = Math.min(3.5, Math.max(.7, cam.s)); cam.x = mx - gest.wx * cam.s; cam.y = my - gest.wy * cam.s; applyCam(); hideBubble(); }
   });
-  const endPtr = e => { if (ptrs.delete(e.pointerId)) startGesture(); };
+  const endPtr = e => { if (ptrs.delete(e.pointerId)) { startGesture(); if (!ptrs.size && !tiltFresh()) { lookT.x = 0; lookT.y = 0; } } };
   addEventListener('pointerup', endPtr); addEventListener('pointercancel', endPtr);
   vp.addEventListener('click', e => { if (moved) { e.stopPropagation(); e.preventDefault(); } }, true);
   vp.addEventListener('wheel', e => { e.preventDefault(); const k = Math.exp(-e.deltaY * .0015), wx = (e.clientX - cam.x) / cam.s, wy = (e.clientY - cam.y) / cam.s; cam.s = Math.min(3.5, Math.max(.7, cam.s * k)); cam.x = e.clientX - wx * cam.s; cam.y = e.clientY - wy * cam.s; applyCam(); }, { passive: false });
@@ -236,29 +260,31 @@
   }
   function buildDoors() {
     const bed = cur.room.bedroom;
-    if (bed) addZone(bed.door, bed.label, () => travel(bed.to), 'Bedroom');
+    if (bed) addZone(bed.door, bed.label, () => travel(bed.to, { door: true }), 'Bedroom');
   }
   function buildLinks() {
     buildDoors();
     const links = cur.room.links || [], btn = $('#linkBtn'); btn.hidden = !links.length;
     links.forEach((l, i) => {
-      if (i === 0) { btn.innerHTML = (IC[l.icon] || '') + `<span>${l.label}</span>`; btn.onclick = () => travel(l.to, { replace: true }); }
+      if (i === 0) { btn.innerHTML = (IC[l.icon] || '') + `<span>${l.label}</span>`; btn.onclick = () => travel(l.to, { replace: true, door: true }); }
       const el = document.createElement('div');
       if (l.zone) { el.className = 'link zone glow'; Object.assign(el.style, { left: l.zone.left + '%', top: l.zone.top + '%', width: l.zone.width + '%', height: l.zone.height + '%' }); }
       else if (l.badge) { el.className = 'link badge'; Object.assign(el.style, { left: l.badge.x + '%', top: l.badge.y + '%' }); el.innerHTML = IC.ladder; }
       else return;
       el.setAttribute('role', 'button'); el.setAttribute('aria-label', l.label);
-      el.onclick = ev => { ev.stopPropagation(); travel(l.to, { replace: true }); };
+      el.onclick = ev => { ev.stopPropagation(); travel(l.to, { replace: true, door: true }); };
       $('#actors').appendChild(el);
     });
   }
   function travel(to, opts = {}) {
+    const door = !!opts.door;
+    if (door && motionOK) vp.classList.add('door-shut');
     $('#house').style.opacity = '0';
     setTimeout(() => {
-      enter(to, { skipPush: !!opts.replace });
+      enter(to, { skipPush: !!opts.replace, door });
       if (opts.replace) history.replaceState({ id: to }, '', '#' + to);
       $('#house').style.opacity = '';
-    }, 220);
+    }, door && motionOK ? 380 : 240);
   }
   function go(to) { travel(to, { replace: true }); }
 
@@ -320,6 +346,128 @@
       if (done === urls.length) setTimeout(() => { clearInterval(tipTimer); $('#loader').classList.add('done'); }, Math.max(700, 1400 - (Date.now() - t0)) + slow); };
     urls.forEach((u, i) => setTimeout(() => { const im = new Image(); im.onload = () => { for (const [id, c] of Object.entries(C)) if (c.sprite === u) sprAspect[id] = im.naturalWidth / im.naturalHeight; step(); }; im.onerror = step; im.src = u; }, i * slow / urls.length));
   })();
+
+  // ---------- depth, motes, room tone, install ----------
+  const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+  const sway = $('#sway');
+  const look = { x: 0, y: 0 }, lookT = { x: 0, y: 0 };
+  let tiltAt = 0, baseG = null, baseB = null, orientOn = false, raf = 0;
+  function tiltFresh() { return performance.now() - tiltAt < 800; }
+  function onOrient(e) {
+    if (!motionOK || e.gamma == null || e.beta == null) return;
+    if (baseG == null) { baseG = e.gamma; baseB = e.beta; }
+    lookT.x = clamp((e.gamma - baseG) * .4, -12, 12);
+    lookT.y = clamp((e.beta - baseB) * .28, -9, 9);
+    tiltAt = performance.now();
+  }
+  function listenOrient() {
+    if (orientOn) return; orientOn = true;
+    addEventListener('deviceorientation', onOrient);
+  }
+  async function maybeTiltPrompt() {
+    if (!motionOK || orientOn || !$('#house').classList.contains('active')) return;
+    const need = typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function';
+    if (!need) { listenOrient(); return; }
+    if (store.get('tilt') === 'no') return;
+    try {
+      const res = await DeviceOrientationEvent.requestPermission();
+      if (res === 'granted') { listenOrient(); $('#tiltAsk').hidden = true; return; }
+    } catch (e) { /* iOS needs the tap below */ }
+    if (store.get('tilt') === 'no' || orientOn) return;
+    $('#tiltYes').textContent = 'Allow tilt';
+    $('#tiltAsk').hidden = false;
+  }
+  $('#tiltYes').onclick = async () => {
+    $('#tiltAsk').hidden = true;
+    try {
+      const res = await DeviceOrientationEvent.requestPermission();
+      if (res === 'granted') { store.set('tilt', 'yes'); baseG = null; listenOrient(); }
+      else store.set('tilt', 'no');
+    } catch (e) { store.set('tilt', 'no'); }
+  };
+  $('#tiltNo').onclick = () => { $('#tiltAsk').hidden = true; store.set('tilt', 'no'); };
+
+  function specks(n, bugs) {
+    return Array.from({ length: n }, () => ({ x: Math.random(), y: Math.random(), r: (bugs ? 1.8 : .7) + Math.random() * (bugs ? 1.2 : 1.1), s: (bugs ? .45 : .18) + Math.random() * .28, p: Math.random() * 6.28, bug: !!bugs, a: bugs ? .55 : .34 }));
+  }
+  const houseDust = specks(24, false).concat(specks(6, true));
+  const mapDust = specks(9, true);
+  let glowSprite = null;
+  function glowImg() {
+    if (glowSprite) return glowSprite;
+    const c = document.createElement('canvas'); c.width = c.height = 128;
+    const g = c.getContext('2d'), rad = g.createRadialGradient(64, 64, 2, 64, 64, 64);
+    rad.addColorStop(0, 'rgba(255,220,160,.7)'); rad.addColorStop(.4, 'rgba(255,176,90,.18)'); rad.addColorStop(1, 'rgba(255,160,60,0)');
+    g.fillStyle = rad; g.fillRect(0, 0, 128, 128); glowSprite = c; return c;
+  }
+  const houseGlows = [{ x: .18, y: .28, s: 160 }, { x: .8, y: .34, s: 140 }, { x: .5, y: .6, s: 120 }, { x: .64, y: .2, s: 96 }];
+  function fitCanvas(cv) {
+    const w = cv.clientWidth || 1, h = cv.clientHeight || 1;
+    if (cv.width !== w || cv.height !== h) { cv.width = w; cv.height = h; }
+  }
+  function drawDust(cv, list, t, glows) {
+    fitCanvas(cv); const g = cv.getContext('2d'), w = cv.width, h = cv.height; if (w < 8 || h < 8) return;
+    g.clearRect(0, 0, w, h);
+    if (glows) {
+      const img = glowImg(); g.globalCompositeOperation = 'lighter';
+      glows.forEach((gl, i) => {
+        const flick = .72 + .28 * Math.sin(t * .0022 + i * 1.8);
+        const s = gl.s * (.94 + .06 * Math.sin(t * .0011 + i));
+        g.globalAlpha = .5 * flick; g.drawImage(img, gl.x * w - s / 2, gl.y * h - s / 2, s, s);
+      });
+      g.globalAlpha = 1; g.globalCompositeOperation = 'source-over';
+    }
+    list.forEach(p => {
+      p.y -= p.s / h; p.x += Math.sin(t * .001 + p.p) * (p.bug ? .0008 : .00025);
+      if (p.y < -.02) { p.y = 1.02; p.x = Math.random(); }
+      g.globalAlpha = p.a * (.62 + .38 * Math.sin(t * .003 + p.p));
+      g.fillStyle = p.bug ? '#ffe7a8' : '#fff8ea';
+      g.beginPath(); g.arc(p.x * w, p.y * h, p.r, 0, 6.3); g.fill();
+    });
+    g.globalAlpha = 1;
+  }
+  function frame(t) {
+    raf = requestAnimationFrame(frame);
+    if (!motionOK) return;
+    if (Math.abs(lookT.x - look.x) > .03 || Math.abs(lookT.y - look.y) > .03) {
+      look.x += (lookT.x - look.x) * .08; look.y += (lookT.y - look.y) * .08;
+      sway.style.transform = `translate(${look.x.toFixed(2)}px,${look.y.toFixed(2)}px)`;
+    }
+    if ($('#house').classList.contains('active')) drawDust($('#motes'), houseDust, t, houseGlows);
+    if ($('#map').classList.contains('active')) drawDust($('#mapMotes'), mapDust, t);
+  }
+  addEventListener('resize', () => { fitCanvas($('#motes')); fitCanvas($('#mapMotes')); });
+  motionMQ.addEventListener('change', () => {
+    motionOK = !motionMQ.matches;
+    if (!motionOK) { look.x = look.y = lookT.x = lookT.y = 0; sway.style.transform = ''; }
+  });
+  if (motionOK) raf = requestAnimationFrame(frame);
+  if (typeof DeviceOrientationEvent === 'undefined' || typeof DeviceOrientationEvent.requestPermission !== 'function') listenOrient();
+
+  function syncAir() {
+    const on = !!(window.BotMusic && BotMusic.air);
+    ['#airBtn', '#mapAir'].forEach(sel => { const b = $(sel); b.classList.toggle('on', on); b.setAttribute('aria-pressed', on ? 'true' : 'false'); });
+  }
+  const toggleAir = () => { BotMusic.setAir(!BotMusic.air); syncAir(); };
+  $('#airBtn').onclick = toggleAir; $('#mapAir').onclick = toggleAir;
+
+  let deferredPrompt = null;
+  addEventListener('beforeinstallprompt', e => {
+    e.preventDefault(); deferredPrompt = e;
+    if (!store.get('install-no') && !matchMedia('(display-mode: standalone)').matches) $('#install').hidden = false;
+  });
+  if (/iphone|ipad|ipod/i.test(navigator.userAgent) && !navigator.standalone && !store.get('install-no') && !matchMedia('(display-mode: standalone)').matches) {
+    $('#installText').textContent = 'In Safari, tap Share, then Add to Home Screen.';
+    $('#installYes').hidden = true; $('#install').hidden = false;
+  }
+  $('#installNo').onclick = () => { $('#install').hidden = true; store.set('install-no', true); };
+  $('#installYes').onclick = async () => {
+    $('#install').hidden = true;
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    try { await deferredPrompt.userChoice; } catch (e) {}
+    deferredPrompt = null;
+  };
 
   // ---------- day/night tint ----------
   function tint() {

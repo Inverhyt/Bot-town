@@ -1,4 +1,4 @@
-const CACHE = 'bot-town-v9';
+const CACHE = 'bot-town-v10';
 const ASSETS = ['./', 'index.html', 'style.css', 'config.js', 'music.js', 'app.js', 'manifest.json',
   'assets/map.jpg', 'assets/scout-house-exterior.webp',
   'assets/olithia-house-v3-idle.webp', 'assets/olithia-house-v3-working.webp', 'assets/olithia-house-v3-sitting.webp',
