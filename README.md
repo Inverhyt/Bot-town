@@ -11,10 +11,10 @@ A cozy phone web game (installable PWA). Plain HTML/CSS/JS — no build step.
 
 ## Editing
 - **config.js**: everything per character: names, roles, house names, map tap areas, room art (`aspect`, `zoom`), painted `poses` (idle / working / sitting), bedroom doors, `links` between houses, tasks, dialog, loading tips.
-- Characters: Olithia (Lotus Cottage), Gorbo (Mossy Workshop), Loria (Bookshop) and Scout (his cottage, painted on the map). Each house interior is a painting with Idle / Working / Sitting buttons. A glowing door in each house opens that character's bedroom. Scout's burrow is still under Loria's shop: the round hobbit door in her middle room, or the "Down to Scout's burrow" button. Starfall Hill is painted at the bottom of the map and opens a night scene with no pose buttons.
+- Characters: Olithia (Lotus Cottage), Gorbo (Mossy Workshop), Loria (Bookshop) and Scout (his cottage, painted on the map). Each house interior is a painting with Idle / Working / Sitting buttons. A glowing door in each house opens that character's bedroom. Scout's burrow is still under Loria's shop: the round hobbit door in her middle room, or the "Down to Scout's burrow" button. Starfall Hill is painted at the bottom of the map and opens a tall park you scroll from top to bottom. The night painting shows from 19:00 to 06:00, and tapping a spot shows a caption.
 - The map is a tall picture (`map-v2.webp`) that fills the phone width and scrolls vertically. House name labels are painted signs on the map.
 - **music.js**: generated ambient tracks.
-- After changing files, bump `CACHE` in `sw.js` (currently `bot-town-v21`) so installed phones fetch the update.
+- After changing files, bump `CACHE` in `sw.js` (currently `bot-town-v22`) so installed phones fetch the update.
 - Rooms have a few pixels of tilt (or finger) parallax, drifting motes, lamp glow, and a breathing vignette. The map has slow clouds. `prefers-reduced-motion` turns the motion off.
 
 ## Testing tips

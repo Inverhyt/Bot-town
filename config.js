@@ -85,17 +85,27 @@ window.BOT_TOWN = {
       tasks: ["Research trending cozy games", "Summarize fan feedback for Loria", "Fact-check this week's posts", "Map out My Leisure Time competitors"],
       dialog: ["Ooh, a visitor! Want to hear a fun fact?", "I found three new sources this morning! *tail wag*", "Loria says I'm the best fact-fetcher in town. 🦊", "Did you know foxes can hear a watch ticking 40 yards away?", "My notes are a bit messy, but I know where everything is!", "The round door in Loria's shop still leads down to my burrow."]
     },
-    // Painted into the bottom of the map. The tap opens the night scene.
+    // Painted into the bottom of the map. The tap opens the tall park.
     starfall: {
       name: "Starfall Hill", role: "Park", house: "Starfall Hill",
       gallery: true,
       hotspot: { left: 0, top: 76.9, width: 100, height: 23.1 },
       room: {
-        image: "assets/starfall-hill-scene.webp",
-        aspect: 864 / 1152, zoom: 1, // whole hill on a phone, so both lanterns stay in frame
+        // Tall park that scrolls vertically like the map (720x2260). The night image is used from 19:00 to 06:00 local time.
+        image: "assets/starfall-hill-v2.webp", night: "assets/starfall-hill-v2-night.webp", nightHours: [19, 6],
+        aspect: 2260 / 720, scroll: true,
         backdrop: "radial-gradient(circle at 50% 38%, #4a3568, #2a1c40 55%, #140e22)",
-        // warm pools over the painted lanterns (fractions of the scene)
-        glows: [{ x: .86, y: .62, s: 210 }, { x: .35, y: .36, s: 140 }, { x: .16, y: .67, s: 110 }, { x: .11, y: .47, s: 90 }]
+        glows: [], // the lantern light is painted into the art
+        // tap zones (percent of the scene) that show a caption bubble
+        spots: [
+          { label: "Hill crest", caption: "Olithia plays her handpan under the blossom tree.", zone: { left: 26.8, top: 1.8, width: 61.4, height: 20.3 } },
+          { label: "Stargazing spot", caption: "Scout's telescope and the picnic blankets.", zone: { left: 15.3, top: 28.1, width: 72.9, height: 14.0 } },
+          { label: "Noticeboard", caption: "Town notes, lost mittens and tea invites.", zone: { left: 41.4, top: 61.1, width: 19.2, height: 7.9 } },
+          { label: "Tea pavilion", caption: "Gorbo and Dot keep the shared teapot warm.", zone: { left: 60.6, top: 52.5, width: 39.4, height: 20.7 } },
+          { label: "Willow reading nook", caption: "Loria reads under the lantern-lit willow.", zone: { left: 0, top: 64.7, width: 38.3, height: 28.1 } },
+          { label: "Book-swap box", caption: "Take a book, leave a book.", zone: { left: 38.3, top: 76.3, width: 19.2, height: 9.8 } },
+          { label: "Seasonal market", caption: "Pumpkins, apples and jam this season.", zone: { left: 74.7, top: 79.4, width: 25.3, height: 20.6 } }
+        ]
       }
     },
     // Underground room under Loria's bookshop. Still a sprite scene — he isn't painted into this one.

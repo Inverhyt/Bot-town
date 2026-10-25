@@ -70,17 +70,24 @@
   function isAsleep(id) {
     if (sleepParam !== null) return sleepParam === '1';
     const o = store.get('asleep-' + id, null); if (o !== null) return !!o;
-    const [from, to] = CFG.sleepHours || [22, 7], h = new Date().getHours();
+    return inHours(CFG.sleepHours || [22, 7]);
+  }
+  function inHours([from, to]) {
+    const h = new Date().getHours();
     return from > to ? (h >= from || h < to) : (h >= from && h < to);
   }
+  // ?night=1 / ?night=0 forces the park's night image for testing
+  const nightParam = new URLSearchParams(location.search).get('night');
+  const isNight = () => nightParam !== null ? nightParam === '1' : inHours(cur.room.nightHours || [19, 6]);
   function roomURL() {
     if (cur.room.poses) return (visiting && cur.room.visit) || cur.room.poses[pose] || cur.room.poses.idle;
     if (cur.room.sleeping && isAsleep(cur.returnTo || curId)) return cur.room.sleeping;
+    if (cur.room.night && isNight()) return cur.room.night;
     return cur.room.image;
   }
   function applyBackdrop() {
     const url = roomURL();
-    const night = !!(cur.room.sleeping && url === cur.room.sleeping);
+    const night = !!((cur.room.sleeping && url === cur.room.sleeping) || (cur.room.night && url === cur.room.night));
     $('#house').style.background = night
       ? 'radial-gradient(circle at 50% 45%, #141a2e, #0b0f1c)'
       : (cur.room.backdrop || '');
@@ -162,12 +169,17 @@
   // ---------- camera: pan + pinch + wheel ----------
   function layout() { W = innerWidth; H = W * (cur.room.aspect || .75); stage.style.width = W + 'px'; stage.style.height = H + 'px'; }
   function applyCam() {
+    if (cur && cur.room.scroll) { // scroll-only scene: full width, vertical pan, no zoom
+      cam.s = 1; cam.x = 0; cam.y = Math.min(0, Math.max(innerHeight - H, cam.y));
+      stage.style.transform = `translate(0px,${cam.y}px) scale(1)`; return;
+    }
     cam.s = Math.min(3.5, Math.max(.7, cam.s));
     const vw = innerWidth, vh = innerHeight;
     cam.x = Math.min(vw * .6, Math.max(vw * .4 - W * cam.s, cam.x)); cam.y = Math.min(vh * .6, Math.max(vh * .4 - H * cam.s, cam.y));
     stage.style.transform = `translate(${cam.x}px,${cam.y}px) scale(${cam.s})`;
   }
   function resetCam(anim = true) {
+    if (cur.room.scroll) { cam.s = 1; cam.x = 0; cam.y = 0; applyCam(); hideBubble(); return; }
     const vw = innerWidth, vh = innerHeight; cam.s = cur.room.zoom || (innerWidth < 600 ? 1.32 : 1.12);
     const fx = cur.room.zoom && actors.main ? actors.main._pos.x / 100 : .5; cam.x = vw / 2 - fx * W * cam.s; cam.y = (galleryPad() + (vh - 96)) / 2 - H * cam.s / 2 + 10;
     if (anim) { stage.classList.add('anim'); setTimeout(() => stage.classList.remove('anim'), 500); }
@@ -191,7 +203,7 @@
   const endPtr = e => { if (ptrs.delete(e.pointerId)) { startGesture(); if (!ptrs.size && !tiltFresh()) { lookT.x = 0; lookT.y = 0; } } };
   addEventListener('pointerup', endPtr); addEventListener('pointercancel', endPtr);
   vp.addEventListener('click', e => { if (moved) { e.stopPropagation(); e.preventDefault(); } }, true);
-  vp.addEventListener('wheel', e => { e.preventDefault(); const k = Math.exp(-e.deltaY * .0015), wx = (e.clientX - cam.x) / cam.s, wy = (e.clientY - cam.y) / cam.s; cam.s = Math.min(3.5, Math.max(.7, cam.s * k)); cam.x = e.clientX - wx * cam.s; cam.y = e.clientY - wy * cam.s; applyCam(); }, { passive: false });
+  vp.addEventListener('wheel', e => { e.preventDefault(); if (cur && cur.room.scroll) { cam.y -= e.deltaY; applyCam(); hideBubble(); return; } const k = Math.exp(-e.deltaY * .0015), wx = (e.clientX - cam.x) / cam.s, wy = (e.clientY - cam.y) / cam.s; cam.s = Math.min(3.5, Math.max(.7, cam.s * k)); cam.x = e.clientX - wx * cam.s; cam.y = e.clientY - wy * cam.s; applyCam(); }, { passive: false });
   const toStage = (cx, cy) => ({ x: (cx - cam.x) / cam.s / W * 100, y: (cy - cam.y) / cam.s / H * 100 });
 
   // ---------- actors & pets ----------
@@ -283,10 +295,12 @@
     el.setAttribute('role', 'button'); el.setAttribute('aria-label', label);
     el.onclick = ev => { ev.stopPropagation(); fn(); };
     $('#actors').appendChild(el);
+    return el;
   }
   function buildDoors() {
     const bed = cur.room.bedroom;
     if (bed) addZone(bed.door, bed.label, () => travel(bed.to, { door: true }), 'Bedroom');
+    (cur.room.spots || []).forEach(s => { const el = addZone(s.zone, s.label, () => showBubble(el, s.label, s.caption)); el.classList.remove('glow'); }); // invisible until tapped
     if (cur.room.visit && cur.room.seat && curId !== CFG.player) addZone(cur.room.seat, `Sit with ${cur.name}`, toggleSeat, 'Sit together');
   }
   // Painted houses: Olithia sits with the host (the -visit image); tap again to go back to the host's pose.
@@ -371,7 +385,7 @@
   // ---------- loader ----------
   (function () {
     const tips = CFG.loadingTips || [];
-    const urls = ['assets/map-v2.webp', ...Object.values(C).flatMap(c => [c.sprite, c.mapImage, c.room && c.room.image, c.room && c.room.sleeping, c.room && c.room.visit, ...Object.values(c.room.poses || {}), ...(c.pets || []).filter(p => p.sprite).map(p => p.sprite)])].filter(Boolean);
+    const urls = ['assets/map-v2.webp', ...Object.values(C).flatMap(c => [c.sprite, c.mapImage, c.room && c.room.image, c.room && c.room.sleeping, c.room && c.room.night, c.room && c.room.visit, ...Object.values(c.room.poses || {}), ...(c.pets || []).filter(p => p.sprite).map(p => p.sprite)])].filter(Boolean);
     let done = 0, ti = 0; const t0 = Date.now(), slow = +(new URLSearchParams(location.search).get('loaddelay') || 0);
     const tipEl = $('#tip'); if (tips.length) tipEl.textContent = tips[0];
     const tipTimer = setInterval(() => { tipEl.style.opacity = 0; setTimeout(() => { ti = (ti + 1) % tips.length; tipEl.textContent = tips[ti]; tipEl.style.opacity = 1; }, 300); }, 1800);
@@ -507,7 +521,7 @@
     $('#tint').style.background = bg;
   }
   tint(); setInterval(tint, 60000);
-  setInterval(() => { if (cur && cur.room.sleeping) showRoom(applyBackdrop(), true); }, 60000); // crossfade at bedtime / wake-up
+  setInterval(() => { if (cur && (cur.room.sleeping || cur.room.night)) showRoom(applyBackdrop(), true); }, 60000); // crossfade at bedtime / wake-up
   if (location.hash) history.replaceState(null, '', location.pathname + location.search);
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');
   window.__bt = { enter, go, cam, applyCam }; // handy for testing
