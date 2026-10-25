@@ -28,22 +28,32 @@
   const sprAspect = {}; // width/height of each sprite, filled by preloader
 
   // ---------- map ----------
+  const mapEl = $('#map');
+  mapEl.scrollTop = 0;
+  let mapPress = null;
+  mapEl.addEventListener('pointerdown', e => { mapPress = { x: e.clientX, y: e.clientY, top: mapEl.scrollTop, moved: false }; }, { capture: true, passive: true });
+  mapEl.addEventListener('pointermove', e => {
+    if (!mapPress || mapPress.moved) return;
+    if (Math.hypot(e.clientX - mapPress.x, e.clientY - mapPress.y) > 10) mapPress.moved = true;
+  }, { capture: true, passive: true });
+  const mapDragged = () => !!(mapPress && (mapPress.moved || Math.abs(mapEl.scrollTop - mapPress.top) > 4));
   for (const [id, c] of Object.entries(C)) {
     if (!c.hotspot) continue;
     const h = document.createElement('div'), s = c.hotspot;
     h.className = 'hot' + (c.mapImage ? ' building' : ''); h.dataset.id = id; h.setAttribute('role', 'button'); h.setAttribute('aria-label', 'Visit ' + c.name);
     Object.assign(h.style, { left: s.left + '%', top: s.top + '%', width: s.width + '%', height: s.height + '%' });
     if (c.mapMarker === 'lantern') h.classList.add('mini');
-    h.innerHTML = (c.mapImage ? `<img src="${c.mapImage}" alt="" draggable="false">` : '') + (c.mapMarker === 'lantern' ? '<i class="lantern"></i>' : '') + `<span class="label">${c.name}</span>`;
+    if (c.mapImage || c.mapMarker === 'lantern') h.innerHTML = (c.mapImage ? `<img src="${c.mapImage}" alt="" draggable="false">` : '') + (c.mapMarker === 'lantern' ? '<i class="lantern"></i>' : '');
     h.addEventListener('click', () => {
+      if (mapDragged()) return;
       h.classList.remove('tap'); void h.offsetWidth; h.classList.add('tap');
-      const map = $('#map'), wrap = $('#mapwrap');
+      const wrap = $('#mapwrap');
       if (motionOK) {
         const hr = h.getBoundingClientRect(), wr = wrap.getBoundingClientRect();
         wrap.style.transformOrigin = ((hr.left + hr.width / 2 - wr.left) / wr.width * 100) + '% ' + ((hr.top + hr.height / 2 - wr.top) / wr.height * 100) + '%';
-        map.classList.add('zooming');
+        mapEl.classList.add('zooming');
       }
-      setTimeout(() => { map.classList.remove('zooming'); wrap.style.transformOrigin = ''; enter(id, { arrive: true }); }, motionOK ? 460 : 160);
+      setTimeout(() => { mapEl.classList.remove('zooming'); wrap.style.transformOrigin = ''; enter(id, { arrive: true }); }, motionOK ? 460 : 160);
     });
     $('#hotspots').appendChild(h);
   }
@@ -338,7 +348,7 @@
   // ---------- loader ----------
   (function () {
     const tips = CFG.loadingTips || [];
-    const urls = ['assets/map.jpg', 'assets/starfall-hill-map.webp', ...Object.values(C).flatMap(c => [c.sprite, c.mapImage, c.room && c.room.image, ...Object.values(c.room.poses || {}), ...(c.pets || []).filter(p => p.sprite).map(p => p.sprite)])].filter(Boolean);
+    const urls = ['assets/map-v2.webp', ...Object.values(C).flatMap(c => [c.sprite, c.mapImage, c.room && c.room.image, ...Object.values(c.room.poses || {}), ...(c.pets || []).filter(p => p.sprite).map(p => p.sprite)])].filter(Boolean);
     let done = 0, ti = 0; const t0 = Date.now(), slow = +(new URLSearchParams(location.search).get('loaddelay') || 0);
     const tipEl = $('#tip'); if (tips.length) tipEl.textContent = tips[0];
     const tipTimer = setInterval(() => { tipEl.style.opacity = 0; setTimeout(() => { ti = (ti + 1) % tips.length; tipEl.textContent = tips[ti]; tipEl.style.opacity = 1; }, 300); }, 1800);
@@ -392,7 +402,7 @@
   }
   const houseDust = specks(24, false).concat(specks(6, true));
   const parkDust = specks(8, false).concat(specks(18, true));
-  const mapDust = specks(9, true);
+  const mapDust = specks(14, true);
   let glowSprite = null;
   function glowImg() {
     if (glowSprite) return glowSprite;

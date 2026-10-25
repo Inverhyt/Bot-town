@@ -10,7 +10,7 @@ window.BOT_TOWN = {
     olithia: {
       name: "Olithia", role: "Town Keeper (that's you!)", house: "Lotus Cottage",
       sprite: "assets/olithia.png", spriteHeight: 21, // only used when she visits the burrow
-      hotspot: { left: 4, top: 3, width: 50, height: 33 },
+      hotspot: { left: 9.7, top: 1.3, width: 45.8, height: 15.3 },
       room: {
         aspect: 864 / 1152,
         backdrop: "radial-gradient(circle at 50% 45%, #fff1d6, #f3cfa0 55%, #c98f5e)",
@@ -27,7 +27,7 @@ window.BOT_TOWN = {
     },
     gorbo: {
       name: "Gorbo", role: "App Mechanic & Bug Wrangler", house: "Mossy Workshop",
-      hotspot: { left: 56, top: 25, width: 44, height: 33 },
+      hotspot: { left: 52.8, top: 14.4, width: 47.2, height: 19.2 },
       room: {
         aspect: 864 / 1152, zoom: 1.18, // wide enough that the right-hand bedroom door starts on screen
         backdrop: "radial-gradient(circle at 50% 45%, #f1ead0, #c9c79a 55%, #7d8a5a)",
@@ -44,7 +44,7 @@ window.BOT_TOWN = {
     },
     loria: {
       name: "Loria", role: "My Leisure Time Manager & Social Media", house: "Loria's Bookshop",
-      hotspot: { left: 32, top: 58, width: 62, height: 36 },
+      hotspot: { left: 44.4, top: 48.3, width: 55.6, height: 16.0 },
       room: {
         aspect: 720 / 1280, zoom: 1, // whole 16:9 cutaway fits a phone, so both doors are on screen
         backdrop: "radial-gradient(circle at 50% 45%, #fff0dc, #f2c7a0 55%, #b9674a)",
@@ -63,11 +63,7 @@ window.BOT_TOWN = {
     },
     scout: {
       name: "Scout", role: "Research Expert · Loria's Assistant", house: "Scout's Cottage",
-      mapImage: "assets/scout-house-exterior.webp",
-      // On the grass to the right of the bookshop, clear of the fountain.
-      // 86% runs off a phone: the portrait map is wider than the screen and the right ~9% is cropped,
-      // so this 11×7 box starts at 78 and the whole cottage, plus its label, stays on screen.
-      hotspot: { left: 78, top: 62, width: 11, height: 7 },
+      hotspot: { left: 1.7, top: 54.5, width: 50.4, height: 22.4 },
       room: {
         aspect: 864 / 1152,
         backdrop: "radial-gradient(circle at 50% 45%, #fff6c8, #f5d36a 55%, #c9952a)",
@@ -82,11 +78,11 @@ window.BOT_TOWN = {
       tasks: ["Research trending cozy games", "Summarize fan feedback for Loria", "Fact-check this week's posts", "Map out My Leisure Time competitors"],
       dialog: ["Ooh, a visitor! Want to hear a fun fact?", "I found three new sources this morning! *tail wag*", "Loria says I'm the best fact-fetcher in town. 🦊", "Did you know foxes can hear a watch ticking 40 yards away?", "My notes are a bit messy, but I know where everything is!", "The round door in Loria's shop still leads down to my burrow."]
     },
-    // A park on the lower-left of the map. The hill sprite is painted over the map; this is just the tap and the scene.
+    // Painted into the bottom of the map. The tap opens the night scene.
     starfall: {
       name: "Starfall Hill", role: "Park", house: "Starfall Hill",
       gallery: true,
-      hotspot: { left: 1, top: 63.5, width: 38, height: 17 },
+      hotspot: { left: 0, top: 76.9, width: 100, height: 23.1 },
       room: {
         image: "assets/starfall-hill-scene.webp",
         aspect: 864 / 1152, zoom: 1, // whole hill on a phone, so both lanterns stay in frame
