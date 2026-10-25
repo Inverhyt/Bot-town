@@ -1,4 +1,4 @@
-const CACHE = 'bot-town-v22';
+const CACHE = 'bot-town-v23';
 const ASSETS = ['./', 'index.html', 'style.css', 'config.js', 'music.js', 'app.js', 'manifest.json',
   'assets/map-v2.webp', 'assets/starfall-hill-scene.webp', 'assets/starfall-hill-v2.webp', 'assets/starfall-hill-v2-night.webp',
   'assets/olithia-house-v4.webp', 'assets/olithia-house-v4-exterior.webp',
@@ -13,7 +13,7 @@ const ASSETS = ['./', 'index.html', 'style.css', 'config.js', 'music.js', 'app.j
   'assets/olithia-bedroom-v2.webp', 'assets/gorbo-bedroom-v4.webp', 'assets/loria-bedroom-v4.webp', 'assets/scout-bedroom-v4.webp',
   'assets/olithia-bedroom-v2-sleeping.webp', 'assets/gorbo-bedroom-v4-sleeping.webp', 'assets/loria-bedroom-v4-sleeping.webp', 'assets/scout-bedroom-v4-sleeping.webp',
   'assets/room-scout.webp', 'assets/olithia.png', 'assets/scout.png',
-  'assets/icon-192.png', 'assets/icon-512.png', 'assets/apple-touch-icon.png'];
+  'assets/icon-192.png', 'assets/icon-512.png', 'assets/apple-touch-icon.png', 'assets/icon-maskable-512.png', 'assets/favicon-32.png'];
 self.addEventListener('install', e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS))); self.skipWaiting(); });
 self.addEventListener('activate', e => { e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== CACHE).map(k => caches.delete(k))))); self.clients.claim(); });
 self.addEventListener('fetch', e => {
