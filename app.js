@@ -206,7 +206,7 @@
     $('#tasks').classList.add('collapsed');
     $('#back').setAttribute('aria-label', cur.returnTo ? ('Back to ' + C[cur.returnTo].house) : 'Back to map');
     $('#map').classList.remove('active'); $('#house').classList.add('active');
-    layout(); buildActors(); buildGuests(); resetCam(false); buildLinks(); buildPlay();
+    layout(); buildActors(); buildGuests(); resetCam(false); buildLinks(); buildPlay(); buildOwl();
     $('#tasks').hidden = gallery || !(cur.tasks || isBot(id));
     if (cur.tasks || isBot(id)) renderTasks();
     updateMode(true);
@@ -424,6 +424,35 @@
   }
   function go(to) { travel(to, { replace: true }); }
 
+
+  // ---------- v41: Loria's owl (one instance: with Loria when she's out at night, else at home) ----------
+  let owlT = 0;
+  function owlPlace() {
+    const O = CFG.owl; if (!O) return null; const L = locate('loria'), night = inHours(O.night);
+    if (night && (L.scene === 'starfall' || L.scene === 'playground')) return { scene: L.scene, awake: true };
+    if (L.scene === 'loria-bed') return { scene: 'loria-bed', awake: night };
+    return { scene: 'loria', awake: night };
+  }
+  function buildOwl() {
+    clearTimeout(owlT); $('#actors').querySelectorAll('.owl').forEach(e => e.remove());
+    const O = CFG.owl, w = owlPlace(); if (!w || w.scene !== curId) return; const P = O.perches[curId]; if (!P) return;
+    const el = document.createElement('div'); el.className = 'owl' + (w.awake ? ' awake' : ' dozing'); el.setAttribute('role', 'button'); el.setAttribute('aria-label', O.name + (w.awake ? '' : ' (dozing)'));
+    const hP = P.h / P.art[1] * 100, wP = P.h * O.ratio / P.art[0] * 100;
+    Object.assign(el.style, { left: (P.x - wP / 2) + '%', top: (P.y - hP) + '%', width: wP + '%', height: hP + '%', zIndex: 1900 });
+    const dark = curId === 'starfall' || curId === 'loria-bed' ? isNight() : false, tint = dark && P.tintNight ? P.tintNight : P.tint;
+    el.innerHTML = `<i class="owl-sh"></i><img src="${w.awake ? O.awake : O.doze}" alt="" draggable="false"${tint ? ` style="filter:${tint}"` : ''}>`;
+    const img = el.querySelector('img');
+    if (w.awake && motionOK) { const life = () => { owlT = setTimeout(() => { if (!el.isConnected) return;
+        if (Math.random() < .7) { img.src = O.doze; setTimeout(() => { img.src = O.awake; }, 150); }
+        else img.animate([{ rotate: '0deg' }, { rotate: (Math.random() < .5 ? -1 : 1) * 7 + 'deg', offset: .3 }, { rotate: (Math.random() < .5 ? -1 : 1) * 7 + 'deg', offset: .7 }, { rotate: '0deg' }], { duration: 2400, easing: 'ease-in-out' });
+        life(); }, 3500 + Math.random() * 4000); }; life(); }
+    el.onclick = ev => { ev.stopPropagation(); buzz(8);
+      try { pgNote(392, .45, 'sine', .09); setTimeout(() => pgNote(349, .7, 'sine', .08), 420); } catch (e) {}
+      img.animate([{ scale: '1' }, { scale: '1.08', offset: .3 }, { scale: '1' }], { duration: 500 });
+      if (!w.awake) { img.src = O.awake; setTimeout(() => { img.src = O.doze; }, 1600); }
+      const h = document.createElement('span'); h.className = 'owl-heart'; h.textContent = '♥'; el.appendChild(h); setTimeout(() => h.remove(), 1400); };
+    $('#actors').appendChild(el);
+  }
   // ---------- bubbles ----------
   let bubbleT;
   function showBubble(el, name, text) {
@@ -743,7 +772,7 @@
     $('#actors').querySelectorAll('.link:not(.pboard):not(.pg-slide):not(.pg-chest):not(.pg-chimes)').forEach(e => e.remove()); buildLinks();
     const wantMain = !cur.bot || locate(cur.bot).scene === curId, wantVis = !!(cur.room.visitor && visiting);
     if (cur.sprite && !cur.room.poses && !cur.gallery && (!!actors.main !== wantMain || !!actors.visitor !== wantVis)) buildActors();
-    buildGuests(); updateMode(true); if (cur.play) playTools();
+    buildGuests(); buildOwl(); updateMode(true); if (cur.play) playTools();
     if (!$('#tasks').hidden && (cur.tasks || isBot(curId))) renderTasks();
   }
 

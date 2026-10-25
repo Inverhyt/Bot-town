@@ -13,6 +13,15 @@ window.BOT_TOWN = {
   // work: share of the day spent working; outings: places it may wander to (houses = visiting that bot or Olithia).
   // Before bed and after waking it spends a little while awake in its own bedroom.
   bots: ["gorbo", "loria", "scout"],
+  // v41: Loria's owl. One owl, always where Loria is (or home): awake at night (blinks, turns her head), dozing by day.
+  // perch: x/y = where the feet grip (% of the scene), h = owl height in art px, art = scene art size, tint = CSS filter to sit in that light
+  owl: { name: "Loria's owl", awake: "assets/owl-awake.webp", doze: "assets/owl-doze.webp", night: [19, 7], ratio: 133 / 176,
+    perches: {
+      loria: { x: 39.69, y: 26.2, h: 46, art: [1280, 720], tint: "sepia(.18) saturate(.95)" },
+      "loria-bed": { x: 27.8, y: 50, h: 40, art: [1280, 720], tint: "sepia(.15)", tintNight: "brightness(.62) sepia(.25) saturate(.85)" },
+      starfall: { x: 48.9, y: 77.35, h: 32, art: [720, 2260], tint: "", tintNight: "brightness(.45) saturate(.7) hue-rotate(-8deg)" },
+      playground: { x: 71.4, y: 29.95, h: 26, art: [720, 1905], tint: "" }
+    } },
   routines: {
     gorbo: { sleep: [23, 7], work: .5, outings: ["starfall", "playground", "olithia"] },
     loria: { sleep: [25, 9], work: .42, outings: ["starfall", "playground", "olithia"] }, // night owl: she stays up with her owl till about 01:00
