@@ -11,9 +11,9 @@ A cozy phone web game (installable PWA). Plain HTML/CSS/JS — no build step.
 
 ## Editing
 - **config.js**: everything per character: names, roles, house names, map tap areas, room art (`aspect`, `zoom`), painted `poses` (idle / working / sitting), bedroom doors, `links` between houses, tasks, dialog, loading tips.
-- Characters: Olithia (Lotus Cottage), Gorbo (Mossy Workshop), Loria (Bookshop) and Scout (his own cottage on the map). Each house interior is a painting with Idle / Working / Sitting buttons. A glowing door in each house opens that character's bedroom. Scout's burrow is still under Loria's shop: the round hobbit door in her middle room, or the "Down to Scout's burrow" button.
+- Characters: Olithia (Lotus Cottage), Gorbo (Mossy Workshop), Loria (Bookshop) and Scout (his own cottage on the map). Each house interior is a painting with Idle / Working / Sitting buttons. A glowing door in each house opens that character's bedroom. Scout's burrow is still under Loria's shop: the round hobbit door in her middle room, or the "Down to Scout's burrow" button. Starfall Hill is a park on the lower-left of the map; it opens a night scene with no pose buttons.
 - **music.js**: generated ambient tracks.
-- After changing files, bump `CACHE` in `sw.js` (currently `bot-town-v10`) so installed phones fetch the update.
+- After changing files, bump `CACHE` in `sw.js` (currently `bot-town-v11`) so installed phones fetch the update.
 - Rooms have a few pixels of tilt (or finger) parallax, drifting motes, lamp glow, and a breathing vignette. The map has slow clouds. Room tone is a generated loop, off until tapped. `prefers-reduced-motion` turns the motion off.
 
 ## Testing tips

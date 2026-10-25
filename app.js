@@ -338,7 +338,7 @@
   // ---------- loader ----------
   (function () {
     const tips = CFG.loadingTips || [];
-    const urls = ['assets/map.jpg', ...Object.values(C).flatMap(c => [c.sprite, c.mapImage, c.room && c.room.image, ...Object.values(c.room.poses || {}), ...(c.pets || []).filter(p => p.sprite).map(p => p.sprite)])].filter(Boolean);
+    const urls = ['assets/map.jpg', 'assets/starfall-hill-map.webp', ...Object.values(C).flatMap(c => [c.sprite, c.mapImage, c.room && c.room.image, ...Object.values(c.room.poses || {}), ...(c.pets || []).filter(p => p.sprite).map(p => p.sprite)])].filter(Boolean);
     let done = 0, ti = 0; const t0 = Date.now(), slow = +(new URLSearchParams(location.search).get('loaddelay') || 0);
     const tipEl = $('#tip'); if (tips.length) tipEl.textContent = tips[0];
     const tipTimer = setInterval(() => { tipEl.style.opacity = 0; setTimeout(() => { ti = (ti + 1) % tips.length; tipEl.textContent = tips[ti]; tipEl.style.opacity = 1; }, 300); }, 1800);
@@ -391,6 +391,7 @@
     return Array.from({ length: n }, () => ({ x: Math.random(), y: Math.random(), r: (bugs ? 1.8 : .7) + Math.random() * (bugs ? 1.2 : 1.1), s: (bugs ? .45 : .18) + Math.random() * .28, p: Math.random() * 6.28, bug: !!bugs, a: bugs ? .55 : .34 }));
   }
   const houseDust = specks(24, false).concat(specks(6, true));
+  const parkDust = specks(8, false).concat(specks(18, true));
   const mapDust = specks(9, true);
   let glowSprite = null;
   function glowImg() {
@@ -433,7 +434,11 @@
       look.x += (lookT.x - look.x) * .08; look.y += (lookT.y - look.y) * .08;
       sway.style.transform = `translate(${look.x.toFixed(2)}px,${look.y.toFixed(2)}px)`;
     }
-    if ($('#house').classList.contains('active')) drawDust($('#motes'), houseDust, t, houseGlows);
+    if ($('#house').classList.contains('active')) {
+      const park = curId === 'starfall';
+      const glows = (cur && cur.room && cur.room.glows) || houseGlows;
+      drawDust($('#motes'), park ? parkDust : houseDust, t, glows);
+    }
     if ($('#map').classList.contains('active')) drawDust($('#mapMotes'), mapDust, t);
   }
   addEventListener('resize', () => { fitCanvas($('#motes')); fitCanvas($('#mapMotes')); });
