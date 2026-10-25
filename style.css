@@ -319,7 +319,9 @@ button{font-family:inherit;color:inherit;cursor:pointer;touch-action:manipulatio
 #actors .swing{width:4.8%;transform-origin:50% 0}
 #actors .swing svg{width:100%;height:100%;display:block;filter:drop-shadow(0 2px 1px #0003)}
 #actors .swing-rider{transform-origin:50% 0;pointer-events:auto}
-#actors:has(.swing-rider) .swing{display:none}
+#actors:has(.swing-rider[data-toy=swing]) .swing[data-toy=swing],#actors:has(.swing-rider[data-toy=swing2]) .swing[data-toy=swing2]{opacity:0}
+#actors .swing-rider{pointer-events:none!important}
+#actors .swing svg{overflow:visible}
 #actors .pg-toy{transform:translate(-50%,-100%);pointer-events:auto;filter:drop-shadow(0 3px 2px #0003)}
 #actors .pg-ss{position:absolute;pointer-events:auto;cursor:pointer;-webkit-user-drag:none}
 #actors .pg-sand{position:absolute;pointer-events:auto;touch-action:none;cursor:crosshair}
@@ -348,3 +350,5 @@ button{font-family:inherit;color:inherit;cursor:pointer;touch-action:manipulatio
 #chalkCols button{width:34px;height:34px;border-radius:50%;border:2px solid #0003;background:var(--c,#f3e6c8);font-size:16px}
 #chalkCols button.on{box-shadow:0 0 0 3px #c8902a}
 @media (prefers-reduced-motion: reduce){#actors .pg-kite{animation:none}}
+
+#actors .pg-kite{width:8%}

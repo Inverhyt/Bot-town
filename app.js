@@ -797,21 +797,30 @@
   // ----- the playground: blocks, ball, swing, bulletin board -----
   const PG_COLORS = ['#d9534f', '#3f7fbf', '#f2c14e', '#5aa05a', '#e98b3a', '#9b6bc4', '#4fb3b0', '#e97fa8', '#f2c14e', '#3f7fbf'];
   const PG_SHAPES = ['', '', 'arch', '', 'cyl', '', 'tri', '', 'cyl', 'arch']; // v33: tri can't hold anything on top
-  const BW = 3.6; // block width (v33: smaller, to suit the bigger playground), % of the scene width
+  let BW = 3.6; // block width (v33: smaller, to suit the bigger playground), % of the scene width
   const inPoly = (x, y, poly) => { let c = false; for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) { const [xi, yi] = poly[i], [xj, yj] = poly[j]; if ((yi > y) !== (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi) c = !c; } return c; };
   let ballRaf = 0;
   function buildPlay() {
     cancelAnimationFrame(ballRaf);
     if (!cur || !cur.play) return;
-    const R = cur.room, act = $('#actors'), BH = BW / (R.aspect || .75); // square blocks
+    const R = cur.room, act = $('#actors'); BW = R.blockW || 3.6; const BH = BW / (R.aspect || .75); // square blocks
     // v33: the swing hangs from the painted bar (ropes + seat drawn here); a bot riding it replaces it (.swing-rider)
-    const SW = R.swing, sw = document.createElement('div'); sw.className = 'swing'; sw.setAttribute('role', 'button'); sw.setAttribute('aria-label', 'Swing');
-    sw.innerHTML = '<svg viewBox="0 0 40 100" preserveAspectRatio="none"><path d="M8 0V92M32 0V92" stroke="#c9a46a" stroke-width="1.6"/><path d="M8 0V92M32 0V92" stroke="#7a5a32" stroke-width=".5" stroke-dasharray="1.2 1.6"/><rect x="3" y="90" width="34" height="6" rx="1.5" fill="#9a6a3a" stroke="#5e3d1e" stroke-width=".8"/><rect x="4" y="90.5" width="32" height="1.6" fill="#c08a52"/></svg>';
-    Object.assign(sw.style, { left: (SW.pivot[0] - 2.4) + '%', top: SW.pivot[1] + '%', width: '4.8%', height: (SW.len + 1.4) + '%', zIndex: Math.round((SW.pivot[1] + SW.len) * 10) });
-    const push = amp => { if (!motionOK) return; const tgt = act.querySelector('.swing-rider') || sw; tgt.getAnimations().forEach(a => a.cancel()); const k = [0, 1, -.8, .62, -.46, .32, -.2, .1, 0].map(f => ({ transform: `rotate(${(f * amp).toFixed(1)}deg)` })); tgt.animate(k, { duration: 4200, easing: 'ease-in-out' }); };
+    // v36: two swings hang from the painted crossbar (px coords of the art); a rider replaces its swing (.swing-rider[data-toy])
+    const px = (x, y) => [x / R.artW * 100, y / R.artH * 100];
+    (R.swings || []).forEach(SW => {
+      const sw = document.createElement('div'); sw.className = 'swing'; sw.dataset.toy = SW.toy; sw.setAttribute('role', 'button'); sw.setAttribute('aria-label', 'Swing');
+      const L = SW.L, dx = SW.half, dy = SW.half * SW.slope; // rope tops sit along the slanted bar
+      sw.innerHTML = `<svg viewBox="-40 -20 80 ${L + 40}"><g stroke-linecap="round"><path d="M${-dx} ${dy}L${-dx} ${L + dy}M${dx} ${-dy}L${dx} ${L - dy}" stroke="#c9a46a" stroke-width="2.6"/><path d="M${-dx} ${dy}L${-dx} ${L + dy}M${dx} ${-dy}L${dx} ${L - dy}" stroke="#7a5a32" stroke-width="1" stroke-dasharray="2 2.6"/></g><path d="M${-dx - 6} ${L + dy - 1}L${dx + 6} ${L - dy - 1}L${dx + 6} ${L - dy + 7}L${-dx - 6} ${L + dy + 7}Z" fill="#9a6a3a" stroke="#5e3d1e" stroke-width="1.2"/><path d="M${-dx - 5} ${L + dy}L${dx + 5} ${L - dy}" stroke="#c08a52" stroke-width="2"/></svg>`;
+      const [l, t] = px(SW.x - 40, SW.y - 20), [w, h] = px(80, L + 40);
+      Object.assign(sw.style, { left: l + '%', top: t + '%', width: w + '%', height: h + '%', transformOrigin: `50% ${20 / (L + 40) * 100}%`, zIndex: SW.z });
+      sw.style.touchAction = 'none'; // v36: the swing stays the hit target even when ridden (riders don't catch taps)
+      const rider = () => act.querySelector(`.swing-rider[data-toy=${SW.toy}]`);
+      bindSwing(sw, () => { const r = rider(); if (!r) return setOliToy(SW.toy); if (r.dataset.id === CFG.player) return setOliToy(null); pgPush(20, r); buzz(12); }, () => rider() || sw);
+      act.appendChild(sw);
+    });
+    if (R.swingLeg) { const lg = document.createElement('img'); lg.className = 'pg-ss'; lg.src = R.swingLeg.src; lg.alt = ''; lg.draggable = false; Object.assign(lg.style, { left: R.swingLeg.box[0] + '%', top: R.swingLeg.box[1] + '%', width: R.swingLeg.box[2] + '%', height: R.swingLeg.box[3] + '%', zIndex: R.swingLeg.z, pointerEvents: 'none' }); act.appendChild(lg); }
+    const push = (amp, el) => { if (!motionOK) return; const tgt = el || act.querySelector('.swing-rider') || act.querySelector('.swing'); if (!tgt) return; tgt.getAnimations().forEach(a => a.cancel()); const k = [0, 1, -.8, .62, -.46, .32, -.2, .1, 0].map(f => ({ transform: `rotate(${(f * amp).toFixed(1)}deg)` })); tgt.animate(k, { duration: 4200, easing: 'ease-in-out' }); };
     pgPush = push;
-    sw.style.touchAction = 'none'; bindSwing(sw, () => { if (locate(CFG.player).scene === curId || true) setOliToy('swing'); }); // tap a free swing: Olithia sits on it
-    act.appendChild(sw);
     if (BOTS.some(b => where(b).place === 'playground' && where(b).pose !== 'sleeping')) setTimeout(() => push(9), 900); // someone's playing
     // bulletin board: painted board, little paper notes, tap to read board.json
     const bd = document.createElement('div'); bd.className = 'link zone pboard'; bd.setAttribute('role', 'button'); bd.setAttribute('aria-label', 'Bulletin board');
@@ -820,15 +829,15 @@
     bd.onclick = ev => { ev.stopPropagation(); openNotes(); };
     act.appendChild(bd);
     // blocks
-    const saved = store.get('pg-blocks', null);
-    const PG_START = [[56, 63.5, null], [60, 63.5, null], [58, 68, null], [62.5, 67.5, null], [66, 69.5, null], [56, 63.5 - BH, 0], [60, 63.5 - BH, 1], [56, 63.5 - 2 * BH, 5], [62.5, 67.5 - BH, 3], [60, 63.5 - 2 * BH, 6]];
+    const saved = store.get('pg-blocks' + (R.stateKey || ''), null);
+    const PG_START = (R.blockStart || []).map(([x, y, k, on]) => [x, y - (k || 0) * BH, on == null ? null : on]);
     const start = PG_COLORS.map((c, i) => ({ id: i, x: PG_START[i][0], y: PG_START[i][1], on: PG_START[i][2] }));
     const blocks = (Array.isArray(saved) && saved.length === PG_COLORS.length ? saved : start).map((b, i) => ({ ...start[i], ...b, id: i }));
     const els = [];
     const z = b => Math.round(b.y * 10) + 1;
     const draw = b => { const e = els[b.id]; e.style.left = (b.x - BW / 2) + '%'; e.style.top = (b.y - BH) + '%'; e.style.zIndex = z(b); };
     const stackOf = b => { const out = [b]; blocks.forEach(o => { if (o.on === b.id) out.push(...stackOf(o)); }); return out; };
-    const save = () => store.set('pg-blocks', blocks.map(({ id, x, y, on }) => ({ id, x: +x.toFixed(2), y: +y.toFixed(2), on })));
+    const save = () => store.set('pg-blocks' + (R.stateKey || ''), blocks.map(({ id, x, y, on }) => ({ id, x: +x.toFixed(2), y: +y.toFixed(2), on })));
     blocks.forEach(b => {
       const e = document.createElement('div'); e.className = 'block' + (PG_SHAPES[b.id] ? ' ' + PG_SHAPES[b.id] : ''); e.style.setProperty('--c', PG_COLORS[b.id]);
       e.style.width = BW + '%'; e.style.height = BH + '%'; e.setAttribute('role', 'button'); e.setAttribute('aria-label', 'Toy block');
@@ -857,15 +866,15 @@
     });
     const root = b => (b.on == null ? b : root(blocks[b.on])); blocks.forEach(b => { if (b.on != null) { const r = root(b); els[b.id].style.zIndex = z(r) + (r.y - b.y) / BH; } }); // stacks: upper blocks in front
     const reset = document.createElement('button'); reset.type = 'button'; reset.className = 'pill pg-reset'; reset.textContent = 'Tidy blocks';
-    reset.onclick = ev => { ev.stopPropagation(); store.set('pg-blocks', null); buildPlayFresh(); };
+    reset.onclick = ev => { ev.stopPropagation(); store.set('pg-blocks' + (R.stateKey || ''), null); buildPlayFresh(); };
     const smooth = document.createElement('button'); smooth.type = 'button'; smooth.className = 'pill pg-reset'; smooth.textContent = 'Smooth sand';
     smooth.onclick = ev => { ev.stopPropagation(); pgSmooth(); };
     $('#playTools').replaceChildren(reset, smooth); playTools();
     buildToys(R, act);
     // ball: flick it, or tap for a little kick
     const ball = document.createElement('div'); ball.className = 'ball'; ball.setAttribute('role', 'button'); ball.setAttribute('aria-label', 'Ball');
-    const st = store.get('pg-ball', null) || { x: 49, y: 53 }; const bs = { x: st.x, y: st.y, vx: 0, vy: 0 };
-    const BD = 4.2; ball.style.width = BD + '%'; ball.style.height = (BD / (R.aspect || .75)) + '%';
+    const st = store.get('pg-ball' + (R.stateKey || ''), null) || { x: R.ball ? R.ball[0] : 49, y: R.ball ? R.ball[1] : 53 }; const bs = { x: st.x, y: st.y, vx: 0, vy: 0 };
+    const BD = R.ballD || 4.2; ball.style.width = BD + '%'; ball.style.height = (BD / (R.aspect || .75)) + '%';
     const drawBall = () => { ball.style.left = (bs.x - BD / 2) + '%'; ball.style.top = (bs.y - BD / (R.aspect || .75)) + '%'; ball.style.zIndex = Math.round(bs.y * 10); };
     drawBall(); act.appendChild(ball);
     const roll = () => {
@@ -873,7 +882,7 @@
       let nx = bs.x + bs.vx, ny = bs.y + bs.vy;
       if (!inPoly(nx, ny, R.lawn)) { if (!inPoly(bs.x + bs.vx, bs.y, R.lawn)) bs.vx *= -.7; if (!inPoly(bs.x, bs.y + bs.vy, R.lawn)) bs.vy *= -.7; nx = bs.x + bs.vx; ny = bs.y + bs.vy; if (!inPoly(nx, ny, R.lawn)) { nx = bs.x; ny = bs.y; } }
       bs.x = nx; bs.y = ny; ball.style.transform = `rotate(${(bs.x * 40) % 360}deg)`; drawBall();
-      if (Math.hypot(bs.vx, bs.vy) > .02) ballRaf = requestAnimationFrame(roll); else store.set('pg-ball', { x: +bs.x.toFixed(2), y: +bs.y.toFixed(2) });
+      if (Math.hypot(bs.vx, bs.vy) > .02) ballRaf = requestAnimationFrame(roll); else store.set('pg-ball' + (R.stateKey || ''), { x: +bs.x.toFixed(2), y: +bs.y.toFixed(2) });
     };
     ball.addEventListener('pointerdown', ev => {
       ev.stopPropagation(); ev.preventDefault(); ball.setPointerCapture(ev.pointerId);
@@ -909,27 +918,28 @@
     const mine = here(CFG.player) && oliToy(); if (mine && R.toys[mine]) { out[CFG.player] = mine; used.add(mine); }
     const oa = store.get('olithia-at', null), hopped = oa && oa.scene === curId && 'toy' in oa && !oa.toy; // she hopped off: let her stand
     [...BOTS, CFG.player].forEach((b, i) => { if (out[b] || !here(b) || (b === CFG.player && hopped)) return;
-      const opts = ['swing', 'slide', 'sand'];
+      const opts = Object.keys(R.toys);
       for (let k = 0; k < opts.length; k++) { const t = opts[(h + i + k) % opts.length]; if (!used.has(t)) { used.add(t); out[b] = t; break; } } });
     return out;
   }
   const toyTaker = t => { const m = pgToys(); return Object.keys(m).find(b => m[b] === t); };
-  function bindSwing(el, onTap) { // v35: a drag pushes, a tap does onTap (no double push)
+  function bindSwing(el, onTap, target) { // v35: a drag pushes, a tap does onTap (no double push)
     let x0 = null, dragged = false;
     el.addEventListener('pointerdown', e => { e.stopPropagation(); x0 = e.clientX; dragged = false; });
     el.addEventListener('pointermove', e => { if (x0 != null && Math.abs(e.clientX - x0) > 12) dragged = true; });
-    el.addEventListener('pointerup', e => { if (x0 != null && dragged) { const dx = e.clientX - x0; pgPush(Math.min(28, 10 + Math.abs(dx) / 4) * Math.sign(dx)); buzz(10); } x0 = null; });
+    el.addEventListener('pointerup', e => { if (x0 != null && dragged) { const dx = e.clientX - x0; pgPush(Math.min(28, 10 + Math.abs(dx) / 4) * Math.sign(dx), target ? target() : el); buzz(10); } x0 = null; });
     el.addEventListener('pointercancel', () => { x0 = null; });
     el.onclick = ev => { ev.stopPropagation(); if (dragged) { dragged = false; return; } onTap(); };
   }
   function toyEl(b, t) {
     const R = cur.room, T = R.toys[t], el = document.createElement('img'); el.alt = botName(b); el.draggable = false;
-    if (t === 'swing') { el.className = 'guest swing-rider'; el.dataset.toy = t; el.src = R.swing.riders + b + '.webp';
-      Object.assign(el.style, { left: R.swing.pivot[0] + '%', top: R.swing.pivot[1] + '%', height: R.swing.riderH + '%', zIndex: Math.round(T.y * 10) });
+    const SWg = (R.swings || []).find(q => q.toy === t);
+    if (SWg) { el.className = 'guest swing-rider'; el.dataset.toy = t; el.src = R.swingRiders + b + '.webp';
+      Object.assign(el.style, { left: SWg.x / R.artW * 100 + '%', top: SWg.y / R.artH * 100 + '%', height: SWg.riderH + '%', zIndex: SWg.z + 1 });
       el.onload = () => { el.style.marginLeft = -(el.offsetWidth / 2) + 'px'; };
       el.style.touchAction = 'none';
-      setTimeout(() => bindSwing(el, () => { if (b === CFG.player) setOliToy(null); else { pgPush(20); buzz(12); } }), 0); // tap Olithia to hop off
-      if (motionOK) setTimeout(() => pgPush(12), 700);
+      el.style.pointerEvents = 'none'; // taps go to the swing underneath
+      if (motionOK) setTimeout(() => pgPush(12, el), 700 + Math.random() * 900);
     } else { el.className = 'guest pg-toy'; el.dataset.toy = t; el.src = T.pose + b + '.webp';
       if (b === CFG.player) setTimeout(() => { el.onclick = ev => { ev.stopPropagation(); setOliToy(null); }; }, 0); // tap her to hop off
       Object.assign(el.style, { left: T.x + '%', top: T.y + '%', height: T.h + '%', zIndex: Math.round(T.y * 10) }); }
@@ -958,10 +968,10 @@
     const sand = document.createElement('canvas'); sand.className = 'pg-sand'; sand.width = 240; sand.height = Math.round(240 * bh / bw / (R.aspect || .75) * 1); 
     Object.assign(sand.style, { left: bx + '%', top: by + '%', width: bw + '%', height: bh + '%', zIndex: 20, clipPath: `polygon(${P.map(p => ((p[0] - bx) / bw * 100).toFixed(1) + '% ' + ((p[1] - by) / bh * 100).toFixed(1) + '%').join(',')})` });
     sand.setAttribute('aria-label', 'Sandbox: drag to draw, double-tap for a castle'); act.appendChild(sand);
-    const sc = sand.getContext('2d'), sv = store.get('pg-sand', null);
+    const sc = sand.getContext('2d'), sv = store.get('pg-sand' + (R.stateKey || ''), null);
     if (sv) { const im = new Image(); im.onload = () => sc.drawImage(im, 0, 0); im.src = sv; }
     const sp = e => { const r = sand.getBoundingClientRect(); return [(e.clientX - r.left) / r.width * sand.width, (e.clientY - r.top) / r.height * sand.height]; };
-    const saveSand = () => { try { store.set('pg-sand', sand.toDataURL('image/png')); } catch (e) {} };
+    const saveSand = () => { try { store.set('pg-sand' + (R.stateKey || ''), sand.toDataURL('image/png')); } catch (e) {} };
     const castle = (x, y) => { const c = sc; c.save(); c.translate(x, y);
       const body = (ox, w, h) => { c.fillStyle = '#c8a46a'; c.fillRect(ox - w / 2, -h, w, h); c.fillStyle = '#e2c48e'; c.fillRect(ox - w / 2, -h, w * .35, h); c.strokeStyle = '#8f6b3a'; c.lineWidth = 1; c.strokeRect(ox - w / 2, -h, w, h);
         for (let k = 0; k < 3; k++) { c.fillStyle = '#c8a46a'; c.fillRect(ox - w / 2 + k * w / 2.5, -h - 4, w / 5, 4); } };
@@ -978,7 +988,7 @@
       sc.strokeStyle = 'rgba(255,236,190,.55)'; sc.lineWidth = 1.4; sc.beginPath(); sc.moveTo(drawing[0] - 1, drawing[1] - 2.5); sc.lineTo(p[0] - 1, p[1] - 2.5); sc.stroke(); drawing = p; });
     const endSand = () => { clearTimeout(hold); hold0 = null; if (drawing) saveSand(); drawing = null; };
     sand.addEventListener('pointerup', endSand); sand.addEventListener('pointercancel', endSand);
-    pgSmooth = () => { sc.clearRect(0, 0, sand.width, sand.height); store.set('pg-sand', null); };
+    pgSmooth = () => { sc.clearRect(0, 0, sand.width, sand.height); store.set('pg-sand' + (R.stateKey || ''), null); };
     // chalkboard: shows her doodle; tap to draw
     const C = R.chalk, ch = document.createElement('canvas'); ch.className = 'pg-chalk'; ch.width = 150; ch.height = 200;
     Object.assign(ch.style, { left: C.left + '%', top: C.top + '%', width: C.width + '%', height: C.height + '%', transform: `skewY(${C.skew}deg)`, zIndex: 760 }); ch.setAttribute('role', 'button'); ch.setAttribute('aria-label', 'Chalkboard');
@@ -1005,7 +1015,7 @@
     wc.onclick = ev => { ev.stopPropagation(); const seq = ['C6', 'E6', 'G6', 'A6', 'G6', 'E6'].sort(() => Math.random() - .5).slice(0, 4); seq.forEach((n, i) => setTimeout(() => pgNote(NOTE[n], 2.2, 'sine', .1), i * 170 + Math.random() * 60)); wc.classList.remove('ring'); void wc.offsetWidth; wc.classList.add('ring'); };
     act.appendChild(wc);
     // kite: drag it about the sky
-    const K = R.kite, ks = store.get('pg-kite', null) || { x: K.x, y: K.y }, svgNS = 'http://www.w3.org/2000/svg';
+    const K = R.kite, ks = store.get('pg-kite' + (R.stateKey || ''), null) || { x: K.x, y: K.y }, svgNS = 'http://www.w3.org/2000/svg';
     const line = document.createElementNS(svgNS, 'svg'); line.setAttribute('class', 'pg-string'); line.setAttribute('viewBox', '0 0 100 100'); line.setAttribute('preserveAspectRatio', 'none');
     line.innerHTML = '<path fill="none" stroke="#fff8e8" stroke-width=".25" vector-effect="non-scaling-stroke" stroke-opacity=".85"/>'; act.appendChild(line);
     const kite = document.createElement('div'); kite.className = 'pg-kite'; kite.setAttribute('role', 'button'); kite.setAttribute('aria-label', 'Kite');
@@ -1015,8 +1025,8 @@
       line.firstChild.setAttribute('d', `M${ks.x} ${ks.y + 3.2}Q${mx} ${my} ${K.anchor[0]} ${K.anchor[1]}`); };
     drawKite();
     kite.addEventListener('pointerdown', e => { e.stopPropagation(); e.preventDefault(); kite.setPointerCapture(e.pointerId); kite.classList.add('held');
-      const mv = m => { const p = toStage(m.clientX, m.clientY); ks.x = clamp(p.x, 6, 94); ks.y = clamp(p.y, 2, 30); drawKite(); };
-      const up = () => { kite.removeEventListener('pointermove', mv); kite.removeEventListener('pointerup', up); kite.classList.remove('held'); store.set('pg-kite', { x: +ks.x.toFixed(1), y: +ks.y.toFixed(1) }); };
+      const mv = m => { const p = toStage(m.clientX, m.clientY); ks.x = clamp(p.x, 6, 94); ks.y = clamp(p.y, 1, K.maxY || 30); drawKite(); };
+      const up = () => { kite.removeEventListener('pointermove', mv); kite.removeEventListener('pointerup', up); kite.classList.remove('held'); store.set('pg-kite' + (R.stateKey || ''), { x: +ks.x.toFixed(1), y: +ks.y.toFixed(1) }); };
       kite.addEventListener('pointermove', mv); kite.addEventListener('pointerup', up); });
   }
   var pgSmooth = () => {};
