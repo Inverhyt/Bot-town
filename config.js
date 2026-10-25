@@ -182,8 +182,8 @@ window.BOT_TOWN = {
         motto: "You are here for yourself. Be curious and have fun.",
         guests: { gorbo: { x: 30, y: 53 }, loria: { x: 44, y: 55 }, scout: { x: 22, y: 56 }, olithia: { x: 37, y: 52 } }, guestScale: 1, // anyone without a toy stands on the lawn
         // two swings on the painted crossbar: x,y = rope pivot (art px), L = rope length px, half/slope = rope spacing along the slanted bar
-        swings: [{ toy: "swing", x: 357, y: 644, L: 146, half: 20, slope: .42, riderH: 10.6, z: 440 }, { toy: "swing2", x: 462, y: 601, L: 130, half: 19, slope: .42, riderH: 9.5, z: 410 }],
-        swingRiders: "assets/pg-swing-", // <id>.webp, rope tops at the sprite top, seat ~72% down
+        swings: [{ toy: "swing", x: 384, y: 630, L: 150, half: 27, slope: .47, z: 440, patch: "A" }, { toy: "swing2", x: 459, y: 597, L: 138, half: 22, slope: .47, z: 410, patch: "B" }],
+        swingRiders: "assets/pg37-sw", // v37: painted rider+seat+ropes patch <A|B>-<id>.webp, 140x250 art px, crossbar pivot at (70,24); rotates around the pivot
         swingLeg: { src: "assets/pg3-swing-leg.webp", box: [40.28, 35.7, 11.39, 12.18], z: 446 }, // front-left leg in front of the left swing
         seesaw: { plank: "assets/pg3-seesaw-plank.webp", post: "assets/pg3-seesaw-stand.webp", box: { left: 4.17, top: 59.84, width: 38.89, height: 8.4 }, origin: "55.4% 48.8%" },
         sandbox: [[61.94, 62.68], [72.22, 60.26], [90.0, 62.05], [89.17, 65.09], [62.78, 65.41]],
@@ -192,7 +192,7 @@ window.BOT_TOWN = {
         xylo: { left: 58.06, top: 23.36, width: 11.67, height: 2.52 }, chimes: { left: 62.5, top: 17.74, width: 5.0, height: 5.14 },
         kite: { x: 80, y: 4.5, anchor: [83.33, 17.32], maxY: 9 },
         // a toy each (one per toy); h = sprite height % of scene height, feet at x,y (%)
-        toys: { swing: { x: 49.58, y: 44.4 }, swing2: { x: 64.17, y: 41 }, slide: { x: 10.83, y: 31.5, h: 6.4, pose: "assets/park-sit-" }, sand: { x: 76.11, y: 64.67, h: 6.4, pose: "assets/park-sit-" } },
+        toys: { swing: { x: 49.58, y: 44.4 }, swing2: { x: 64.17, y: 41 }, slide: { box: [22, 508, 100, 100], y: 31.5, pose: "assets/pg37-slide-" }, sand: { box: [490, 1137, 110, 110], y: 64.7, pose: "assets/pg37-sand-" } },
         slideZone: { left: 0, top: 27.3, width: 27.78, height: 14.17 },
         board: { left: 61.11, top: 83.2, width: 15.28, height: 9.45 },
         blockW: 6.2, ball: [62, 53], ballD: 6.5,

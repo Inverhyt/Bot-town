@@ -934,15 +934,16 @@
   function toyEl(b, t) {
     const R = cur.room, T = R.toys[t], el = document.createElement('img'); el.alt = botName(b); el.draggable = false;
     const SWg = (R.swings || []).find(q => q.toy === t);
-    if (SWg) { el.className = 'guest swing-rider'; el.dataset.toy = t; el.src = R.swingRiders + b + '.webp';
-      Object.assign(el.style, { left: SWg.x / R.artW * 100 + '%', top: SWg.y / R.artH * 100 + '%', height: SWg.riderH + '%', zIndex: SWg.z + 1 });
-      el.onload = () => { el.style.marginLeft = -(el.offsetWidth / 2) + 'px'; };
+    if (SWg) { el.className = 'guest swing-rider'; el.dataset.toy = t; el.src = R.swingRiders + (SWg.patch || 'A') + '-' + b + '.webp';
+      // v37: the painted rider+seat+ropes patch hangs from the crossbar and rotates around it
+      Object.assign(el.style, { left: (SWg.x - 70) / R.artW * 100 + '%', top: (SWg.y - 24) / R.artH * 100 + '%', width: 140 / R.artW * 100 + '%', height: 250 / R.artH * 100 + '%', transformOrigin: '50% 9.6%', zIndex: SWg.z + 1 });
       el.style.touchAction = 'none';
       el.style.pointerEvents = 'none'; // taps go to the swing underneath
       if (motionOK) setTimeout(() => pgPush(12, el), 700 + Math.random() * 900);
-    } else { el.className = 'guest pg-toy'; el.dataset.toy = t; el.src = T.pose + b + '.webp';
-      if (b === CFG.player) setTimeout(() => { el.onclick = ev => { ev.stopPropagation(); setOliToy(null); }; }, 0); // tap her to hop off
-      Object.assign(el.style, { left: T.x + '%', top: T.y + '%', height: T.h + '%', zIndex: Math.round(T.y * 10) }); }
+    } else { el.className = 'guest pg-toy' + (T.box ? ' boxed' : ''); el.dataset.toy = t; el.src = T.pose + b + '.webp';
+      if (b === CFG.player) setTimeout(() => { el.onclick = ev => { ev.stopPropagation(); setOliToy(null); }; }, 0); else el.style.pointerEvents = 'none'; // tap her to hop off
+      const [bx, by, bw, bh] = T.box; // v37: painted-in pose, art px box
+      Object.assign(el.style, { left: bx / R.artW * 100 + '%', top: by / R.artH * 100 + '%', width: bw / R.artW * 100 + '%', height: bh / R.artH * 100 + '%', zIndex: Math.round(T.y * 10) }); }
     return el;
   }
   function toyTap(t, el, label) {
@@ -967,7 +968,7 @@
     const P = R.sandbox, xs = P.map(p => p[0]), ys = P.map(p => p[1]), bx = Math.min(...xs), by = Math.min(...ys), bw = Math.max(...xs) - bx, bh = Math.max(...ys) - by;
     const sand = document.createElement('canvas'); sand.className = 'pg-sand'; sand.width = 240; sand.height = Math.round(240 * bh / bw / (R.aspect || .75) * 1); 
     Object.assign(sand.style, { left: bx + '%', top: by + '%', width: bw + '%', height: bh + '%', zIndex: 20, clipPath: `polygon(${P.map(p => ((p[0] - bx) / bw * 100).toFixed(1) + '% ' + ((p[1] - by) / bh * 100).toFixed(1) + '%').join(',')})` });
-    sand.setAttribute('aria-label', 'Sandbox: drag to draw, double-tap for a castle'); act.appendChild(sand);
+    sand.setAttribute('aria-label', 'Sandbox: tap to dig for treasure, drag to draw, double-tap for a castle'); act.appendChild(sand);
     const sc = sand.getContext('2d'), sv = store.get('pg-sand' + (R.stateKey || ''), null);
     if (sv) { const im = new Image(); im.onload = () => sc.drawImage(im, 0, 0); im.src = sv; }
     const sp = e => { const r = sand.getBoundingClientRect(); return [(e.clientX - r.left) / r.width * sand.width, (e.clientY - r.top) / r.height * sand.height]; };
@@ -977,16 +978,16 @@
         for (let k = 0; k < 3; k++) { c.fillStyle = '#c8a46a'; c.fillRect(ox - w / 2 + k * w / 2.5, -h - 4, w / 5, 4); } };
       body(-11, 9, 18); body(11, 9, 18); body(0, 16, 12); c.fillStyle = '#7a5530'; c.fillRect(-3, -6, 6, 6); c.fillStyle = '#e8574a'; c.beginPath(); c.moveTo(11, -26); c.lineTo(11, -34); c.lineTo(17, -31); c.closePath(); c.fill();
       c.fillStyle = 'rgba(90,60,30,.25)'; c.beginPath(); c.ellipse(0, 1, 22, 4, 0, 0, 6.3); c.fill(); c.restore(); };
-    let lastTap = 0, drawing = null;
+    let lastTap = 0, drawing = null, moved = false, openT = 0;
     let hold = 0, hold0 = null;
     sand.addEventListener('pointerdown', e => { e.stopPropagation(); e.preventDefault(); sand.setPointerCapture(e.pointerId); const p = sp(e), now = performance.now();
-      clearTimeout(hold); hold0 = [e.clientX, e.clientY]; hold = setTimeout(() => { drawing = null; hold0 = null; buzz(14); toyTap('sand', sand, 'Sandbox'); }, 600);
-      if (now - lastTap < 330) { castle(p[0], p[1] + 10); buzz(16); saveSand(); lastTap = 0; drawing = null; return; } lastTap = now; drawing = p; });
-    sand.addEventListener('pointermove', e => { if (hold0 && Math.hypot(e.clientX - hold0[0], e.clientY - hold0[1]) > 6) { clearTimeout(hold); hold0 = null; } if (!drawing) return; const p = sp(e);
+      clearTimeout(hold); clearTimeout(openT); moved = false; hold0 = [e.clientX, e.clientY]; hold = setTimeout(() => { drawing = null; hold0 = null; moved = true; buzz(14); toyTap('sand', sand, 'Sandbox'); }, 600);
+      if (now - lastTap < 330) { moved = true; castle(p[0], p[1] + 10); buzz(16); saveSand(); lastTap = 0; drawing = null; return; } lastTap = now; drawing = p; });
+    sand.addEventListener('pointermove', e => { if (hold0 && Math.hypot(e.clientX - hold0[0], e.clientY - hold0[1]) > 6) { clearTimeout(hold); hold0 = null; moved = true; } if (!drawing) return; const p = sp(e);
       sc.lineCap = 'round'; sc.lineJoin = 'round';
       sc.strokeStyle = 'rgba(110,72,34,.42)'; sc.lineWidth = 4; sc.beginPath(); sc.moveTo(drawing[0], drawing[1]); sc.lineTo(p[0], p[1]); sc.stroke();
       sc.strokeStyle = 'rgba(255,236,190,.55)'; sc.lineWidth = 1.4; sc.beginPath(); sc.moveTo(drawing[0] - 1, drawing[1] - 2.5); sc.lineTo(p[0] - 1, p[1] - 2.5); sc.stroke(); drawing = p; });
-    const endSand = () => { clearTimeout(hold); hold0 = null; if (drawing) saveSand(); drawing = null; };
+    const endSand = e => { clearTimeout(hold); hold0 = null; if (drawing && moved) saveSand(); drawing = null; if (!moved && e && e.type === 'pointerup') openT = setTimeout(() => openDig(), 340); };
     sand.addEventListener('pointerup', endSand); sand.addEventListener('pointercancel', endSand);
     pgSmooth = () => { sc.clearRect(0, 0, sand.width, sand.height); store.set('pg-sand' + (R.stateKey || ''), null); };
     // chalkboard: shows her doodle; tap to draw
@@ -1030,6 +1031,57 @@
       kite.addEventListener('pointermove', mv); kite.addEventListener('pointerup', up); });
   }
   var pgSmooth = () => {};
+  // ---------- v37: Dig & Find ----------
+  const DIG_KINDS = [
+    { k: 'shell', e: '🐚', n: 'Seashell', w: 5 }, { k: 'gear', e: '⚙️', n: "Gorbo's gear", w: 3 }, { k: 'moon', e: '🌙', n: "Loria's moon charm", w: 3 },
+    { k: 'feather', e: '🪶', n: "Scout's fox-tail feather", w: 3 }, { k: 'acorn', e: '🌰', n: 'Acorn', w: 4 }, { k: 'umbrella', e: '☂️', n: 'Tiny umbrella', w: 3 },
+    { k: 'pebble', e: '🪨', n: 'Smooth pebble', w: 3 }, { k: 'bluestar', e: '★', n: 'Blue star gem (rare!)', w: .35 }];
+  let digState = null;
+  function digRound() {
+    const pick = () => { const tot = DIG_KINDS.reduce((a, d) => a + d.w, 0); let r = Math.random() * tot; for (const d of DIG_KINDS) { if ((r -= d.w) < 0) return d; } return DIG_KINDS[0]; };
+    const items = []; let guard = 0;
+    while (items.length < 5 && guard++ < 400) { const x = 40 + Math.random() * 220, y = 50 + Math.random() * 300; if (items.every(o => Math.hypot(o.x - x, o.y - y) > 62)) items.push({ ...pick(), x, y, rot: (Math.random() - .5) * .8, found: false }); }
+    return items;
+  }
+  function openDig() {
+    const m = $('#dig'), cv = $('#digPad'), c = cv.getContext('2d'), W = cv.width, H = cv.height;
+    const under = document.createElement('canvas'); under.width = W; under.height = H; const u = under.getContext('2d');
+    const top = document.createElement('canvas'); top.width = W; top.height = H; const t = top.getContext('2d');
+    const finds = () => store.get('pg-finds', {}) || {};
+    const showFinds = () => { const f = finds(); $('#digFinds').innerHTML = DIG_KINDS.map(d => `<span class="${f[d.k] ? '' : 'none'}" title="${d.n}">${d.k === 'bluestar' ? '<b class="bstar">★</b>' : d.e}<i>${f[d.k] || 0}</i></span>`).join(''); };
+    const seedSand = () => { // sand on top, a little wavy texture
+      const g = t.createLinearGradient(0, 0, 0, H); g.addColorStop(0, '#e6c48a'); g.addColorStop(1, '#d2a86a'); t.globalCompositeOperation = 'source-over'; t.fillStyle = g; t.fillRect(0, 0, W, H);
+      for (let i = 0; i < 1600; i++) { t.fillStyle = Math.random() < .5 ? 'rgba(255,240,205,.35)' : 'rgba(140,96,48,.18)'; t.fillRect(Math.random() * W, Math.random() * H, 1.6, 1.6); }
+      t.strokeStyle = 'rgba(150,104,52,.18)'; t.lineWidth = 2; for (let y = 20; y < H; y += 26) { t.beginPath(); for (let x = 0; x <= W; x += 10) t.lineTo(x, y + Math.sin(x / 22 + y) * 3); t.stroke(); } };
+    const drawUnder = () => { // damp darker sand with treasures
+      u.fillStyle = '#b58a52'; u.fillRect(0, 0, W, H); for (let i = 0; i < 900; i++) { u.fillStyle = 'rgba(90,60,30,.2)'; u.fillRect(Math.random() * W, Math.random() * H, 2, 2); }
+      digState.items.forEach(o => { u.save(); u.translate(o.x, o.y); u.rotate(o.rot);
+        u.fillStyle = 'rgba(60,35,10,.25)'; u.beginPath(); u.ellipse(3, 14, 20, 6, 0, 0, 6.3); u.fill();
+        if (o.k === 'bluestar') { u.shadowColor = '#9fd4ff'; u.shadowBlur = 18; u.fillStyle = '#7fc4ff'; u.beginPath(); for (let k = 0; k < 10; k++) { const r = k % 2 ? 9 : 21, a = -Math.PI / 2 + k * Math.PI / 5; u.lineTo(Math.cos(a) * r, Math.sin(a) * r); } u.closePath(); u.fill(); u.shadowBlur = 0; u.fillStyle = 'rgba(255,255,255,.7)'; u.beginPath(); u.arc(-5, -6, 3, 0, 6.3); u.fill(); }
+        else { u.font = '38px serif'; u.textAlign = 'center'; u.textBaseline = 'middle'; u.fillText(o.e, 0, 0); }
+        u.restore(); }); };
+    const render = () => { c.clearRect(0, 0, W, H); c.drawImage(under, 0, 0); c.drawImage(top, 0, 0); };
+    const newRound = () => { digState = { items: digRound() }; seedSand(); drawUnder(); render(); $('#digMsg').textContent = 'Brush the sand away… 5 treasures are hiding here.'; };
+    const check = () => { // uncovered enough?
+      const d = t.getImageData(0, 0, W, H).data; let left = 0;
+      digState.items.forEach(o => { if (o.found) return; let n = 0, clear = 0; for (let y = -14; y <= 14; y += 4) for (let x = -14; x <= 14; x += 4) { const px = Math.round(o.x + x), py = Math.round(o.y + y); if (px < 0 || py < 0 || px >= W || py >= H) continue; n++; if (d[(py * W + px) * 4 + 3] < 60) clear++; }
+        if (n && clear / n > .55) { o.found = true; const f = finds(); f[o.k] = (f[o.k] || 0) + 1; store.set('pg-finds', f); buzz(18); pgNote(o.k === 'bluestar' ? NOTE.E6 : NOTE.C6, 1.2, 'sine', .14); setTimeout(() => pgNote(o.k === 'bluestar' ? NOTE.A6 : NOTE.G5, 1.4, 'sine', .1), 120);
+          $('#digMsg').textContent = (o.k === 'bluestar' ? '💙 ' : '✨ ') + 'Found: ' + o.n + '!'; showFinds();
+          t.save(); t.globalCompositeOperation = 'destination-out'; t.beginPath(); t.arc(o.x, o.y, 26, 0, 6.3); t.fill(); t.restore(); render(); }
+        if (!o.found) left++; });
+      if (!left) $('#digMsg').textContent = 'All 5 found! 🌟 Tap “New round” to dig again.'; };
+    let last = null, n = 0;
+    const brush = (x, y) => { t.save(); t.globalCompositeOperation = 'destination-out'; const g = t.createRadialGradient(x, y, 2, x, y, 20); g.addColorStop(0, 'rgba(0,0,0,.55)'); g.addColorStop(1, 'rgba(0,0,0,0)'); t.fillStyle = g; t.beginPath(); t.arc(x, y, 20, 0, 6.3); t.fill(); t.restore(); };
+    const pt = e => { const r = cv.getBoundingClientRect(); return [(e.clientX - r.left) / r.width * W, (e.clientY - r.top) / r.height * H]; };
+    cv.onpointerdown = e => { e.preventDefault(); cv.setPointerCapture(e.pointerId); last = pt(e); brush(...last); render(); };
+    cv.onpointermove = e => { if (!last) return; const p = pt(e), dd = Math.hypot(p[0] - last[0], p[1] - last[1]); for (let k = 0; k < dd; k += 5) brush(last[0] + (p[0] - last[0]) * k / dd, last[1] + (p[1] - last[1]) * k / dd); last = p; render(); if (++n % 6 === 0) check(); };
+    cv.onpointerup = cv.onpointercancel = () => { last = null; check(); };
+    $('#digNew').onclick = newRound;
+    $('#digDraw').onclick = () => { m.hidden = true; toast('Draw mode: drag on the sandbox to draw, double-tap for a castle.'); };
+    $('#digDone').onclick = () => { m.hidden = true; };
+    if (!digState || digState.items.every(o => o.found)) newRound(); else { seedSand(); drawUnder(); digState.items.filter(o => o.found).forEach(o => { t.save(); t.globalCompositeOperation = 'destination-out'; t.beginPath(); t.arc(o.x, o.y, 26, 0, 6.3); t.fill(); t.restore(); }); render(); }
+    showFinds(); m.hidden = false;
+  }
   function openChalk(preview) {
     const m = $('#chalk'), c = $('#chalkPad'), x = c.getContext('2d'); let col = '#fdfbf2', last = null;
     x.fillStyle = '#2f4a3a'; x.fillRect(0, 0, c.width, c.height);
