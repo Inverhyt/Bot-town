@@ -846,9 +846,27 @@
       const rider = () => act.querySelector(`.swing-rider[data-toy=${SW.toy}]`);
       bindSwing(sw, () => { const r = rider(); if (!r) return setOliToy(SW.toy); if (r.dataset.id === CFG.player) return setOliToy(null); pgPush(20, r); buzz(12); }, () => rider() || sw);
       act.appendChild(sw);
+      // v42: soft contact shadow on the grass under the seat; it slides with the swing (pgPush)
+      const sh = document.createElement('div'); sh.className = 'pg-swshadow'; sh.dataset.toy = SW.toy; const gy = SW.ground || SW.y + SW.L + 46;
+      Object.assign(sh.style, { left: (SW.x - 30) / R.artW * 100 + '%', top: (gy - 8) / R.artH * 100 + '%', width: 60 / R.artW * 100 + '%', height: 16 / R.artH * 100 + '%', zIndex: SW.z - 2 });
+      act.appendChild(sh);
     });
     if (R.swingLeg) { const lg = document.createElement('img'); lg.className = 'pg-ss'; lg.src = R.swingLeg.src; lg.alt = ''; lg.draggable = false; Object.assign(lg.style, { left: R.swingLeg.box[0] + '%', top: R.swingLeg.box[1] + '%', width: R.swingLeg.box[2] + '%', height: R.swingLeg.box[3] + '%', zIndex: R.swingLeg.z, pointerEvents: 'none' }); act.appendChild(lg); }
-    const push = (amp, el) => { if (!motionOK) return; const tgt = el || act.querySelector('.swing-rider') || act.querySelector('.swing'); if (!tgt) return; tgt.getAnimations().forEach(a => a.cancel()); const k = [0, 1, -.8, .62, -.46, .32, -.2, .1, 0].map(f => ({ transform: `rotate(${(f * amp).toFixed(1)}deg)` })); tgt.animate(k, { duration: 4200, easing: 'ease-in-out' }); };
+    // v42: rigid damped pendulum in the swing's own plane (perpendicular to the slanted crossbar), eased at both ends by the sine itself
+    const SWD = [0.914, -0.406], SWF = [0.62, 0.32], SWI = [[1 / 0.914, 0], [0.406 / 0.914, 1]];
+    const swMat = th => { const vx = Math.sin(th) * SWF[0], vy = Math.cos(th) + Math.sin(th) * SWF[1];
+      const a = SWD[0] * SWI[0][0] + vx * SWI[1][0], c = vx * SWI[1][1], b = SWD[1] * SWI[0][0] + vy * SWI[1][0], d = vy * SWI[1][1];
+      return `matrix(${a.toFixed(4)},${b.toFixed(4)},${c.toFixed(4)},${d.toFixed(4)},0,0)`; };
+    const push = (amp, el) => { if (!motionOK) return; const tgt = el || act.querySelector('.swing-rider') || act.querySelector('.swing'); if (!tgt) return;
+      const toy = tgt.dataset.toy, SW = (R.swings || []).find(q => q.toy === toy) || R.swings[0], sh = act.querySelector(`.pg-swshadow[data-toy=${toy}]`);
+      const A = Math.min(16, Math.abs(amp) * 0.75) * Math.sign(amp || 1) * Math.PI / 180, T = 2.9, tau = 7.5, t0 = performance.now(), id = (tgt._swId = (tgt._swId || 0) + 1);
+      const step = now => { if (tgt._swId !== id || !tgt.isConnected) return; const t = (now - t0) / 1000;
+        const ramp = Math.min(1, t / 0.9), env = A * Math.exp(-t / tau) * (0.5 - 0.5 * Math.cos(Math.PI * ramp)), th = env * Math.sin(2 * Math.PI * t / T);
+        tgt.style.transform = swMat(th);
+        if (sh) { const sx = Math.sin(th) * SW.L * SWF[0], sy = Math.sin(th) * SW.L * SWF[1], lift = 1 - Math.cos(th);
+          sh.style.transform = `translate(${(sx / 60 * 100).toFixed(1)}%, ${(sy / 16 * 100).toFixed(1)}%) scale(${(1 + lift * 1.5).toFixed(3)})`; sh.style.opacity = (0.8 - lift * 3).toFixed(3); }
+        if (Math.abs(env) > 0.002 || t < 1) requestAnimationFrame(step); else { tgt.style.transform = ''; if (sh) { sh.style.transform = ''; sh.style.opacity = ''; } } };
+      requestAnimationFrame(step); };
     pgPush = push;
     if (BOTS.some(b => where(b).place === 'playground' && where(b).pose !== 'sleeping')) setTimeout(() => push(9), 900); // someone's playing
     // bulletin board: painted board, little paper notes, tap to read board.json
@@ -1163,7 +1181,7 @@
     j.textContent = here ? 'Head home' : 'Join in'; j.onclick = ev => { ev.stopPropagation(); setOli(here ? CFG.player : curId, 'idle'); };
     box.appendChild(j);
   }
-  function buildPlayFresh() { $('#actors').querySelectorAll('.block,.ball,.swing,.pboard,.pg-ss,.pg-ss-contact,.pg-slide,.pg-sand,.pg-chalk,.pg-chest,.pg-bubble,.pg-key,.pg-chimes,.pg-kite,.pg-string').forEach(e => e.remove()); buildPlay(); }
+  function buildPlayFresh() { $('#actors').querySelectorAll('.block,.ball,.swing,.pboard,.pg-ss,.pg-ss-contact,.pg-swshadow,.pg-slide,.pg-sand,.pg-chalk,.pg-chest,.pg-bubble,.pg-key,.pg-chimes,.pg-kite,.pg-string').forEach(e => e.remove()); buildPlay(); }
 
   // ----- the town post: letters from any bot, write to any bot -----
   let letters = [];
@@ -1375,5 +1393,5 @@
     const openPoemsRefresh = () => fetch('poems.json', { cache: 'no-store' }).then(r => r.json()).catch(() => []).then(j => render([...mine(), ...(Array.isArray(j) ? j : [])]));
     $('#pCopy').onclick = () => navigator.clipboard.writeText(last).then(() => $('#pMsg').textContent = 'Copied!').catch(() => $('#pMsg').textContent = last);
   }
-  window.__bt = { openPoems, enter, go, cam, applyCam, where, locate, setOli, dayPlan, dayKey }; // handy for testing // handy for testing
+  window.__bt = { openPoems, enter, go, cam, applyCam, where, locate, setOli, dayPlan, dayKey, push: (a, t) => pgPush(a, document.querySelector('#actors .swing-rider[data-toy=' + t + ']')) }; // handy for testing // handy for testing
 })();
