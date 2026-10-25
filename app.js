@@ -13,11 +13,9 @@
     visit: sv('<path d="M3 12v5h18v-5a2 2 0 00-4 0v2H7v-2a2 2 0 00-4 0z"/><path d="M5 10V8a3 3 0 013-3h8a3 3 0 013 3v2M5 17v2M19 17v2"/>'),
     ladder: sv('<path d="M7 2v20M17 2v20M7 6h10M7 10h10M7 14h10M7 18h10"/>'),
     down: sv('<path d="M7 2v13M17 2v13M7 6h10M7 10h10"/><path d="M12 14v8M8.5 18.5L12 22l3.5-3.5"/>'),
-    up: sv('<path d="M7 9v13M17 9v13M7 14h10M7 18h10"/><path d="M12 10V2M8.5 5.5L12 2l3.5 3.5"/>'),
-    air: sv('<path d="M4 9h10a2.5 2.5 0 010 5H9"/><path d="M3 5h14a2 2 0 010 4"/><path d="M6 18h8"/><circle cx="18" cy="16" r="1.2" fill="#6b3f1f" stroke="none"/>')
+    up: sv('<path d="M7 9v13M17 9v13M7 14h10M7 18h10"/><path d="M12 10V2M8.5 5.5L12 2l3.5 3.5"/>')
   };
   $('#back').innerHTML = IC.back; $('#musicBtn').innerHTML = IC.music; $('#mapMusic').innerHTML = IC.music; $('#camBtn').innerHTML = IC.cam;
-  $('#airBtn').innerHTML = IC.air; $('#mapAir').innerHTML = IC.air;
   const motionMQ = matchMedia('(prefers-reduced-motion: reduce)');
   let motionOK = !motionMQ.matches;
   const buzz = ms => { try { if (navigator.vibrate) navigator.vibrate(ms || 10); } catch (e) {} };
@@ -458,13 +456,6 @@
   });
   if (motionOK) raf = requestAnimationFrame(frame);
   if (typeof DeviceOrientationEvent === 'undefined' || typeof DeviceOrientationEvent.requestPermission !== 'function') listenOrient();
-
-  function syncAir() {
-    const on = !!(window.BotMusic && BotMusic.air);
-    ['#airBtn', '#mapAir'].forEach(sel => { const b = $(sel); b.classList.toggle('on', on); b.setAttribute('aria-pressed', on ? 'true' : 'false'); });
-  }
-  const toggleAir = () => { BotMusic.setAir(!BotMusic.air); syncAir(); };
-  $('#airBtn').onclick = toggleAir; $('#mapAir').onclick = toggleAir;
 
   let deferredPrompt = null;
   addEventListener('beforeinstallprompt', e => {

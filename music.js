@@ -52,37 +52,5 @@ window.BotMusic = (() => {
     schedule(); timer = setInterval(schedule, 100);
   }
   function stop() { clearInterval(timer); timer = null; if (rain) { try { rain.stop(); } catch (e) {} rain = null; } current = null; }
-  let air = null;
-  function setAir(on) {
-    try {
-      if (!on) {
-        if (!air) return false;
-        const a = air; air = null;
-        a.g.gain.cancelScheduledValues(ctx.currentTime);
-        a.g.gain.linearRampToValueAtTime(.0001, ctx.currentTime + .35);
-        setTimeout(() => { try { a.src.stop(); a.oscs.forEach(o => o.stop()); } catch (e) {} }, 400);
-        return false;
-      }
-      init(); ctx.resume();
-      if (air) return true;
-      const g = ctx.createGain(); g.gain.value = .0001; g.gain.exponentialRampToValueAtTime(1, ctx.currentTime + .9); g.connect(master);
-      const src = ctx.createBufferSource(); src.buffer = noiseBuf(); src.loop = true;
-      const f = ctx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 380;
-      const ng = ctx.createGain(); ng.gain.value = .04;
-      src.connect(f); f.connect(ng); ng.connect(g); src.start();
-      const oscs = [];
-      [[174.6, .018, .06], [220, .014, .045], [261.6, .009, .035]].forEach(([freq, vol, rate]) => {
-        const o = ctx.createOscillator(); o.type = 'sine'; o.frequency.value = freq;
-        const og = ctx.createGain(); og.gain.value = vol;
-        const lfo = ctx.createOscillator(); lfo.frequency.value = rate;
-        const lg = ctx.createGain(); lg.gain.value = 2;
-        lfo.connect(lg); lg.connect(o.detune);
-        o.connect(og); og.connect(g); o.start(); lfo.start();
-        oscs.push(o, lfo);
-      });
-      air = { g, src, oscs };
-      return true;
-    } catch (e) { return false; }
-  }
-  return { TRACKS, play, stop, setAir, get current() { return current; }, get air() { return !!air; } };
+  return { TRACKS, play, stop, get current() { return current; } };
 })();
