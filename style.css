@@ -17,6 +17,31 @@ button{font-family:inherit;color:inherit;cursor:pointer;touch-action:manipulatio
 @keyframes bob{0%,100%{translate:0 0}50%{translate:0 -5px}}
 .banner{position:fixed;z-index:4;top:calc(env(safe-area-inset-top) + 10px);left:50%;transform:translateX(-50%);background:var(--cream);border:3px solid var(--wood);border-radius:20px;padding:6px 18px;font:700 22px Grandstander,cursive;color:#6b3f1f;box-shadow:0 3px 10px #0005;white-space:nowrap}
 #mapTools{position:fixed;z-index:4;right:12px;bottom:calc(env(safe-area-inset-bottom) + 14px);display:flex;gap:8px}
+#liveChip{position:fixed;z-index:40;left:50%;bottom:calc(env(safe-area-inset-bottom) + 148px);transform:translateX(-50%);max-width:min(320px,calc(100% - 24px));background:#fffdf6f2;border:2px solid var(--wood);border-radius:999px;padding:5px 12px;font:600 12.5px Fredoka,system-ui,sans-serif;color:#5a3a10;box-shadow:0 2px 8px #0003;pointer-events:none;text-align:center;line-height:1.3}
+#mailBtn{position:relative}
+#mailBtn.has-unread::after{content:"";position:absolute;top:5px;right:5px;width:11px;height:11px;border-radius:50%;background:#d4523e;border:2px solid #fff8ec;box-shadow:0 0 0 1px #c44734}
+.gorbo-pin,.gorbo-pin *{pointer-events:none}
+.gorbo-pin{position:absolute;z-index:4;transform:translate(-50%,-115%);display:flex;flex-direction:column;align-items:center;gap:2px}
+.gorbo-pin i{width:18px;height:18px;border-radius:50%;background:radial-gradient(circle at 40% 35%,#fff6c0,#7dba6a 45%,#2f6b3a);border:2px solid #fff8ec;box-shadow:0 0 12px 6px #ffe08acc;animation:glowp 2.6s ease-in-out infinite}
+.gorbo-pin span{font:700 11px Grandstander,cursive;background:#fff8ecf2;border:2px solid var(--wood);border-radius:10px;padding:1px 6px;color:#5a3a10;box-shadow:0 2px 4px #0003}
+#mail{position:fixed;z-index:45;inset:0;background:rgba(24,16,8,.4);display:flex;align-items:center;justify-content:center;padding:calc(env(safe-area-inset-top) + 16px) 12px calc(env(safe-area-inset-bottom) + 16px)}
+#mail .sheet{width:min(420px,100%);max-height:100%;overflow:auto;padding:14px 14px 16px;display:flex;flex-direction:column;gap:10px}
+.mailhead{display:flex;align-items:center;gap:8px}
+.mailhead b,.mailhead h2,#mailWrite b,#mailTitle{font:700 22px Grandstander,cursive;color:#6b3f1f}
+.mailhead b{flex:1}
+#mailClose{width:44px;height:44px;border:none;background:none;font-size:22px;color:#8a5a33}
+#mail .hint{margin:0;font-size:13.5px;line-height:1.4;color:#6b3f1f}
+#mailList{display:flex;flex-direction:column;gap:8px}
+#mailList button{text-align:left;background:#fffaf0;border:2px solid #d4a373;border-radius:14px;padding:10px 12px;font:600 16px Fredoka,system-ui,sans-serif;color:#5a3a10}
+#mailList button small{display:block;font-weight:500;font-size:12px;color:#8a5a33}
+#mailList .empty{margin:0;font-size:14px;color:#8a5a33}
+#mailTitle{margin:8px 0 0;font-size:24px}
+#mailMeta{margin:2px 0 8px;font-size:13px;color:#8a5a33}
+#mailBody p{margin:0 0 10px;font-size:16px;line-height:1.45}
+#mailText{width:100%;box-sizing:border-box;min-height:140px;resize:vertical;border:2px solid #d4a373;border-radius:14px;background:#fffaf0;padding:10px 12px;font:16px/1.4 Fredoka,system-ui,sans-serif;color:#4a2f1d;user-select:text;-webkit-user-select:text}
+#mailSend{align-self:flex-start;min-height:48px}
+#mailSend:disabled{opacity:.45}
+#mailSent{margin:0;font-size:14px;line-height:1.4;color:#3d6b32;user-select:text;-webkit-user-select:text;white-space:pre-wrap}
 #clouds{position:absolute;inset:0;overflow:hidden;pointer-events:none;z-index:2}
 #clouds span{position:absolute;top:10%;height:34px;width:120px;border-radius:40px;background:radial-gradient(ellipse at 30% 40%,#fff,rgba(255,255,255,.15) 70%);opacity:.42;filter:blur(.2px);animation:drift 62s linear infinite}
 #clouds span::before,#clouds span::after{content:"";position:absolute;background:inherit;border-radius:50%}
@@ -165,7 +190,7 @@ button{font-family:inherit;color:inherit;cursor:pointer;touch-action:manipulatio
 @media (prefers-reduced-motion: reduce){
   #clouds,#motes,#mapMotes{display:none!important}
   #vignette{animation:none;opacity:.55}
-  .hot .label,.hot.building,.actor img,.link.zone.glow,.link.badge,#loader .om{animation:none!important}
+  .hot .label,.hot.building,.actor img,.link.zone.glow,.link.badge,#loader .om,.gorbo-pin i{animation:none!important}
   #house.arriving #viewport,#viewport.door-open{animation:none}
   #mapwrap{transition:none}
 }

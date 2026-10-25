@@ -1,4 +1,4 @@
-const CACHE = 'bot-town-v23';
+const CACHE = 'bot-town-v24';
 const ASSETS = ['./', 'index.html', 'style.css', 'config.js', 'music.js', 'app.js', 'manifest.json',
   'assets/map-v2.webp', 'assets/starfall-hill-scene.webp', 'assets/starfall-hill-v2.webp', 'assets/starfall-hill-v2-night.webp',
   'assets/olithia-house-v4.webp', 'assets/olithia-house-v4-exterior.webp',
@@ -18,6 +18,11 @@ self.addEventListener('install', e => { e.waitUntil(caches.open(CACHE).then(c =>
 self.addEventListener('activate', e => { e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== CACHE).map(k => caches.delete(k))))); self.clients.claim(); });
 self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
+  const path = new URL(e.request.url).pathname;
+  if (path.endsWith('/status.json') || path.endsWith('/letters.json')) {
+    e.respondWith(fetch(e.request, { cache: 'no-store' })); // live files, never written into the cache
+    return;
+  }
   e.respondWith(caches.match(e.request, { ignoreSearch: true }).then(hit => hit || fetch(e.request).then(res => {
     if (res.ok || res.type === 'opaque') { const copy = res.clone(); caches.open(CACHE).then(c => c.put(e.request, copy)); } // also caches Google Fonts
     return res;

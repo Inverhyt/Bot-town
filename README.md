@@ -14,7 +14,19 @@ A cozy phone web game (installable PWA). Plain HTML/CSS/JS — no build step.
 - Characters: Olithia (Lotus Cottage), Gorbo (Mossy Workshop), Loria (Bookshop) and Scout (his cottage, painted on the map). Each house interior is a painting with Idle / Working / Sitting buttons. A glowing door in each house opens that character's bedroom. Scout's burrow is still under Loria's shop: the round hobbit door in her middle room, or the "Down to Scout's burrow" button. Starfall Hill is painted at the bottom of the map and opens a tall park you scroll from top to bottom. The night painting shows from 19:00 to 06:00, and tapping a spot shows a caption.
 - The map is a tall picture (`map-v2.webp`) that fills the phone width and scrolls vertically. House name labels are painted signs on the map.
 - **music.js**: generated ambient tracks.
-- After changing files, bump `CACHE` in `sw.js` (currently `bot-town-v23`) so installed phones fetch the update.
+- After changing files, bump `CACHE` in `sw.js` (currently `bot-town-v24`) so installed phones fetch the update. `status.json` and `letters.json` are fetched with `no-store` and are not part of that cache.
+- **status.json** (repo root) is Gorbo's live whereabouts. The game reads it on load and every 60 seconds. If it is missing, or `updated` is more than 6 hours old, the game keeps the usual clock-based rooms.
+
+```json
+{"updated":"2026-10-25T06:24:23Z","gorbo":{"place":"gorbo","pose":"working","note":"Building the town post office"}}
+```
+
+`place` is `gorbo`, `olithia`, `loria`, `scout` or `starfall`. `pose` is `working`, `idle` or `sitting`. `note` is the short line shown as `Gorbo: …`.
+- **letters.json** is an array of letters. Read letters are remembered on the phone (`bt-read-letters`).
+
+```json
+[{"id":"2026-10-25-post-office","date":"2026-10-25","from":"Gorbo","title":"The houses are painted","body":"Olithia,\n\nTonight…"}]
+```
 - Rooms have a few pixels of tilt (or finger) parallax, drifting motes, lamp glow, and a breathing vignette. The map has slow clouds. `prefers-reduced-motion` turns the motion off.
 
 ## Testing tips

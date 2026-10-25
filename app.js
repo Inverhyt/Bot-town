@@ -13,9 +13,10 @@
     visit: sv('<path d="M3 12v5h18v-5a2 2 0 00-4 0v2H7v-2a2 2 0 00-4 0z"/><path d="M5 10V8a3 3 0 013-3h8a3 3 0 013 3v2M5 17v2M19 17v2"/>'),
     ladder: sv('<path d="M7 2v20M17 2v20M7 6h10M7 10h10M7 14h10M7 18h10"/>'),
     down: sv('<path d="M7 2v13M17 2v13M7 6h10M7 10h10"/><path d="M12 14v8M8.5 18.5L12 22l3.5-3.5"/>'),
-    up: sv('<path d="M7 9v13M17 9v13M7 14h10M7 18h10"/><path d="M12 10V2M8.5 5.5L12 2l3.5 3.5"/>')
+    up: sv('<path d="M7 9v13M17 9v13M7 14h10M7 18h10"/><path d="M12 10V2M8.5 5.5L12 2l3.5 3.5"/>'),
+    mail: sv('<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/>')
   };
-  $('#back').innerHTML = IC.back; $('#musicBtn').innerHTML = IC.music; $('#mapMusic').innerHTML = IC.music; $('#camBtn').innerHTML = IC.cam;
+  $('#back').innerHTML = IC.back; $('#musicBtn').innerHTML = IC.music; $('#mapMusic').innerHTML = IC.music; $('#camBtn').innerHTML = IC.cam; $('#mailBtn').innerHTML = IC.mail;
   const motionMQ = matchMedia('(prefers-reduced-motion: reduce)');
   let motionOK = !motionMQ.matches;
   const buzz = ms => { try { if (navigator.vibrate) navigator.vibrate(ms || 10); } catch (e) {} };
@@ -59,6 +60,8 @@
   // ---------- house state ----------
   let cur = null, curId = null, actors = {}, visiting = false, pose = 'idle';
   const poseMemory = {};
+  let live = null; // fresh Gorbo status; null when status.json is missing or older than 6 hours
+  let letters = [];
   const stage = $('#stage'), vp = $('#viewport');
   let W = 0, H = 0, cam = { x: 0, y: 0, s: 1 };
   const tasksDone = id => store.get('tasks-' + id, []);
@@ -120,6 +123,7 @@
   function enter(id, opts = {}) {
     curId = id; cur = C[id]; visiting = false;
     pose = cur.room.poses ? (poseMemory[id] || 'idle') : 'idle';
+    if (id === 'gorbo' && live && live.pose) pose = live.pose;
     $('#house').style.opacity = '';
     showRoom(applyBackdrop(), false);
     $('#roomImg').alt = cur.house; $('#roomFade').alt = '';
@@ -514,6 +518,123 @@
     deferredPrompt = null;
   };
 
+  // ---------- Gorbo's live status and the town post ----------
+  const LIVE_PLACES = ['gorbo', 'olithia', 'loria', 'scout', 'starfall'];
+  const LIVE_POSES = ['working', 'idle', 'sitting'];
+  const LIVE_MAX = 6 * 60 * 60 * 1000;
+  function fillText(el, text) {
+    el.replaceChildren();
+    String(text || '').split(/\n{2,}/).forEach(para => {
+      const p = document.createElement('p');
+      para.split('\n').forEach((line, i) => {
+        if (i) p.appendChild(document.createElement('br'));
+        p.appendChild(document.createTextNode(line));
+      });
+      el.appendChild(p);
+    });
+  }
+  function readIds() { const ids = store.get('read-letters', []); return Array.isArray(ids) ? ids : []; }
+  function applyLive() {
+    const chip = $('#liveChip');
+    if (live && live.note) { chip.hidden = false; chip.textContent = 'Gorbo: ' + live.note; }
+    else chip.hidden = true;
+    const pin = $('#gorboHere');
+    const spot = live && live.place && C[live.place] && C[live.place].hotspot;
+    if (spot) {
+      const h = C[live.place].hotspot;
+      pin.hidden = false;
+      pin.style.left = (h.left + h.width / 2) + '%';
+      pin.style.top = (h.top + h.height / 2) + '%';
+    } else pin.hidden = true;
+    if (live && live.pose) {
+      poseMemory.gorbo = live.pose;
+      if (curId === 'gorbo' && cur && cur.room.poses && pose !== live.pose) {
+        pose = live.pose;
+        if (!visiting) { showRoom(roomURL(), true); updateMode(true); }
+      }
+    }
+  }
+  async function pullStatus() {
+    try {
+      const res = await fetch('status.json', { cache: 'no-store' });
+      if (!res.ok) throw new Error('status');
+      const data = await res.json();
+      const t = Date.parse(data && data.updated);
+      const g = data && data.gorbo;
+      if (!Number.isFinite(t) || Date.now() - t > LIVE_MAX || !g) live = null;
+      else live = {
+        place: LIVE_PLACES.includes(g.place) ? g.place : null,
+        pose: LIVE_POSES.includes(g.pose) ? g.pose : null,
+        note: typeof g.note === 'string' ? g.note.trim() : ''
+      };
+    } catch (e) { live = null; }
+    applyLive();
+  }
+  function unreadLetters() { const seen = readIds(); return letters.some(l => l && l.id && !seen.includes(l.id)); }
+  function paintMailDot() {
+    const unread = unreadLetters();
+    $('#mailBtn').classList.toggle('has-unread', unread);
+    $('#mailBtn').setAttribute('aria-label', unread ? 'Mailbox, new letter' : 'Mailbox');
+  }
+  function showMail(which) {
+    $('#mailHome').hidden = which !== 'home';
+    $('#mailRead').hidden = which !== 'read';
+    $('#mailWrite').hidden = which !== 'write';
+  }
+  function renderLetters() {
+    const list = $('#mailList'); list.innerHTML = '';
+    const rows = letters.filter(l => l && l.id);
+    if (!rows.length) { const p = document.createElement('p'); p.className = 'empty'; p.textContent = 'The post box is quiet.'; list.appendChild(p); paintMailDot(); return; }
+    rows.forEach(l => {
+      const b = document.createElement('button'); b.type = 'button';
+      const small = document.createElement('small'); small.textContent = (l.from || 'Gorbo') + (l.date ? ' · ' + l.date : '');
+      b.append(document.createTextNode(l.title || 'A letter'), small);
+      b.onclick = () => openLetter(l);
+      list.appendChild(b);
+    });
+    paintMailDot();
+  }
+  function openLetter(l) {
+    const seen = readIds(); if (!seen.includes(l.id)) store.set('read-letters', seen.concat(l.id));
+    $('#mailTitle').textContent = l.title || 'A letter';
+    $('#mailMeta').textContent = (l.from || 'Gorbo') + (l.date ? ' · ' + l.date : '');
+    fillText($('#mailBody'), l.body || '');
+    showMail('read'); paintMailDot();
+  }
+  async function pullLetters() {
+    try {
+      const res = await fetch('letters.json', { cache: 'no-store' });
+      if (!res.ok) throw new Error('letters');
+      const data = await res.json();
+      letters = Array.isArray(data) ? data : [];
+    } catch (e) { letters = letters.length ? letters : []; }
+    renderLetters();
+  }
+  function pullLive() { pullStatus(); pullLetters(); }
+  $('#mailBtn').onclick = () => { $('#mail').hidden = false; showMail('home'); renderLetters(); $('#mailSent').hidden = true; };
+  $('#mailClose').onclick = () => { $('#mail').hidden = true; };
+  $('#mail').onclick = e => { if (e.target === $('#mail')) $('#mail').hidden = true; };
+  $('#mailCompose').onclick = () => { showMail('write'); $('#mailSent').hidden = true; };
+  $('#mailBack').onclick = () => showMail('home');
+  $('#mailWriteBack').onclick = () => showMail('home');
+  $('#mailText').addEventListener('input', () => { $('#mailSend').disabled = !$('#mailText').value.trim(); });
+  $('#mailSend').disabled = true;
+  $('#mailSend').onclick = async () => {
+    const text = $('#mailText').value.trim(); if (!text) return;
+    const payload = 'Letter to Gorbo:\n' + text;
+    const sent = $('#mailSent');
+    if (navigator.share) {
+      try { await navigator.share({ text: payload }); sent.hidden = false; sent.textContent = 'Passed to the share sheet. Paste it into your Gorbo chat if it is still waiting there.'; return; }
+      catch (e) { if (e && e.name === 'AbortError') return; }
+    }
+    try {
+      await navigator.clipboard.writeText(payload);
+      sent.hidden = false; sent.textContent = 'Copied. Paste it into your Gorbo chat. It begins with “Letter to Gorbo:”.';
+    } catch (e) {
+      sent.hidden = false; sent.textContent = 'Copy this into your Gorbo chat:\n' + payload;
+    }
+  };
+
   // ---------- day/night tint ----------
   function tint() {
     const q = new URLSearchParams(location.search).get('hour'), h = q !== null ? +q : new Date().getHours() + new Date().getMinutes() / 60; let bg = 'transparent';
@@ -522,6 +643,7 @@
   }
   tint(); setInterval(tint, 60000);
   setInterval(() => { if (cur && (cur.room.sleeping || cur.room.night)) showRoom(applyBackdrop(), true); }, 60000); // crossfade at bedtime / wake-up
+  pullLive(); setInterval(pullLive, 60000);
   if (location.hash) history.replaceState(null, '', location.pathname + location.search);
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');
   window.__bt = { enter, go, cam, applyCam }; // handy for testing
