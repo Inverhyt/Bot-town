@@ -1,4 +1,4 @@
-const CACHE = 'bot-town-v20';
+const CACHE = 'bot-town-v21';
 const ASSETS = ['./', 'index.html', 'style.css', 'config.js', 'music.js', 'app.js', 'manifest.json',
   'assets/map-v2.webp', 'assets/starfall-hill-scene.webp',
   'assets/olithia-house-v4.webp', 'assets/olithia-house-v4-exterior.webp',
@@ -9,6 +9,7 @@ const ASSETS = ['./', 'index.html', 'style.css', 'config.js', 'music.js', 'app.j
   'assets/loria-house-v4-idle.webp', 'assets/loria-house-v4-working.webp', 'assets/loria-house-v4-sitting.webp',
   'assets/scout-house-v4.webp',
   'assets/scout-house-v4-idle.webp', 'assets/scout-house-v4-working.webp', 'assets/scout-house-v4-sitting.webp',
+  'assets/gorbo-house-v4-visit.webp', 'assets/loria-house-v4-visit.webp', 'assets/scout-house-v4-visit.webp',
   'assets/olithia-bedroom-v2.webp', 'assets/gorbo-bedroom-v4.webp', 'assets/loria-bedroom-v4.webp', 'assets/scout-bedroom-v4.webp',
   'assets/olithia-bedroom-v2-sleeping.webp', 'assets/gorbo-bedroom-v4-sleeping.webp', 'assets/loria-bedroom-v4-sleeping.webp', 'assets/scout-bedroom-v4-sleeping.webp',
   'assets/room-scout.webp', 'assets/olithia.png', 'assets/scout.png',

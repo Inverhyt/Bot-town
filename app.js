@@ -74,7 +74,7 @@
     return from > to ? (h >= from || h < to) : (h >= from && h < to);
   }
   function roomURL() {
-    if (cur.room.poses) return cur.room.poses[pose] || cur.room.poses.idle;
+    if (cur.room.poses) return (visiting && cur.room.visit) || cur.room.poses[pose] || cur.room.poses.idle;
     if (cur.room.sleeping && isAsleep(cur.returnTo || curId)) return cur.room.sleeping;
     return cur.room.image;
   }
@@ -241,6 +241,7 @@
         : pose === 'sitting'
           ? ['Sitting', next ? 'Taking a cozy break' : 'All tasks done! Tea time']
           : ['Relaxing', next ? 'A quiet idle moment' : 'All tasks done! Tea time'];
+      if (visiting && cur.room.visit) { line[0] = 'Sitting together'; line[1] = `Tea with ${C[CFG.player].name}`; }
       $('#statusChip').innerHTML = `<b>${line[0]}</b>${line[1]}`;
       $('#poses').querySelectorAll('button').forEach(b => {
         const on = b.dataset.pose === pose;
@@ -259,7 +260,7 @@
   $('#poses').onclick = e => {
     const btn = e.target.closest('button'); if (!btn || !cur || !cur.room.poses) return;
     const next = btn.dataset.pose; if (!next || next === pose) return;
-    pose = next; poseMemory[curId] = next;
+    pose = next; poseMemory[curId] = next; visiting = false;
     showRoom(cur.room.poses[next], true);
     updateMode(true);
   };
@@ -286,6 +287,13 @@
   function buildDoors() {
     const bed = cur.room.bedroom;
     if (bed) addZone(bed.door, bed.label, () => travel(bed.to, { door: true }), 'Bedroom');
+    if (cur.room.visit && cur.room.seat && curId !== CFG.player) addZone(cur.room.seat, `Sit with ${cur.name}`, toggleSeat, 'Sit together');
+  }
+  // Painted houses: Olithia sits with the host (the -visit image); tap again to go back to the host's pose.
+  function toggleSeat() {
+    visiting = !visiting;
+    showRoom(roomURL(), true);
+    updateMode(true);
   }
   function buildLinks() {
     buildDoors();
@@ -363,7 +371,7 @@
   // ---------- loader ----------
   (function () {
     const tips = CFG.loadingTips || [];
-    const urls = ['assets/map-v2.webp', ...Object.values(C).flatMap(c => [c.sprite, c.mapImage, c.room && c.room.image, c.room && c.room.sleeping, ...Object.values(c.room.poses || {}), ...(c.pets || []).filter(p => p.sprite).map(p => p.sprite)])].filter(Boolean);
+    const urls = ['assets/map-v2.webp', ...Object.values(C).flatMap(c => [c.sprite, c.mapImage, c.room && c.room.image, c.room && c.room.sleeping, c.room && c.room.visit, ...Object.values(c.room.poses || {}), ...(c.pets || []).filter(p => p.sprite).map(p => p.sprite)])].filter(Boolean);
     let done = 0, ti = 0; const t0 = Date.now(), slow = +(new URLSearchParams(location.search).get('loaddelay') || 0);
     const tipEl = $('#tip'); if (tips.length) tipEl.textContent = tips[0];
     const tipTimer = setInterval(() => { tipEl.style.opacity = 0; setTimeout(() => { ti = (ti + 1) % tips.length; tipEl.textContent = tips[ti]; tipEl.style.opacity = 1; }, 300); }, 1800);

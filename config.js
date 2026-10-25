@@ -37,6 +37,8 @@ window.BOT_TOWN = {
           working: "assets/gorbo-house-v4-working.webp",
           sitting: "assets/gorbo-house-v4-sitting.webp"
         },
+        // Olithia visiting: tap the seating area (armchair, tea table and sofa. Art: x=675–1090, y=449–698 on 1152×864) to sit together
+        visit: "assets/gorbo-house-v4-visit.webp", seat: { left: 58.6, top: 52.0, width: 36.1, height: 28.8 },
         // bedroom door on the right wall. Art: x=921,y=240,w=66,h=190
         bedroom: { to: "gorbo-bed", label: "Gorbo's bedroom", door: { left: 76.39, top: 26.62, width: 13.02, height: 24.3 } }
       },
@@ -54,6 +56,8 @@ window.BOT_TOWN = {
           working: "assets/loria-house-v4-working.webp",
           sitting: "assets/loria-house-v4-sitting.webp"
         },
+        // Olithia visiting: tap the seating area (sofa and armchairs. Art: x=787–1125, y=287–587 on 1280×720) to sit together
+        visit: "assets/loria-house-v4-visit.webp", seat: { left: 61.5, top: 39.9, width: 26.4, height: 41.7 },
         // far-left bedroom door. Art: x=66,y=352,w=64,h=180 on 1280×720, padded for taps.
         bedroom: { to: "loria-bed", label: "Loria's bedroom", door: { left: 1.5, top: 47.2, width: 12.3, height: 28.2 } },
         // round hobbit door in the middle entry room — still leads to Scout's burrow
@@ -73,6 +77,8 @@ window.BOT_TOWN = {
           working: "assets/scout-house-v4-working.webp",
           sitting: "assets/scout-house-v4-sitting.webp"
         },
+        // Olithia visiting: tap the seating area (armchair, tea table and sofa. Art: x=546–889, y=562–765 on 1152×864) to sit together
+        visit: "assets/scout-house-v4-visit.webp", seat: { left: 47.4, top: 65.1, width: 29.8, height: 23.4 },
         // bedroom door on the back wall. Art: x=645-690, y=368-487 on 1152×864.
         bedroom: { to: "scout-bed", label: "Scout's bedroom", door: { left: 55.1, top: 41.7, width: 6.9, height: 15.6 } }
       },
