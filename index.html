@@ -71,6 +71,13 @@
   </div>
 </div>
 
+<div id="critters" class="modal" hidden>
+  <div class="sheet parchment critsheet">
+    <div class="mailhead"><b>Critter journal</b><button type="button" id="critDone" aria-label="Done">✓</button></div>
+    <p class="hint">Little friends you have spotted on Starfall Hill. Some only come out at night.</p>
+    <ul id="critList"></ul>
+  </div>
+</div>
 <div id="dig" class="modal" hidden>
   <div class="sheet parchment digsheet">
     <div class="mailhead"><b>Dig &amp; Find</b><button type="button" id="digDone" aria-label="Done">✓</button></div>
@@ -99,6 +106,7 @@
   <div id="statusChip"></div>
   <div id="motto" hidden></div>
   <div id="playTools"></div>
+  <button type="button" class="pill" id="critBtn" hidden>🐾 Critters</button>
   <aside id="tasks" class="parchment collapsed"><button id="tasksHead"><span class="pin"></span><b>To-do</b><span id="taskCount"></span><i class="chev"></i></button><ul id="taskList"></ul></aside>
   <div id="music" class="parchment pop" hidden><b>Music</b><div id="tracks"></div><small>Gentle loops made on your phone</small></div>
   <div id="bubble" hidden></div>

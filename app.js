@@ -206,7 +206,7 @@
     $('#tasks').classList.add('collapsed');
     $('#back').setAttribute('aria-label', cur.returnTo ? ('Back to ' + C[cur.returnTo].house) : 'Back to map');
     $('#map').classList.remove('active'); $('#house').classList.add('active');
-    layout(); buildActors(); buildGuests(); resetCam(false); buildLinks(); buildPlay(); buildOwl();
+    layout(); buildActors(); buildGuests(); resetCam(false); buildLinks(); buildPlay(); buildOwl(); buildPark44();
     $('#tasks').hidden = gallery || !(cur.tasks || isBot(id));
     if (cur.tasks || isBot(id)) renderTasks();
     updateMode(true);
@@ -453,6 +453,61 @@
       const h = document.createElement('span'); h.className = 'owl-heart'; h.textContent = '♥'; el.appendChild(h); setTimeout(() => h.remove(), 1400); };
     $('#actors').appendChild(el);
   }
+
+  // ---------- v44: October pumpkin patch + critters to collect (Starfall Hill) ----------
+  const monthParam = new URLSearchParams(location.search).get('month'), critParam = new URLSearchParams(location.search).get('critters');
+  const isOctober = () => (monthParam ? +monthParam : new Date().getMonth() + 1) === 10;
+  let critT = [];
+  function buildPark44() {
+    critT.forEach(clearTimeout); critT = [];
+    const act = $('#actors'); act.querySelectorAll('.sf-pk,.sf-patch,.crit').forEach(e => e.remove());
+    const btn = $('#critBtn'); const R = cur.room; btn.hidden = !R.critters; if (!R.critters) return;
+    const AW = 720, AH = 2260, X = v => v / AW * 100, Y = v => v / AH * 100, night = isNight();
+    if (R.october && isOctober()) {
+      const O = R.october, [bx, by, bw, bh] = O.box, t = night ? 'night' : 'day';
+      const p = document.createElement('img'); p.className = 'sf-patch'; p.src = night ? O.night : O.day; p.alt = ''; p.draggable = false;
+      Object.assign(p.style, { left: X(bx) + '%', top: Y(by) + '%', width: X(bw) + '%', height: Y(bh) + '%', zIndex: Math.round(Y(by + bh * .55) * 10) }); act.appendChild(p);
+      O.pumpkins.forEach(([x, y, w, h], i) => { const e = document.createElement('img'); e.className = 'sf-pk'; e.src = `${O.pk}${i}-${t}.webp`; e.alt = 'Pumpkin'; e.draggable = false; e.setAttribute('role', 'button');
+        Object.assign(e.style, { left: X(x) + '%', top: Y(y) + '%', width: X(w) + '%', height: Y(h) + '%', zIndex: 1550 + Math.round(Y(y + h)) });
+        e.onclick = ev => { ev.stopPropagation(); buzz(10); pgNote(92 + Math.random() * 14, .35, 'sine', .3); setTimeout(() => pgNote(70, .25, 'sine', .15), 40);
+          if (motionOK) e.animate([{ transform: 'scale(1,1)' }, { transform: 'scale(1.07,.97)', offset: .25 }, { transform: 'scale(.98,1.06)', offset: .55 }, { transform: 'scale(1,1)' }], { duration: 420, easing: 'ease-out' });
+          leafPuff(act, x + w / 2, y + h * .8, X, Y); };
+        act.appendChild(e); });
+    }
+    // critters: who is out depends on the hour; each turns up at one of its spots, a few at a time, and wanders off when found
+    const C = R.critters, ids = Object.keys(C).filter(k => critParam === 'all' || C[k].when === 'any' || (C[k].when === 'night') === night);
+    const spawn = (k, delay) => critT.push(setTimeout(() => { if (curId !== 'starfall' || act.querySelector(`.crit[data-k=${k}]`)) return; const c = C[k];
+      const [sx, sy] = c.spots[Math.floor(Math.random() * c.spots.length)], fly = c.fly || 0, flip = Math.random() < .5;
+      const el = document.createElement('div'); el.className = 'crit crit-' + k + (fly ? ' flying' : '') + (night && !c.glow ? ' dim' : ''); el.dataset.k = k; el.setAttribute('role', 'button'); el.setAttribute('aria-label', c.name);
+      Object.assign(el.style, { left: X(sx) + '%', top: Y(sy) + '%', zIndex: 1600 + Math.round(Y(sy)), '--w': X(c.w) + '%' });
+      el.innerHTML = `<i class="crit-sh"></i><img src="assets/sf44-crit-${k}.webp" alt="" draggable="false"${flip ? ' class="flip"' : ''}>`;
+      // sizes in % of the scene: the element itself is the tap target (a little bigger than the critter)
+      Object.assign(el.style, { width: X(Math.max(c.w, 30) + 30) + '%', height: Y(c.h + fly + 30) + '%', marginLeft: -X(Math.max(c.w, 30) + 30) / 2 + '%', marginTop: -Y(c.h + fly + 15) + '%' });
+      const im = el.querySelector('img'), sh = el.querySelector('i'); im.style.width = (c.w / (Math.max(c.w, 30) + 30) * 100) + '%'; im.style.bottom = ((15 + fly) / (c.h + fly + 30) * 100) + '%';
+      sh.style.width = (c.w * (fly ? .6 : 1.05) / (Math.max(c.w, 30) + 30) * 100) + '%'; sh.style.bottom = (13 / (c.h + fly + 30) * 100) + '%'; if (fly) sh.style.opacity = '.45';
+      el.onclick = ev => { ev.stopPropagation(); if (el.dataset.gone) return; el.dataset.gone = 1; buzz(8);
+        const J = store.get('critters', {}), n = (J[k] || 0) + 1; J[k] = n; store.set('critters', J);
+        try { pgNote(784, .25, 'sine', .08); setTimeout(() => pgNote(1046.5, .35, 'sine', .07), 110); } catch (e) {}
+        showBubble(el, c.name + (n > 1 ? ` ×${n}` : ' ✦ new!'), ' ' + c.note); critBadge();
+        const dir = (flip ? 1 : -1) * (c.walk ? 1 : 1), dx = fly ? 40 : 55, dy = fly ? -60 : 0;
+        el.animate([{ transform: 'translate(0,0)', opacity: 1 }, { transform: `translate(${-dir * dx}%,${dy}%)`, opacity: 0 }], { duration: motionOK ? 900 : 1, easing: 'ease-in', fill: 'forwards' });
+        setTimeout(() => el.remove(), 950); spawn(k, 25000 + Math.random() * 35000); };
+      act.appendChild(el); }, delay));
+    const shuffled = ids.sort(() => Math.random() - .5), first = critParam === 'all' ? ids.length : 1 + Math.floor(Math.random() * 2);
+    shuffled.forEach((k, i) => spawn(k, i < first ? 0 : 8000 + Math.random() * 30000));
+    critBadge();
+  }
+  function leafPuff(act, x, y, X, Y) { if (!motionOK) return;
+    for (let i = 0; i < 6; i++) { const l = document.createElement('i'); l.className = 'sf-leaf'; l.style.left = X(x) + '%'; l.style.top = Y(y) + '%'; l.style.background = ['#6f8a3a', '#9aa845', '#c9852e', '#7c6a2a'][i % 4];
+      act.appendChild(l); const a = Math.PI * (1.05 + i / 5 * .9), r = 26 + Math.random() * 20;
+      l.animate([{ transform: 'translate(-50%,-50%) rotate(0deg)', opacity: 1 }, { transform: `translate(calc(-50% + ${Math.cos(a) * r}px), calc(-50% + ${Math.sin(a) * r}px)) rotate(${200 + i * 40}deg)`, opacity: .9, offset: .55 }, { transform: `translate(calc(-50% + ${Math.cos(a) * r * 1.3}px), calc(-50% + ${Math.sin(a) * r * .4 + 14}px)) rotate(${320 + i * 50}deg)`, opacity: 0 }], { duration: 900 + i * 60, easing: 'ease-out' });
+      setTimeout(() => l.remove(), 1300); } }
+  function critBadge() { const J = store.get('critters', {}), n = Object.keys(J).length, tot = Object.keys((C.starfall.room.critters) || {}).length; $('#critBtn').textContent = `🐾 Critters ${n}/${tot}`; }
+  function openCritters() { const R = C.starfall.room, J = store.get('critters', {}), list = $('#critList'); list.innerHTML = '';
+    Object.entries(R.critters).forEach(([k, c]) => { const n = J[k] || 0, li = document.createElement('li'); li.className = n ? 'got' : 'missing';
+      li.innerHTML = n ? `<img src="assets/sf44-crit-${k}.webp" alt=""><div><b>${c.name}</b> <span class="cnt">×${n}</span><small>${c.note}</small></div>` : `<img src="assets/sf44-crit-${k}.webp" alt="" class="sil"><div><b>???</b><small>${c.when === 'night' ? 'Comes out after dark.' : c.when === 'day' ? 'Out in the daytime.' : 'Any time, if you look closely.'}</small></div>`;
+      list.appendChild(li); });
+    hideBubble(); $('#critters').hidden = false; }
   // ---------- bubbles ----------
   let bubbleT;
   function showBubble(el, name, text) {
@@ -1393,5 +1448,6 @@
     const openPoemsRefresh = () => fetch('poems.json', { cache: 'no-store' }).then(r => r.json()).catch(() => []).then(j => render([...mine(), ...(Array.isArray(j) ? j : [])]));
     $('#pCopy').onclick = () => navigator.clipboard.writeText(last).then(() => $('#pMsg').textContent = 'Copied!').catch(() => $('#pMsg').textContent = last);
   }
+  $('#critBtn').onclick = ev => { ev.stopPropagation(); openCritters(); }; $('#critDone').onclick = () => { $('#critters').hidden = true; }; $('#critters').onclick = e => { if (e.target.id === 'critters') $('#critters').hidden = true; };
   window.__bt = { openPoems, enter, go, cam, applyCam, where, locate, setOli, dayPlan, dayKey, push: (a, t) => pgPush(a, document.querySelector('#actors .swing-rider[data-toy=' + t + ']')) }; // handy for testing // handy for testing
 })();

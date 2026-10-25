@@ -380,3 +380,33 @@ button{font-family:inherit;color:inherit;cursor:pointer;touch-action:manipulatio
 @media (prefers-reduced-motion: reduce){#actors .owl.dozing img{animation:none}}
 /* v42: swing contact shadow */
 #actors .pg-swshadow{position:absolute;border-radius:50%;background:radial-gradient(closest-side,#1a240fcc,#1a240f66 55%,#0000);opacity:.8;pointer-events:none!important;transform-origin:50% 50%}
+/* v44: October pumpkins + critters (Starfall Hill) */
+#actors .sf-patch{position:absolute;pointer-events:none}
+#actors .sf-pk{position:absolute;transform-origin:50% 92%;cursor:pointer;pointer-events:auto;-webkit-user-drag:none}
+#actors .sf-leaf{position:absolute;width:6px;height:4px;border-radius:70% 0 70% 0;pointer-events:none;z-index:1800}
+#actors .crit{position:absolute;cursor:pointer;pointer-events:auto;animation:critIn .6s ease-out}
+#actors .crit img{position:absolute;left:50%;transform:translateX(-50%);height:auto;display:block;pointer-events:none}
+#actors .crit img.flip{transform:translateX(-50%) scaleX(-1)}
+#actors .crit .crit-sh{position:absolute;left:50%;transform:translate(-50%,50%);aspect-ratio:3/1;border-radius:50%;background:radial-gradient(closest-side,#1c2410a0,#1c241040 60%,#0000)}
+#actors .crit.dim img{filter:brightness(.62) saturate(.7) hue-rotate(-8deg)}
+#actors .crit.dim .crit-sh{opacity:.6}
+#actors .crit.flying img{animation:critBob 2.6s ease-in-out infinite}
+#actors .crit-butterfly img{animation:critBob 2.6s ease-in-out infinite,critFlap .32s ease-in-out infinite alternate!important}
+#actors .crit-firefly img{filter:drop-shadow(0 0 3px #ffe58a) drop-shadow(0 0 6px #ffd24a);animation:critBob 3.4s ease-in-out infinite,critGlow 2.2s ease-in-out infinite!important}
+#actors .crit-firefly .crit-sh{background:radial-gradient(closest-side,#ffe28a55,#0000)!important}
+#actors .crit-hedgehog img,#actors .crit-squirrel img{animation:critSniff 3.2s ease-in-out infinite}
+@keyframes critIn{from{opacity:0}to{opacity:1}}
+@keyframes critBob{0%,100%{translate:0 0}50%{translate:0 -10%}}
+@keyframes critFlap{from{scale:1 1}to{scale:.55 1}}
+@keyframes critGlow{0%,100%{opacity:.75}50%{opacity:1}}
+@keyframes critSniff{0%,80%,100%{translate:0 0}85%{translate:0 -4%}90%{translate:0 0}95%{translate:0 -3%}}
+@media (prefers-reduced-motion:reduce){#actors .crit img{animation:none!important}}
+#critBtn{position:absolute;z-index:6;left:12px;bottom:calc(env(safe-area-inset-bottom) + 18px);min-height:44px}
+#critBtn[hidden]{display:none}
+#critList{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+#critList li{display:flex;gap:10px;align-items:center;background:#fff7e6;border:1.5px solid #d9b98a;border-radius:12px;padding:8px}
+#critList img{width:54px;height:54px;object-fit:contain;flex:none}
+#critList img.sil{filter:brightness(0) opacity(.25)}
+#critList b{font:700 15px Grandstander,cursive;color:#6b3f1f}
+#critList .cnt{color:#a0612a;font-weight:700}
+#critList small{display:block;color:#6b3f1f;font-size:13px;line-height:1.35}

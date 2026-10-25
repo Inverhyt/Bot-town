@@ -166,6 +166,17 @@ window.BOT_TOWN = {
         aspect: 2260 / 720, scroll: true,
         backdrop: "radial-gradient(circle at 50% 38%, #4a3568, #2a1c40 55%, #140e22)",
         glows: [], // the lantern light is painted into the art
+        // v44: October pumpkin patch (art px of the 720x2260 park; shown only in October by local month, ?month=10 to test)
+        october: { day: "assets/sf44-pumpkins-day.webp", night: "assets/sf44-pumpkins-night.webp", box: [521.3, 1020, 127.4, 84], pk: "assets/sf44-pk",
+          pumpkins: [[552.5, 1028.3, 36.3, 33.9], [593.5, 1031.5, 28.8, 28.3], [543.6, 1057.1, 21.1, 18.8], [598.6, 1057.5, 25.3, 23.5], [575.1, 1071.9, 18.9, 16.7]] },
+        // v44: critters to collect. w/h = art px, spots = [x, feet y] art px, fly = hover height px, when = day | night | any
+        critters: {
+          hedgehog: { name: "Hedgehog", w: 34, h: 26.2, when: "night", walk: true, note: "Snuffled past on tiny feet, looking for beetles.", spots: [[500, 1740], [330, 1450], [140, 2090], [90, 1040]] },
+          snail: { name: "Snail", w: 22, h: 13.5, when: "any", walk: true, note: "In no hurry at all. A shiny trail says hello.", spots: [[330, 2005], [322, 1528], [470, 1112], [640, 735]] },
+          butterfly: { name: "Butterfly", w: 22, h: 19.9, when: "day", fly: 20, note: "Danced over the flowers and winked its wings.", spots: [[512, 2040], [80, 2172], [672, 1700], [662, 552]] },
+          squirrel: { name: "Squirrel", w: 30, h: 30.1, when: "day", note: "Hid an acorn for later. Very busy, very fluffy.", spots: [[344, 1744], [362, 1392], [130, 552], [600, 1780]] },
+          firefly: { name: "Firefly", w: 14, h: 13.1, when: "night", fly: 26, glow: true, note: "A tiny lantern that blinks back at you.", spots: [[287, 1650], [200, 1250], [600, 1300], [470, 1880]] }
+        },
         // tap zones (percent of the scene) that show a caption bubble
         spots: [
           { label: "Hill crest", caption: "Olithia's mat under the blossom tree.", join: true, seats: [{ x: 52, y: 20, patch: "crest" }], zone: { left: 26.8, top: 1.8, width: 61.4, height: 20.3 } }, // v31: only spot where Olithia plays her handpan
