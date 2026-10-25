@@ -64,9 +64,27 @@
   const tasksDone = id => store.get('tasks-' + id, []);
   const isBusy = id => { const o = store.get('busy-' + id, null); return o !== null ? o : (C[id].tasks || []).some((_, i) => !tasksDone(id)[i]); };
 
+  // Bedrooms show their sleeping image at night, or when the owner is set to sleep
+  // (localStorage bt-asleep-<id> = true/false overrides the clock; ?sleep=1 / ?sleep=0 to test).
+  const sleepParam = new URLSearchParams(location.search).get('sleep');
+  function isAsleep(id) {
+    if (sleepParam !== null) return sleepParam === '1';
+    const o = store.get('asleep-' + id, null); if (o !== null) return !!o;
+    const [from, to] = CFG.sleepHours || [22, 7], h = new Date().getHours();
+    return from > to ? (h >= from || h < to) : (h >= from && h < to);
+  }
   function roomURL() {
     if (cur.room.poses) return cur.room.poses[pose] || cur.room.poses.idle;
+    if (cur.room.sleeping && isAsleep(cur.returnTo || curId)) return cur.room.sleeping;
     return cur.room.image;
+  }
+  function applyBackdrop() {
+    const url = roomURL();
+    const night = !!(cur.room.sleeping && url === cur.room.sleeping);
+    $('#house').style.background = night
+      ? 'radial-gradient(circle at 50% 45%, #141a2e, #0b0f1c)'
+      : (cur.room.backdrop || '');
+    return url;
   }
   let fadeGen = 0, frontPose = 0;
   function showRoom(url, fade) {
@@ -95,9 +113,8 @@
   function enter(id, opts = {}) {
     curId = id; cur = C[id]; visiting = false;
     pose = cur.room.poses ? (poseMemory[id] || 'idle') : 'idle';
-    $('#house').style.background = cur.room.backdrop;
     $('#house').style.opacity = '';
-    showRoom(roomURL(), false);
+    showRoom(applyBackdrop(), false);
     $('#roomImg').alt = cur.house; $('#roomFade').alt = '';
     $('#houseName').textContent = cur.house; $('#houseRole').textContent = `${cur.name} · ${cur.role}`;
     $('#chat').hidden = true; $('#log').innerHTML = ''; hideBubble();
@@ -346,7 +363,7 @@
   // ---------- loader ----------
   (function () {
     const tips = CFG.loadingTips || [];
-    const urls = ['assets/map-v2.webp', ...Object.values(C).flatMap(c => [c.sprite, c.mapImage, c.room && c.room.image, ...Object.values(c.room.poses || {}), ...(c.pets || []).filter(p => p.sprite).map(p => p.sprite)])].filter(Boolean);
+    const urls = ['assets/map-v2.webp', ...Object.values(C).flatMap(c => [c.sprite, c.mapImage, c.room && c.room.image, c.room && c.room.sleeping, ...Object.values(c.room.poses || {}), ...(c.pets || []).filter(p => p.sprite).map(p => p.sprite)])].filter(Boolean);
     let done = 0, ti = 0; const t0 = Date.now(), slow = +(new URLSearchParams(location.search).get('loaddelay') || 0);
     const tipEl = $('#tip'); if (tips.length) tipEl.textContent = tips[0];
     const tipTimer = setInterval(() => { tipEl.style.opacity = 0; setTimeout(() => { ti = (ti + 1) % tips.length; tipEl.textContent = tips[ti]; tipEl.style.opacity = 1; }, 300); }, 1800);
@@ -482,6 +499,7 @@
     $('#tint').style.background = bg;
   }
   tint(); setInterval(tint, 60000);
+  setInterval(() => { if (cur && cur.room.sleeping) showRoom(applyBackdrop(), true); }, 60000); // crossfade at bedtime / wake-up
   if (location.hash) history.replaceState(null, '', location.pathname + location.search);
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');
   window.__bt = { enter, go, cam, applyCam }; // handy for testing

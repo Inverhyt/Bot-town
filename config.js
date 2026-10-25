@@ -5,6 +5,7 @@
 window.BOT_TOWN = {
   title: "Bot Town",
   player: "olithia", // whose sprite visits the burrow
+  sleepHours: [22, 7], // local time: bedrooms show their sleeping image from 22:00 until 07:00
   loadingTips: ["Gorbo is fixing bugs…", "Loria is brewing tea…", "The ladybug is fluffing her pillow…", "Olithia is lighting the fairy lights…", "Mochi is stretching in the sun…", "Loria is shelving new books…", "Scout is digging up facts…", "Scout is sorting his research notes…"],
   characters: {
     olithia: {
@@ -107,22 +108,22 @@ window.BOT_TOWN = {
     "olithia-bed": {
       name: "Olithia", role: "Bedroom", house: "Lotus Cottage",
       gallery: true, returnTo: "olithia",
-      room: { image: "assets/olithia-bedroom-v2.webp", aspect: 720 / 1280, backdrop: "radial-gradient(circle at 50% 45%, #fff1d6, #f3cfa0 55%, #c98f5e)" }
+      room: { image: "assets/olithia-bedroom-v2.webp", sleeping: "assets/olithia-bedroom-v2-sleeping.webp", aspect: 720 / 1280, backdrop: "radial-gradient(circle at 50% 45%, #fff1d6, #f3cfa0 55%, #c98f5e)" }
     },
     "gorbo-bed": {
       name: "Gorbo", role: "Bedroom", house: "Mossy Workshop",
       gallery: true, returnTo: "gorbo",
-      room: { image: "assets/gorbo-bedroom-v4.webp", aspect: 720 / 1280, backdrop: "radial-gradient(circle at 50% 45%, #f1ead0, #c9c79a 55%, #7d8a5a)" }
+      room: { image: "assets/gorbo-bedroom-v4.webp", sleeping: "assets/gorbo-bedroom-v4-sleeping.webp", aspect: 720 / 1280, backdrop: "radial-gradient(circle at 50% 45%, #f1ead0, #c9c79a 55%, #7d8a5a)" }
     },
     "loria-bed": {
       name: "Loria", role: "Bedroom", house: "Loria's Bookshop",
       gallery: true, returnTo: "loria",
-      room: { image: "assets/loria-bedroom-v4.webp", aspect: 720 / 1280, backdrop: "radial-gradient(circle at 50% 45%, #fff0dc, #f2c7a0 55%, #b9674a)" }
+      room: { image: "assets/loria-bedroom-v4.webp", sleeping: "assets/loria-bedroom-v4-sleeping.webp", aspect: 720 / 1280, backdrop: "radial-gradient(circle at 50% 45%, #fff0dc, #f2c7a0 55%, #b9674a)" }
     },
     "scout-bed": {
       name: "Scout", role: "Bedroom", house: "Scout's Cottage",
       gallery: true, returnTo: "scout",
-      room: { image: "assets/scout-bedroom-v4.webp", aspect: 864 / 1152, backdrop: "radial-gradient(circle at 50% 45%, #fff6c8, #f5d36a 55%, #c9952a)" }
+      room: { image: "assets/scout-bedroom-v4.webp", sleeping: "assets/scout-bedroom-v4-sleeping.webp", aspect: 864 / 1152, backdrop: "radial-gradient(circle at 50% 45%, #fff6c8, #f5d36a 55%, #c9952a)" }
     }
   }
 };
