@@ -3,6 +3,7 @@
 // Painted houses use poses (idle / working / sitting) instead of a separate character sprite. v26: no pose buttons; the pose comes from locate().
 // Door rects are % so they scale; they were measured in image pixels and padded a little for fingers.
 window.BOT_TOWN = {
+  blueStar: { label: "" }, // v32: the little blue star. Add a name here if you like; tapping shows 💙
   title: "Bot Town",
   player: "olithia", // whose sprite visits the burrow
   // v26: every character (the three bots and Olithia) is in exactly ONE scene at a time; app.js locate(id) decides which.
@@ -125,6 +126,7 @@ window.BOT_TOWN = {
         // bedroom door on the back wall. Art: x=645-690, y=368-487 on 1152×864.
         bedroom: { to: "scout-bed", label: "Scout's bedroom", door: { left: 55.1, top: 41.7, width: 6.9, height: 15.6 } },
         // v28: tap the desk to send scout to work, the seating to sit, the floor (or scout) for idle
+        spots: [{ label: "Star chart", sky: true, zone: { left: 39.8, top: 38.5, width: 8.8, height: 10 } }], // v32
         objects: [
           { pose: "working", label: "Desk", zone: { left: 36, top: 46, width: 15, height: 13 } },
           { pose: "idle", label: "Floor", floor: true, zone: { left: 4, top: 55, width: 92, height: 40 } }
@@ -150,7 +152,7 @@ window.BOT_TOWN = {
         scopeAnchor: { gorbo: [.165, .188], loria: [.211, .076], scout: [.134, .137], olithia: [.173, .074] }, scopeFeet: 5.9,
         // v31 STANDING RULE: characters must fit naturally into their environment. Each park seat is a per-character patch painted into
         // the exact base crop (right pose, scale, light, contact shadow, occlusion). Olithia plays the handpan ONLY at the hill crest.
-        parkPatch: "assets/park-v31/", parkBox: {"crest-gorbo":[46.11,14.65,14.03,5.53],"crest-loria":[42.78,13.89,18.33,6.15],"crest-scout":[45.0,13.36,19.72,6.99],"crest-olithia":[44.44,13.23,18.33,7.21],"blanket-gorbo":[32.92,34.78,15.83,6.81],"blanket-loria":[29.31,34.87,21.25,7.26],"blanket-scout":[31.11,34.6,21.53,7.61],"blanket-olithia":[32.5,34.73,18.75,7.43],"board-gorbo":[41.53,63.1,15.42,6.86],"board-loria":[38.33,62.92,13.19,8.19],"board-scout":[37.5,62.65,15.97,8.32],"board-olithia":[38.89,62.65,14.44,9.42],"tea-gorbo":[67.08,64.96,15.14,6.19],"tea-loria":[67.78,64.12,32.22,11.11],"tea-scout":[63.75,63.63,18.89,8.89],"tea-olithia":[68.33,63.5,16.11,9.34],"nook-gorbo":[8.47,81.9,19.31,6.24],"nook-loria":[9.03,80.62,22.92,7.92],"nook-scout":[10.42,80.31,22.36,9.29],"nook-olithia":[11.67,80.31,22.22,9.51],"swap-gorbo":[46.81,81.86,16.25,6.5],"swap-loria":[47.64,81.55,16.25,7.17],"swap-scout":[45.14,81.73,17.64,6.73],"swap-olithia":[48.33,81.5,14.58,6.77],"market-gorbo":[66.25,91.33,19.44,7.92],"market-loria":[69.03,91.81,12.22,7.57],"market-scout":[62.78,90.04,17.78,8.98],"market-olithia":[67.78,89.82,12.64,7.83]}, // <seat>-<id>[-night].webp; box = [left, top, width, height] %
+        parkPatch: "assets/park-v31/", parkBox: {"scope-olithia":[47.92,28.67,12.5,7.17],"crest-gorbo":[46.11,14.65,14.03,5.53],"crest-loria":[42.78,13.89,18.33,6.15],"crest-scout":[45.0,13.36,19.72,6.99],"crest-olithia":[44.44,13.23,18.33,7.21],"blanket-gorbo":[32.92,34.78,15.83,6.81],"blanket-loria":[29.31,34.87,21.25,7.26],"blanket-scout":[31.11,34.6,21.53,7.61],"blanket-olithia":[32.5,34.73,18.75,7.43],"board-gorbo":[41.53,63.1,15.42,6.86],"board-loria":[38.33,62.92,13.19,8.19],"board-scout":[37.5,62.65,15.97,8.32],"board-olithia":[38.89,62.65,14.44,9.42],"tea-gorbo":[67.08,64.96,15.14,6.19],"tea-loria":[67.78,64.12,32.22,11.11],"tea-scout":[63.75,63.63,18.89,8.89],"tea-olithia":[68.33,63.5,16.11,9.34],"nook-gorbo":[8.47,81.9,19.31,6.24],"nook-loria":[9.03,80.62,22.92,7.92],"nook-scout":[10.42,80.31,22.36,9.29],"nook-olithia":[11.67,80.31,22.22,9.51],"swap-gorbo":[46.81,81.86,16.25,6.5],"swap-loria":[47.64,81.55,16.25,7.17],"swap-scout":[45.14,81.73,17.64,6.73],"swap-olithia":[48.33,81.5,14.58,6.77],"market-gorbo":[66.25,91.33,19.44,7.92],"market-loria":[69.03,91.81,12.22,7.57],"market-scout":[62.78,90.04,17.78,8.98],"market-olithia":[67.78,89.82,12.64,7.83]}, // <seat>-<id>[-night].webp; box = [left, top, width, height] %
         parkH: { sit: .17, read: .17, scope: .25 }, // sprite height as a fraction of the park width
         aspect: 2260 / 720, scroll: true,
         backdrop: "radial-gradient(circle at 50% 38%, #4a3568, #2a1c40 55%, #140e22)",
@@ -158,12 +160,13 @@ window.BOT_TOWN = {
         // tap zones (percent of the scene) that show a caption bubble
         spots: [
           { label: "Hill crest", caption: "Olithia's mat under the blossom tree.", join: true, seats: [{ x: 52, y: 20, patch: "crest" }], zone: { left: 26.8, top: 1.8, width: 61.4, height: 20.3 } }, // v31: only spot where Olithia plays her handpan
-          { label: "Stargazing spot", caption: "The telescope and the picnic blankets.", seats: [{ x: 51.6, y: 30.9, kind: "scope" }, { x: 38, y: 42, patch: "blanket" }], zone: { left: 15.3, top: 28.1, width: 72.9, height: 14.0 } },
+          { label: "Stargazing spot", caption: "The telescope and the picnic blankets.", seats: [{ x: 51.6, y: 30.9, kind: "scope", patch: "scope" }, { x: 38, y: 42, patch: "blanket" }], zone: { left: 15.3, top: 28.1, width: 72.9, height: 14.0 } },
           { label: "Noticeboard", caption: "Town notes, lost mittens and tea invites.", seats: [{ x: 50, y: 69, patch: "board" }], zone: { left: 41.4, top: 61.1, width: 19.2, height: 7.9 } },
           { label: "Tea pavilion", caption: "The shared teapot is always warm here.", seats: [{ x: 75, y: 70, patch: "tea" }], zone: { left: 60.6, top: 52.5, width: 39.4, height: 20.7 } },
           { label: "Willow reading nook", caption: "A cushioned bench under the lantern-lit willow.", seats: [{ x: 20, y: 86, patch: "nook" }], zone: { left: 0, top: 64.7, width: 38.3, height: 28.1 } },
           { label: "Book-swap box", caption: "Take a book, leave a book.", poems: true, seats: [{ x: 60, y: 87, patch: "swap" }], zone: { left: 38.3, top: 76.3, width: 19.2, height: 9.8 } },
-          { label: "Seasonal market", caption: "Pumpkins, apples and jam this season.", seats: [{ x: 80, y: 97, patch: "market" }], zone: { left: 74.7, top: 79.4, width: 25.3, height: 20.6 } }
+          { label: "Seasonal market", caption: "Pumpkins, apples and jam this season.", seats: [{ x: 80, y: 97, patch: "market" }], zone: { left: 74.7, top: 79.4, width: 25.3, height: 20.6 } },
+          { label: "Telescope", sky: true, zone: { left: 35, top: 28.2, width: 17, height: 5.2 } } // v32: look through it at the Bot Town sky
         ]
       }
     },

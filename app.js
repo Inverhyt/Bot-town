@@ -379,10 +379,13 @@
     if (bed) doorZone(bed.door, bed.label, () => travel(bed.to, { door: true }));
     if (cur.returnTo && cur.room.door) doorZone(cur.room.door, 'Back to the house', () => travel(cur.returnTo, { door: true })); // v29: bedroom door -> house
     (cur.room.spots || []).forEach((s, si) => { const el = addZone(s.zone, s.label, () => {
+      if (s.sky) { if (window.BotSky) BotSky.open(); return; }
       if (s.poems) openPoems();
       if (s.seats && curId === 'starfall') sitInPark(si, el); // v29: any spot is a seat for Olithia (if one is free)
       else if (!s.poems) showBubble(el, s.label, s.caption);
     }); el.classList.remove('glow'); }); // invisible until tapped
+    if (curId === 'starfall' && isNight()) { const b = document.createElement('div'); b.className = 'bluestar'; b.setAttribute('role', 'button'); b.setAttribute('aria-label', 'A little blue star');
+      b.onclick = ev => { ev.stopPropagation(); const lab = (CFG.blueStar || {}).label || ''; showBubble(b, '💙', lab); }; $('#actors').appendChild(b); } // v32
     if (cur.room.visit && cur.room.seat && curId !== CFG.player && (hostHome() || visiting || isBot(curId))) { const el = addZone(cur.room.seat, visiting ? 'Leave the seat' : `Sit with ${cur.name}`, toggleSeat); el.className = 'link zone door seatz'; hintOnce(el, 'seat'); }
   }
   // Painted houses: Olithia sits with the host (the -visit image); tap again to send her home.
@@ -1022,12 +1025,31 @@
   (() => { const h = document.createElement('div'); h.className = 'hot plaza'; h.setAttribute('role', 'button'); h.setAttribute('aria-label', 'Town board');
     Object.assign(h.style, { left: '40.3%', top: '41.5%', width: '19.4%', height: '6.1%' }); h.innerHTML = '<span class="label">Town board</span>';
     h.addEventListener('click', () => { if (!mapDragged()) openBoard(); }); $('#hotspots').appendChild(h); })();
+  // v32: reactions under each bulletin note (saved locally; board.json reactions.olithia = recorded, shared across devices)
+  const REACT = [['yes', '👍 Yes'], ['no', '👎 No'], ['love', '❤️']], ASKR = [['do', 'Yes, do it'], ['notnow', 'Not now']];
+  const RLAB = { yes: '👍 yes', no: '👎 no', love: '❤️', do: 'yes, do it', notnow: 'not now' };
+  const noteId = n => n.id ? String(n.id) : 'n' + [...String(n.from || '') + '|' + n.text].reduce((h, c) => (h * 31 + c.charCodeAt(0)) | 0, 7).toString(36);
+  function noteReactions(d, n) {
+    const id = noteId(n), ask = n.ask === true || (n.ask !== false && String(n.text).includes('?'));
+    const rec = n.reactions && n.reactions[CFG.player], f = String(n.from || '').toLowerCase(), who = isBot(f) ? botName(f) : (n.from || 'the board');
+    const bar = document.createElement('div'); bar.className = 'reacts'; d.appendChild(bar);
+    if (ask) d.classList.add('ask');
+    const draw = () => { const mine = store.get('react-' + id, null) || rec; bar.innerHTML = '';
+      (ask ? ASKR.concat(REACT) : REACT).forEach(([k, lab]) => { const b = document.createElement('button'); b.type = 'button'; b.textContent = lab; b.className = (ask && (k === 'do' || k === 'notnow') ? 'big ' : '') + (mine === k ? 'on' : '');
+        b.onclick = ev => { ev.stopPropagation(); store.set('react-' + id, k); draw(); }; bar.appendChild(b); });
+      if (rec) { const r = document.createElement('small'); r.className = 'rec'; r.textContent = 'Recorded: ' + RLAB[rec]; bar.appendChild(r); }
+      const local = store.get('react-' + id, null);
+      if (local && local !== rec) { const c = document.createElement('button'); c.type = 'button'; c.className = 'copy'; c.textContent = 'Copy reply';
+        const txt = `Board reply to ${who}: ${RLAB[local]} — "${n.text}"`;
+        c.onclick = async ev => { ev.stopPropagation(); toast((await copyText(txt)) ? 'Copied! Paste it in chat.' : txt); }; bar.appendChild(c); } };
+    draw();
+  }
   // bulletin board in the playground
   function openNotes() {
     const list = $('#notesList'); list.innerHTML = '';
     if (!boardNotes.length) { const p = document.createElement('p'); p.className = 'empty'; p.textContent = 'No notes pinned yet.'; list.appendChild(p); }
     boardNotes.forEach((n, i) => { const d = document.createElement('div'); d.className = 'note'; d.style.transform = `rotate(${[-1.5, 1.2, -.8, 1.6][i % 4]}deg)`; const f = String(n.from || '').toLowerCase();
-      d.innerHTML = `<p></p><small>${esc(isBot(f) ? botName(f) : (n.from || ''))}${n.date ? ' · ' + esc(n.date) : ''}</small>`; d.querySelector('p').textContent = n.text; list.appendChild(d); });
+      d.innerHTML = `<p></p><small>${esc(isBot(f) ? botName(f) : (n.from || ''))}${n.date ? ' · ' + esc(n.date) : ''}</small>`; d.querySelector('p').textContent = n.text; list.appendChild(d); noteReactions(d, n); });
     $('#notes').hidden = false;
   }
   $('#notesClose').onclick = () => { $('#notes').hidden = true; };
