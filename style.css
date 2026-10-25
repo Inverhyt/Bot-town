@@ -284,3 +284,12 @@ button{font-family:inherit;color:inherit;cursor:pointer;touch-action:manipulatio
 #poems article{background:#fff;border-radius:12px;padding:10px;margin:8px 0}#poems pre{white-space:pre-wrap;font:inherit;margin:6px 0}
 #poems input,#poems textarea{width:100%;box-sizing:border-box;margin:4px 0;padding:8px;border-radius:10px;border:1px solid #d9c4a0;font:inherit}
 #poems .prow{display:flex;gap:8px;margin:6px 0}
+
+/* v29: glowing doors (no labels), seat glow, park poses */
+.link.zone.door{border-radius:40% 40% 10px 10px;transition:box-shadow .25s,background .25s}
+.link.zone.door:hover,.link.zone.door:active,.link.zone.door.open{background:radial-gradient(ellipse at 50% 60%,#ffe7a855,#ffd27a22 60%,transparent 75%);box-shadow:0 0 22px 6px #ffd98a99,inset 0 0 14px 3px #fff1c8aa}
+.link.zone.door.open{background:radial-gradient(ellipse at 50% 55%,#fff4d0cc,#ffd98a66 55%,transparent 80%)}
+.link.zone.seatz{border-radius:30%}
+.link.zone.door.hint{animation:objHint 1.6s ease-in-out 3}
+#actors .park-pose{filter:drop-shadow(0 4px 3px #0006) sepia(.08) saturate(1.02)}
+#actors .park-pose.night{filter:drop-shadow(0 4px 3px #0008) brightness(.62) saturate(.8) sepia(.18) hue-rotate(-8deg)}

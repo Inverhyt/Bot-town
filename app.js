@@ -110,7 +110,7 @@
     if (id === CFG.player) {
       const o = store.get('olithia-at', null), ok = o && C[o.scene];
       const scene = ok ? o.scene : id, pose = ok ? (o.pose || 'idle') : 'idle';
-      return { scene, place: scene, pose, note: '', live: false };
+      return { scene, place: scene, pose, note: '', live: false, spot: ok ? o.spot : undefined };
     }
     const ask = store.get('ask-' + id, null); // v28: "Olithia asked" override, 60 min
     const w = ask && ask.until > Date.now() && C[ask.place] ? { place: ask.place, pose: ask.pose, note: 'Olithia asked', live: false } : (liveAll[id] || scheduled(id)); let scene = w.place, pose = w.pose;
@@ -355,6 +355,12 @@
   $('#tbVisit').onclick = toggleVisit;
 
   // ---------- links between houses (e.g. Loria's ↔ Scout's burrow) ----------
+  // v29: painted doors are the tap zones: a warm glow on touch/hover, a brief bloom, then the walk-through
+  function hintOnce(el, k) { const key = 'hint-' + k + '-' + curId; if (!store.get(key, false)) { store.set(key, true); el.classList.add('hint'); } }
+  function doorZone(zone, label, go) {
+    const el = addZone(zone, label, () => { el.classList.add('open'); setTimeout(go, 260); });
+    el.className = 'link zone door'; hintOnce(el, 'door'); return el;
+  }
   function addZone(zone, label, fn, tag) {
     const el = document.createElement('div');
     el.className = 'link zone glow';
@@ -370,13 +376,14 @@
     (cur.room.objects || []).forEach(o => { const el = addZone(o.zone, o.label, () => tapObject(o)); el.classList.remove('glow'); el.classList.add('obj'); el.style.zIndex = o.floor ? 500 : 600; });
     if ((cur.room.objects || []).length && !store.get('hinted-' + curId, false)) { store.set('hinted-' + curId, true); $('#actors').querySelectorAll('.obj:not([aria-label=Floor])').forEach(e => e.classList.add('hint')); }
     const bed = cur.room.bedroom;
-    if (bed) addZone(bed.door, bed.label, () => travel(bed.to, { door: true }), 'Bedroom');
-    (cur.room.spots || []).forEach(s => { const el = addZone(s.zone, s.label, () => {
-      if (s.join && locate(CFG.player).scene !== curId) { setOli(curId, 'sitting'); showBubble(el, C[CFG.player].name, 'Up on the crest with her handpan 🎶'); }
-      else if (s.poems) openPoems();
-      else showBubble(el, s.label, s.caption);
+    if (bed) doorZone(bed.door, bed.label, () => travel(bed.to, { door: true }));
+    if (cur.returnTo && cur.room.door) doorZone(cur.room.door, 'Back to the house', () => travel(cur.returnTo, { door: true })); // v29: bedroom door -> house
+    (cur.room.spots || []).forEach((s, si) => { const el = addZone(s.zone, s.label, () => {
+      if (s.poems) openPoems();
+      if (s.seats && curId === 'starfall') sitInPark(si, el); // v29: any spot is a seat for Olithia (if one is free)
+      else if (!s.poems) showBubble(el, s.label, s.caption);
     }); el.classList.remove('glow'); }); // invisible until tapped
-    if (cur.room.visit && cur.room.seat && curId !== CFG.player && (hostHome() || visiting || isBot(curId))) addZone(cur.room.seat, visiting ? 'Leave the seat' : `Sit with ${cur.name}`, toggleSeat, visiting ? 'Leave seat' : 'Sit together');
+    if (cur.room.visit && cur.room.seat && curId !== CFG.player && (hostHome() || visiting || isBot(curId))) { const el = addZone(cur.room.seat, visiting ? 'Leave the seat' : `Sit with ${cur.name}`, toggleSeat); el.className = 'link zone door seatz'; hintOnce(el, 'seat'); }
   }
   // Painted houses: Olithia sits with the host (the -visit image); tap again to send her home.
   function toggleSeat() { if (isBot(curId) && !visiting) askBot(curId, curId, 'sitting'); if (visiting) setOli(CFG.player, 'idle'); else setOli(curId, 'visit'); }
@@ -394,11 +401,11 @@
     links.forEach((l, i) => {
       if (i === 0) { btn.innerHTML = (IC[l.icon] || '') + `<span>${l.label}</span>`; btn.onclick = () => travel(l.to, { replace: true, door: true }); }
       const el = document.createElement('div');
-      if (l.zone) { el.className = 'link zone glow'; Object.assign(el.style, { left: l.zone.left + '%', top: l.zone.top + '%', width: l.zone.width + '%', height: l.zone.height + '%' }); }
+      if (l.zone) { el.className = 'link zone door'; hintOnce(el, 'link' + i); Object.assign(el.style, { left: l.zone.left + '%', top: l.zone.top + '%', width: l.zone.width + '%', height: l.zone.height + '%' }); }
       else if (l.badge) { el.className = 'link badge'; Object.assign(el.style, { left: l.badge.x + '%', top: l.badge.y + '%' }); el.innerHTML = IC.ladder; }
       else return;
       el.setAttribute('role', 'button'); el.setAttribute('aria-label', l.label);
-      el.onclick = ev => { ev.stopPropagation(); travel(l.to, { replace: true, door: true }); };
+      el.onclick = ev => { ev.stopPropagation(); el.classList.add('open'); setTimeout(() => travel(l.to, { replace: true, door: true }), 260); };
       $('#actors').appendChild(el);
     });
   }
@@ -655,6 +662,32 @@
     showManual(payload, out); return true;
   }
 
+  // ----- v29: Starfall Hill seat allocator. Spots are shared; one character per seat. -----
+  // Preferred spot: Olithia's tap (bt-olithia-at.spot), status.json "spot" (label or index), else a per-hour pick. Taken -> next free spot.
+  function parkSeats() {
+    const P = C.starfall && C.starfall.room, spots = (P && P.spots) || [], out = {}, used = new Set();
+    const idx = v => { if (v == null) return -1; const n = typeof v === 'number' ? v : spots.findIndex(s => s.label.toLowerCase() === String(v).toLowerCase()); return n >= 0 && n < spots.length ? n : -1; };
+    const who = [CFG.player, ...BOTS].filter(b => locate(b).scene === 'starfall');
+    who.forEach(b => {
+      const L = locate(b); let pref = idx(L.spot);
+      if (pref < 0) { const h = Math.floor(Date.now() / 3600e3); pref = [...(b + h)].reduce((s, ch) => (s * 31 + ch.charCodeAt(0)) >>> 0, 7) % spots.length; }
+      for (let k = 0; k < spots.length; k++) {
+        const si = (pref + k) % spots.length, seats = spots[si].seats || [];
+        const free = seats.findIndex((_, j) => !used.has(si + ':' + j));
+        if (free >= 0) { used.add(si + ':' + free); out[b] = { spot: si, seat: seats[free] }; break; }
+      }
+    });
+    return out;
+  }
+  const seatFree = si => { const s = C.starfall.room.spots[si], taken = Object.values(parkSeats()).filter(o => o.spot === si && o !== parkSeats()[CFG.player]).length; return taken < (s.seats || []).length; };
+  function sitInPark(si, el) {
+    const s = C.starfall.room.spots[si], mine = parkSeats()[CFG.player];
+    if (mine && mine.spot === si) return showBubble(el, s.label, s.caption);
+    const others = Object.entries(parkSeats()).filter(([b, o]) => b !== CFG.player && o.spot === si).map(([b]) => botName(b));
+    if (others.length >= (s.seats || []).length) return showBubble(el, s.label, `Taken: ${others.join(' & ')} ${others.length > 1 ? 'are' : 'is'} here. Try another spot!`);
+    store.set('olithia-at', { scene: 'starfall', pose: 'sitting', spot: si }); applyLive();
+    showBubble(el, C[CFG.player].name, others.length ? `Sitting beside ${others.join(' & ')} 💛` : s.caption);
+  }
   // ----- guests: a bot standing in a scene it isn't painted into, or its painted park pose -----
   function buildGuests() {
     $('#actors').querySelectorAll('.guest,.cameo').forEach(e => e.remove());
@@ -670,7 +703,14 @@
           const st = cur.room.seat; spot = { x: st.left + st.width / 2, y: st.top + st.height * .85 }; }
       }
       let el;
-      if (cam) {
+      const seat = cur.room.parkPoses && parkSeats()[b];
+      if (seat) {
+        const k = seat.seat.kind || 'sit';
+        el = document.createElement('img'); el.className = 'guest park-pose' + (isNight() ? ' night' : ''); el.alt = botName(b); el.draggable = false;
+        el.src = cur.room.parkPoses[k] + b + '.webp';
+        const hPct = (cur.room.parkH[k] || .17) * 100 / cur.room.aspect;
+        Object.assign(el.style, { left: seat.seat.x + '%', top: seat.seat.y + '%', height: hPct + '%', zIndex: Math.round(seat.seat.y * 10) });
+      } else if (cam) {
         el = document.createElement('img'); el.className = 'cameo'; el.alt = botName(b); el.draggable = false;
         el.src = (cur.room.night && roomURL() === cur.room.night) ? cam.night : cam.day;
         Object.assign(el.style, { left: cam.box.left + '%', top: cam.box.top + '%', width: cam.box.width + '%', height: cam.box.height + '%' });
@@ -736,7 +776,7 @@
         let p = LIVE_POSES.includes(g.pose) ? g.pose : 'idle';
         if ((p === 'sleeping' || p === 'awake') && place === b) place = b + '-bed'; // asleep / up: in its own bedroom
         if ((p === 'sleeping' || p === 'awake') && place !== b + '-bed') p = 'idle'; // a bot only sleeps in its own bed
-        next[b] = { place, pose: p, note: typeof g.note === 'string' ? g.note.trim().slice(0, 140) : '', live: true };
+        next[b] = { place, pose: p, note: typeof g.note === 'string' ? g.note.trim().slice(0, 140) : '', live: true, spot: g.spot };
       });
     } catch (e) { statusFresh = false; }
     liveAll = next;

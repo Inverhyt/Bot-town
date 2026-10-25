@@ -1,7 +1,7 @@
-const CACHE = 'bot-town-v28';
+const CACHE = 'bot-town-v29';
 const ASSETS = ['./', 'index.html', 'style.css', 'config.js', 'music.js', 'app.js', 'manifest.json',
   'assets/map-v3.webp', 'assets/starfall-hill-v3-empty.webp', 'assets/starfall-hill-v3-night-empty.webp', 'assets/park-olithia-day.webp', 'assets/park-olithia-night.webp',
-  'assets/park-gorbo-day.webp', 'assets/park-gorbo-night.webp', 'assets/park-loria-day.webp', 'assets/park-loria-night.webp', 'assets/park-scout-day.webp', 'assets/park-scout-night.webp',
+  'assets/park-sit-gorbo.webp', 'assets/park-sit-loria.webp', 'assets/park-sit-scout.webp', 'assets/park-sit-olithia.webp', 'assets/park-read-gorbo.webp', 'assets/park-read-loria.webp', 'assets/park-read-scout.webp', 'assets/park-read-olithia.webp', 'assets/park-scope-gorbo.webp', 'assets/park-scope-loria.webp', 'assets/park-scope-scout.webp', 'assets/park-scope-olithia.webp', 'assets/park-gorbo-day.webp', 'assets/park-gorbo-night.webp', 'assets/park-loria-day.webp', 'assets/park-loria-night.webp', 'assets/park-scout-day.webp', 'assets/park-scout-night.webp',
   'assets/sprite-gorbo.webp', 'assets/sprite-loria.webp', 'assets/sprite-scout.webp', 'assets/face-gorbo.webp', 'assets/face-loria.webp', 'assets/face-scout.webp', 'assets/sprite-olithia.webp', 'assets/face-olithia.webp', 'assets/playground-v1.webp', 'assets/playground-swing.webp', 'assets/scout-house-v4-working-v2.webp',
   'assets/olithia-house-v4.webp', 'assets/olithia-house-v4-exterior.webp',
   'assets/olithia-house-v4-idle.webp', 'assets/olithia-house-v4-working.webp', 'assets/olithia-house-v4-sitting.webp',

@@ -144,24 +144,21 @@ window.BOT_TOWN = {
         // Tall park that scrolls vertically like the map (720x2260). The night image is used from 19:00 to 06:00 local time.
         // v25: the bots are no longer painted in. Each one's painted pose is laid over the empty park only while it is here.
         image: "assets/starfall-hill-v3-empty.webp", night: "assets/starfall-hill-v3-night-empty.webp", nightHours: [19, 6], // v26: Olithia removed from the crest too
-        cameos: {
-          scout: { day: "assets/park-scout-day.webp", night: "assets/park-scout-night.webp", box: { left: 45.28, top: 26.77, width: 28.33, height: 13.32 } },
-          gorbo: { day: "assets/park-gorbo-day.webp", night: "assets/park-gorbo-night.webp", box: { left: 65.42, top: 61.28, width: 22.36, height: 10.40 } },
-          loria: { day: "assets/park-loria-day.webp", night: "assets/park-loria-night.webp", box: { left: 8.89, top: 77.74, width: 27.08, height: 13.41 } },
-          olithia: { day: "assets/park-olithia-day.webp", night: "assets/park-olithia-night.webp", box: { left: 41.11, top: 11.24, width: 23.89, height: 9.78 } } // v26
-        },
+        // v29: no painted cameos. Shared seats per spot (feet %, any character, one per seat); kind: sit (default) | read | scope
+        parkPoses: { sit: "assets/park-sit-", read: "assets/park-read-", scope: "assets/park-scope-" }, // + <id>.webp
+        parkH: { sit: .17, read: .17, scope: .25 }, // sprite height as a fraction of the park width
         aspect: 2260 / 720, scroll: true,
         backdrop: "radial-gradient(circle at 50% 38%, #4a3568, #2a1c40 55%, #140e22)",
         glows: [], // the lantern light is painted into the art
         // tap zones (percent of the scene) that show a caption bubble
         spots: [
-          { label: "Hill crest", caption: "Olithia's mat under the blossom tree.", join: true, zone: { left: 26.8, top: 1.8, width: 61.4, height: 20.3 } }, // v26: tap to send Olithia up with her handpan
-          { label: "Stargazing spot", caption: "The telescope and the picnic blankets.", zone: { left: 15.3, top: 28.1, width: 72.9, height: 14.0 } },
-          { label: "Noticeboard", caption: "Town notes, lost mittens and tea invites.", zone: { left: 41.4, top: 61.1, width: 19.2, height: 7.9 } },
-          { label: "Tea pavilion", caption: "The shared teapot is always warm here.", zone: { left: 60.6, top: 52.5, width: 39.4, height: 20.7 } },
-          { label: "Willow reading nook", caption: "A cushioned bench under the lantern-lit willow.", zone: { left: 0, top: 64.7, width: 38.3, height: 28.1 } },
-          { label: "Book-swap box", caption: "Take a book, leave a book.", poems: true, zone: { left: 38.3, top: 76.3, width: 19.2, height: 9.8 } },
-          { label: "Seasonal market", caption: "Pumpkins, apples and jam this season.", zone: { left: 74.7, top: 79.4, width: 25.3, height: 20.6 } }
+          { label: "Hill crest", caption: "Olithia's mat under the blossom tree.", join: true, seats: [{ x: 46, y: 18.2 }, { x: 60, y: 18.2 }], zone: { left: 26.8, top: 1.8, width: 61.4, height: 20.3 } }, // v26: tap to send Olithia up with her handpan
+          { label: "Stargazing spot", caption: "The telescope and the picnic blankets.", seats: [{ x: 63, y: 38.6, kind: "scope" }, { x: 32, y: 41.2 }, { x: 45, y: 41.8 }], zone: { left: 15.3, top: 28.1, width: 72.9, height: 14.0 } },
+          { label: "Noticeboard", caption: "Town notes, lost mittens and tea invites.", seats: [{ x: 39, y: 69.5 }], zone: { left: 41.4, top: 61.1, width: 19.2, height: 7.9 } },
+          { label: "Tea pavilion", caption: "The shared teapot is always warm here.", seats: [{ x: 74, y: 68.2 }, { x: 89, y: 68.2 }], zone: { left: 60.6, top: 52.5, width: 39.4, height: 20.7 } },
+          { label: "Willow reading nook", caption: "A cushioned bench under the lantern-lit willow.", seats: [{ x: 15, y: 85.3, kind: "read" }, { x: 26, y: 85.3, kind: "read" }], zone: { left: 0, top: 64.7, width: 38.3, height: 28.1 } },
+          { label: "Book-swap box", caption: "Take a book, leave a book.", poems: true, seats: [{ x: 59, y: 85, kind: "read" }], zone: { left: 38.3, top: 76.3, width: 19.2, height: 9.8 } },
+          { label: "Seasonal market", caption: "Pumpkins, apples and jam this season.", seats: [{ x: 66, y: 97.5 }], zone: { left: 74.7, top: 79.4, width: 25.3, height: 20.6 } }
         ]
       }
     },
@@ -200,6 +197,7 @@ window.BOT_TOWN = {
       gallery: true, returnTo: "olithia",
       // v26: empty (day / night), awake (day / night) and asleep. Only the one that matches locate("olithia") shows.
       room: {
+        door: { left: 11, top: 34, width: 14, height: 38 }, // v29: the painted door back to the house
         image: "assets/olithia-bedroom-v2.webp", night: "assets/olithia-bedroom-v2-night.webp",
         awake: "assets/olithia-bedroom-v2-awake.webp", awakeNight: "assets/olithia-bedroom-v2-awake-night.webp",
         sleeping: "assets/olithia-bedroom-v2-sleeping.webp", aspect: 720 / 1280, backdrop: "radial-gradient(circle at 50% 45%, #fff1d6, #f3cfa0 55%, #c98f5e)",
@@ -217,6 +215,7 @@ window.BOT_TOWN = {
       gallery: true, returnTo: "gorbo",
       // v26: empty (day / night), awake (day / night) and asleep. Only the one that matches locate("gorbo") shows.
       room: {
+        door: { left: 70, top: 22, width: 10, height: 34 }, // v29: the painted door back to the house
         image: "assets/gorbo-bedroom-v4.webp", night: "assets/gorbo-bedroom-v4-night.webp",
         awake: "assets/gorbo-bedroom-v4-awake.webp", awakeNight: "assets/gorbo-bedroom-v4-awake-night.webp",
         sleeping: "assets/gorbo-bedroom-v4-sleeping.webp", aspect: 720 / 1280, backdrop: "radial-gradient(circle at 50% 45%, #f1ead0, #c9c79a 55%, #7d8a5a)",
@@ -228,6 +227,7 @@ window.BOT_TOWN = {
       gallery: true, returnTo: "loria",
       // v26: empty (day / night), awake (day / night) and asleep. Only the one that matches locate("loria") shows.
       room: {
+        door: { left: 32, top: 22, width: 12, height: 34 }, // v29: the painted door back to the house
         image: "assets/loria-bedroom-v4.webp", night: "assets/loria-bedroom-v4-night.webp",
         awake: "assets/loria-bedroom-v4-awake.webp", awakeNight: "assets/loria-bedroom-v4-awake-night.webp",
         sleeping: "assets/loria-bedroom-v4-sleeping.webp", aspect: 720 / 1280, backdrop: "radial-gradient(circle at 50% 45%, #fff0dc, #f2c7a0 55%, #b9674a)",
@@ -239,6 +239,7 @@ window.BOT_TOWN = {
       gallery: true, returnTo: "scout",
       // v26: empty (day / night), awake (day / night) and asleep. Only the one that matches locate("scout") shows.
       room: {
+        door: { left: 24, top: 37, width: 12, height: 35 }, // v29: the painted door back to the house
         image: "assets/scout-bedroom-v4.webp", night: "assets/scout-bedroom-v4-night.webp",
         awake: "assets/scout-bedroom-v4-awake.webp", awakeNight: "assets/scout-bedroom-v4-awake-night.webp",
         sleeping: "assets/scout-bedroom-v4-sleeping.webp", aspect: 864 / 1152, backdrop: "radial-gradient(circle at 50% 45%, #fff6c8, #f5d36a 55%, #c9952a)",
