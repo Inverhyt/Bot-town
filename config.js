@@ -179,7 +179,7 @@ window.BOT_TOWN = {
         image: "assets/playground-v2.webp", aspect: 864 / 1152, zoom: 1.25, // v33: richer playground (slide, seesaw, sandbox, treehouse, chalkboard, toy chest, chimes, xylophone)
         backdrop: "radial-gradient(circle at 50% 45%, #eef6d8, #b9d48e 55%, #5f7f45)",
         motto: "You are here for yourself. Be curious and have fun.",
-        guests: { gorbo: { x: 46, y: 74 }, loria: { x: 36, y: 63 }, scout: { x: 30, y: 52 }, olithia: { x: 41, y: 55 } }, guestScale: .5, // bots normally play on a toy (toys below)
+        guests: { gorbo: { x: 48, y: 54 }, loria: { x: 52, y: 57 }, scout: { x: 45, y: 57 }, olithia: { x: 41, y: 55 } }, guestScale: .5, // bots normally play on a toy (toys below)
         // swing: hangs from the middle of the painted top bar (pivot %, rope length % of scene height)
         swing: { pivot: [55.3, 34.6], len: 16.4, riders: "assets/pg-swing-", riderH: 21.2 }, // riders: <id>.webp, seat at 76% of the sprite
         seesaw: { plank: "assets/pg-seesaw-plank.webp", post: "assets/pg-seesaw-post.webp", box: { left: 34.72, top: 56.71, width: 17.36, height: 15.05 }, origin: "50% 47.7%" },
@@ -190,6 +190,7 @@ window.BOT_TOWN = {
         kite: { x: 84, y: 8, anchor: [80, 52] },
         // bots playing: a toy per hour (one per toy); h = sprite height % of scene height, feet at x,y
         toys: { swing: { x: 55.3, y: 54 }, slide: { x: 25.2, y: 36.4, h: 10.5, pose: "assets/park-sit-" }, sand: { x: 70.6, y: 58.6, h: 10.5, pose: "assets/park-sit-" } },
+        slideZone: { left: 21, top: 31.5, width: 16, height: 25 }, // v35: tap to sit at the top of the slide
         board: { left: 70.1, top: 32.9, width: 8, height: 17.2 }, // painted bulletin board
         lawn: [[44, 37], [70, 43], [79, 62], [57, 80], [24, 61], [31, 44]] // where blocks and the ball may go (polygon, %)
       }

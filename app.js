@@ -740,7 +740,7 @@
     visiting = curId !== CFG.player && locate(CFG.player).scene === curId;
     pose = cur.room.poses && isChar(curId) && hostHome() ? locate(curId).pose : 'idle';
     showRoom(applyBackdrop(), true);
-    $('#actors').querySelectorAll('.link:not(.pboard)').forEach(e => e.remove()); buildLinks();
+    $('#actors').querySelectorAll('.link:not(.pboard):not(.pg-slide):not(.pg-chest):not(.pg-chimes)').forEach(e => e.remove()); buildLinks();
     const wantMain = !cur.bot || locate(cur.bot).scene === curId, wantVis = !!(cur.room.visitor && visiting);
     if (cur.sprite && !cur.room.poses && !cur.gallery && (!!actors.main !== wantMain || !!actors.visitor !== wantVis)) buildActors();
     buildGuests(); updateMode(true); if (cur.play) playTools();
@@ -810,8 +810,7 @@
     Object.assign(sw.style, { left: (SW.pivot[0] - 2.4) + '%', top: SW.pivot[1] + '%', width: '4.8%', height: (SW.len + 1.4) + '%', zIndex: Math.round((SW.pivot[1] + SW.len) * 10) });
     const push = amp => { if (!motionOK) return; const tgt = act.querySelector('.swing-rider') || sw; tgt.getAnimations().forEach(a => a.cancel()); const k = [0, 1, -.8, .62, -.46, .32, -.2, .1, 0].map(f => ({ transform: `rotate(${(f * amp).toFixed(1)}deg)` })); tgt.animate(k, { duration: 4200, easing: 'ease-in-out' }); };
     pgPush = push;
-    sw.onclick = ev => { ev.stopPropagation(); push(20); buzz(12); };
-    let swx = null; sw.addEventListener('pointerdown', e => { e.stopPropagation(); swx = e.clientX; }); sw.addEventListener('pointerup', e => { if (swx != null && Math.abs(e.clientX - swx) > 12) push(Math.min(28, 10 + Math.abs(e.clientX - swx) / 4) * Math.sign(e.clientX - swx)); swx = null; });
+    sw.style.touchAction = 'none'; bindSwing(sw, () => { if (locate(CFG.player).scene === curId || true) setOliToy('swing'); }); // tap a free swing: Olithia sits on it
     act.appendChild(sw);
     if (BOTS.some(b => where(b).place === 'playground' && where(b).pose !== 'sleeping')) setTimeout(() => push(9), 900); // someone's playing
     // bulletin board: painted board, little paper notes, tap to read board.json
@@ -901,23 +900,45 @@
       o.start(t); o2.start(t); o.stop(t + dur + .05); o2.stop(t + dur + .05); } catch (e) {}
   }
   const NOTE = { C5: 523.25, D5: 587.33, E5: 659.25, F5: 698.46, G5: 783.99, A5: 880, C6: 1046.5, E6: 1318.5, G6: 1568, A6: 1760 };
-  function pgToys() { // who plays with what this hour (one per toy, one instance each)
+  const oliToy = () => { const o = store.get('olithia-at', null); return o && o.scene === curId && o.toy ? o.toy : null; };
+  function setOliToy(t) { store.set('olithia-at', { scene: curId, pose: 'idle', toy: t || null }); applyLive(); } // v35: Olithia picks a toy
+  function pgToys() { // who plays with what this hour (one per toy, one instance each); Olithia's own pick comes first
     const out = {}, used = new Set(), h = Math.floor(hourNow()), R = cur && cur.room;
     if (!R || !R.toys) return out;
-    [...BOTS, CFG.player].forEach((b, i) => { const w = locate(b); if (w.scene !== curId || w.pose === 'sleeping') return;
-      const opts = b === CFG.player ? ['slide', 'sand'] : ['swing', 'slide', 'sand'];
+    const here = b => { const w = locate(b); return w.scene === curId && w.pose !== 'sleeping'; };
+    const mine = here(CFG.player) && oliToy(); if (mine && R.toys[mine]) { out[CFG.player] = mine; used.add(mine); }
+    const oa = store.get('olithia-at', null), hopped = oa && oa.scene === curId && 'toy' in oa && !oa.toy; // she hopped off: let her stand
+    [...BOTS, CFG.player].forEach((b, i) => { if (out[b] || !here(b) || (b === CFG.player && hopped)) return;
+      const opts = ['swing', 'slide', 'sand'];
       for (let k = 0; k < opts.length; k++) { const t = opts[(h + i + k) % opts.length]; if (!used.has(t)) { used.add(t); out[b] = t; break; } } });
     return out;
   }
+  const toyTaker = t => { const m = pgToys(); return Object.keys(m).find(b => m[b] === t); };
+  function bindSwing(el, onTap) { // v35: a drag pushes, a tap does onTap (no double push)
+    let x0 = null, dragged = false;
+    el.addEventListener('pointerdown', e => { e.stopPropagation(); x0 = e.clientX; dragged = false; });
+    el.addEventListener('pointermove', e => { if (x0 != null && Math.abs(e.clientX - x0) > 12) dragged = true; });
+    el.addEventListener('pointerup', e => { if (x0 != null && dragged) { const dx = e.clientX - x0; pgPush(Math.min(28, 10 + Math.abs(dx) / 4) * Math.sign(dx)); buzz(10); } x0 = null; });
+    el.addEventListener('pointercancel', () => { x0 = null; });
+    el.onclick = ev => { ev.stopPropagation(); if (dragged) { dragged = false; return; } onTap(); };
+  }
   function toyEl(b, t) {
     const R = cur.room, T = R.toys[t], el = document.createElement('img'); el.alt = botName(b); el.draggable = false;
-    if (t === 'swing') { el.className = 'guest swing-rider'; el.src = R.swing.riders + b + '.webp';
+    if (t === 'swing') { el.className = 'guest swing-rider'; el.dataset.toy = t; el.src = R.swing.riders + b + '.webp';
       Object.assign(el.style, { left: R.swing.pivot[0] + '%', top: R.swing.pivot[1] + '%', height: R.swing.riderH + '%', zIndex: Math.round(T.y * 10) });
       el.onload = () => { el.style.marginLeft = -(el.offsetWidth / 2) + 'px'; };
+      el.style.touchAction = 'none';
+      setTimeout(() => bindSwing(el, () => { if (b === CFG.player) setOliToy(null); else { pgPush(20); buzz(12); } }), 0); // tap Olithia to hop off
       if (motionOK) setTimeout(() => pgPush(12), 700);
-    } else { el.className = 'guest pg-toy'; el.src = T.pose + b + '.webp';
+    } else { el.className = 'guest pg-toy'; el.dataset.toy = t; el.src = T.pose + b + '.webp';
+      if (b === CFG.player) setTimeout(() => { el.onclick = ev => { ev.stopPropagation(); setOliToy(null); }; }, 0); // tap her to hop off
       Object.assign(el.style, { left: T.x + '%', top: T.y + '%', height: T.h + '%', zIndex: Math.round(T.y * 10) }); }
     return el;
+  }
+  function toyTap(t, el, label) {
+    if (oliToy() === t) return setOliToy(null);
+    const who = toyTaker(t); if (who && who !== CFG.player) return showBubble(el, label, `${botName(who)} is playing here. Try another toy!`);
+    setOliToy(t);
   }
   function buildToys(R, act) {
     // seesaw: tap to tip it
@@ -928,7 +949,11 @@
       if (!motionOK) { pl.style.transform = `rotate(${tilt}deg)`; return; }
       pl.animate([{ transform: pl.style.transform || 'rotate(0deg)' }, { transform: `rotate(${tilt * 1.15}deg)` }, { transform: `rotate(${tilt * .9}deg)` }, { transform: `rotate(${tilt}deg)` }], { duration: 650, easing: 'ease-out' }); pl.style.transform = `rotate(${tilt}deg)`; };
     [pl, po].forEach(e => e.onclick = ev => { ev.stopPropagation(); tip(); });
-    // sandbox: drag to draw, double-tap for a castle (saved)
+    // v35: tap the slide to sit at the top (or hop off)
+    const sl = document.createElement('div'); sl.className = 'link zone pg-slide'; sl.setAttribute('role', 'button'); sl.setAttribute('aria-label', 'Slide');
+    Object.assign(sl.style, { left: R.slideZone.left + '%', top: R.slideZone.top + '%', width: R.slideZone.width + '%', height: R.slideZone.height + '%', zIndex: 330 });
+    sl.onclick = ev => { ev.stopPropagation(); toyTap('slide', sl, 'Slide'); }; act.appendChild(sl);
+    // sandbox: drag to draw, double-tap for a castle, press and hold to sit in it (saved)
     const P = R.sandbox, xs = P.map(p => p[0]), ys = P.map(p => p[1]), bx = Math.min(...xs), by = Math.min(...ys), bw = Math.max(...xs) - bx, bh = Math.max(...ys) - by;
     const sand = document.createElement('canvas'); sand.className = 'pg-sand'; sand.width = 240; sand.height = Math.round(240 * bh / bw / (R.aspect || .75) * 1); 
     Object.assign(sand.style, { left: bx + '%', top: by + '%', width: bw + '%', height: bh + '%', zIndex: 20, clipPath: `polygon(${P.map(p => ((p[0] - bx) / bw * 100).toFixed(1) + '% ' + ((p[1] - by) / bh * 100).toFixed(1) + '%').join(',')})` });
@@ -943,13 +968,15 @@
       body(-11, 9, 18); body(11, 9, 18); body(0, 16, 12); c.fillStyle = '#7a5530'; c.fillRect(-3, -6, 6, 6); c.fillStyle = '#e8574a'; c.beginPath(); c.moveTo(11, -26); c.lineTo(11, -34); c.lineTo(17, -31); c.closePath(); c.fill();
       c.fillStyle = 'rgba(90,60,30,.25)'; c.beginPath(); c.ellipse(0, 1, 22, 4, 0, 0, 6.3); c.fill(); c.restore(); };
     let lastTap = 0, drawing = null;
+    let hold = 0, hold0 = null;
     sand.addEventListener('pointerdown', e => { e.stopPropagation(); e.preventDefault(); sand.setPointerCapture(e.pointerId); const p = sp(e), now = performance.now();
+      clearTimeout(hold); hold0 = [e.clientX, e.clientY]; hold = setTimeout(() => { drawing = null; hold0 = null; buzz(14); toyTap('sand', sand, 'Sandbox'); }, 600);
       if (now - lastTap < 330) { castle(p[0], p[1] + 10); buzz(16); saveSand(); lastTap = 0; drawing = null; return; } lastTap = now; drawing = p; });
-    sand.addEventListener('pointermove', e => { if (!drawing) return; const p = sp(e);
+    sand.addEventListener('pointermove', e => { if (hold0 && Math.hypot(e.clientX - hold0[0], e.clientY - hold0[1]) > 6) { clearTimeout(hold); hold0 = null; } if (!drawing) return; const p = sp(e);
       sc.lineCap = 'round'; sc.lineJoin = 'round';
       sc.strokeStyle = 'rgba(110,72,34,.42)'; sc.lineWidth = 4; sc.beginPath(); sc.moveTo(drawing[0], drawing[1]); sc.lineTo(p[0], p[1]); sc.stroke();
       sc.strokeStyle = 'rgba(255,236,190,.55)'; sc.lineWidth = 1.4; sc.beginPath(); sc.moveTo(drawing[0] - 1, drawing[1] - 2.5); sc.lineTo(p[0] - 1, p[1] - 2.5); sc.stroke(); drawing = p; });
-    const endSand = () => { if (drawing) saveSand(); drawing = null; };
+    const endSand = () => { clearTimeout(hold); hold0 = null; if (drawing) saveSand(); drawing = null; };
     sand.addEventListener('pointerup', endSand); sand.addEventListener('pointercancel', endSand);
     pgSmooth = () => { sc.clearRect(0, 0, sand.width, sand.height); store.set('pg-sand', null); };
     // chalkboard: shows her doodle; tap to draw
@@ -1015,7 +1042,7 @@
     j.textContent = here ? 'Head home' : 'Join in'; j.onclick = ev => { ev.stopPropagation(); setOli(here ? CFG.player : curId, 'idle'); };
     box.appendChild(j);
   }
-  function buildPlayFresh() { $('#actors').querySelectorAll('.block,.ball,.swing,.pboard,.pg-ss,.pg-sand,.pg-chalk,.pg-chest,.pg-bubble,.pg-key,.pg-chimes,.pg-kite,.pg-string').forEach(e => e.remove()); buildPlay(); }
+  function buildPlayFresh() { $('#actors').querySelectorAll('.block,.ball,.swing,.pboard,.pg-ss,.pg-slide,.pg-sand,.pg-chalk,.pg-chest,.pg-bubble,.pg-key,.pg-chimes,.pg-kite,.pg-string').forEach(e => e.remove()); buildPlay(); }
 
   // ----- the town post: letters from any bot, write to any bot -----
   let letters = [];
