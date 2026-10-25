@@ -705,13 +705,19 @@
       let el;
       const seat = cur.room.parkPoses && parkSeats()[b];
       if (seat) {
-        const k = seat.seat.kind || 'sit';
+        const k = seat.seat.kind || 'sit', pb = seat.seat.patch && cur.room.parkBox && cur.room.parkBox[seat.seat.patch + '-' + b];
+        if (pb) { // v31: painted-in patch for this exact seat
+          el = document.createElement('img'); el.className = 'guest park-patch'; el.alt = botName(b); el.draggable = false;
+          el.src = cur.room.parkPatch + seat.seat.patch + '-' + b + (isNight() ? '-night' : '') + '.webp';
+          Object.assign(el.style, { left: pb[0] + '%', top: pb[1] + '%', width: pb[2] + '%', height: pb[3] + '%', zIndex: Math.round(seat.seat.y * 10) });
+        } else {
         el = document.createElement('img'); el.className = 'guest park-pose' + (isNight() ? ' night' : ''); el.alt = botName(b); el.draggable = false;
         el.src = cur.room.parkPoses[k] + b + '.webp';
         const hPct = (cur.room.parkH[k] || .17) * 100 / cur.room.aspect;
         Object.assign(el.style, { left: seat.seat.x + '%', top: seat.seat.y + '%', height: hPct + '%', zIndex: Math.round(seat.seat.y * 10) });
         const an = k === 'scope' && cur.room.scopeAnchor && cur.room.scopeAnchor[b];
         if (an) Object.assign(el.style, { height: cur.room.scopeFeet / (1 - an[1]) + '%', transform: `translate(${-an[0] * 100}%, ${-an[1] * 100}%)`, zIndex: Math.round((seat.seat.y + cur.room.scopeFeet) * 10) });
+        }
       } else if (cam) {
         el = document.createElement('img'); el.className = 'cameo'; el.alt = botName(b); el.draggable = false;
         el.src = (cur.room.night && roomURL() === cur.room.night) ? cam.night : cam.day;
