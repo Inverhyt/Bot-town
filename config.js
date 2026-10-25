@@ -194,7 +194,7 @@ window.BOT_TOWN = {
         swings: [{ toy: "swing", x: 384, y: 630, L: 130, ground: 826, half: 27, slope: .47, z: 440, patch: "A" }, { toy: "swing2", x: 459, y: 597, L: 128, ground: 787, half: 22, slope: .47, z: 410, patch: "B" }],
         swingRiders: "assets/pg42-sw", // v42 (was v37): painted rider+seat+ropes patch <A|B>-<id>.webp, 140x250 art px, crossbar pivot at (70,24); rotates around the pivot
         swingLeg: { src: "assets/pg3-swing-leg.webp", box: [40.28, 35.7, 11.39, 12.18], z: 446 }, // front-left leg in front of the left swing
-        seesaw: { plank: "assets/pg40-seesaw-plank.webp", post: "assets/pg40-seesaw-stand.webp", plankShadow: "assets/pg40-seesaw-plankshadow.webp", postShadow: "assets/pg40-seesaw-standshadow.webp", box: { left: 4.17, top: 59.84, width: 38.89, height: 8.4 },
+        seesaw: { plank: "assets/pg43-seesaw-plank.webp", post: "assets/pg40-seesaw-stand.webp", plankShadow: "assets/pg43-seesaw-plankshadow.webp", postShadow: "assets/pg40-seesaw-standshadow.webp", box: { left: 4.17, top: 59.84, width: 38.89, height: 8.4 },
           /* v40: true 3D tilt about the axle (sprite px 280x160): plank dir e1, axle dir e2, kv = screen px of height per px along the plank, z0 = axle height above the grass, light = shadow drift per px of height */
           pivot: [161, 82], e1: [.926, -.377], e2: [.7915, .6112], kv: 1.1, z0: 56, light: [-.17, .62], ends: [[34, 134.6], [264.7, 36]], phiL: 21.4, phiR: -28.8 },
         sandbox: [[60.28, 63.15], [75.56, 60.68], [89.31, 63.46], [74.31, 66.25]], // v38: inner sand corners of the painted frame (art px / size)
