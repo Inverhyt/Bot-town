@@ -113,7 +113,7 @@
       return { scene, place: scene, pose, note: '', live: false, spot: ok ? o.spot : undefined };
     }
     const ask = store.get('ask-' + id, null); // v28: "Olithia asked" override, 60 min
-    const w = ask && ask.until > Date.now() && C[ask.place] ? { place: ask.place, pose: ask.pose, note: 'Olithia asked', live: false } : (liveAll[id] || scheduled(id)); let scene = w.place, pose = w.pose;
+    const w = ask && ask.until > Date.now() && C[ask.place] ? { place: ask.place, pose: ask.pose, note: 'Olithia asked', live: false, spot: ask.spot } : (liveAll[id] || scheduled(id)); let scene = w.place, pose = w.pose;
     if (pose === 'sleeping' || scene === 'bed' || scene === id + '-bed') { scene = id + '-bed'; pose = pose === 'sleeping' || w.place === 'bed' ? 'sleeping' : 'awake'; }
     else if (pose === 'awake') pose = 'idle';
     if (!C[scene]) scene = id;
@@ -710,6 +710,8 @@
         el.src = cur.room.parkPoses[k] + b + '.webp';
         const hPct = (cur.room.parkH[k] || .17) * 100 / cur.room.aspect;
         Object.assign(el.style, { left: seat.seat.x + '%', top: seat.seat.y + '%', height: hPct + '%', zIndex: Math.round(seat.seat.y * 10) });
+        const an = k === 'scope' && cur.room.scopeAnchor && cur.room.scopeAnchor[b];
+        if (an) Object.assign(el.style, { height: cur.room.scopeFeet / (1 - an[1]) + '%', transform: `translate(${-an[0] * 100}%, ${-an[1] * 100}%)`, zIndex: Math.round((seat.seat.y + cur.room.scopeFeet) * 10) });
       } else if (cam) {
         el = document.createElement('img'); el.className = 'cameo'; el.alt = botName(b); el.draggable = false;
         el.src = (cur.room.night && roomURL() === cur.room.night) ? cam.night : cam.day;

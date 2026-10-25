@@ -146,6 +146,8 @@ window.BOT_TOWN = {
         image: "assets/starfall-hill-v3-empty.webp", night: "assets/starfall-hill-v3-night-empty.webp", nightHours: [19, 6], // v26: Olithia removed from the crest too
         // v29: no painted cameos. Shared seats per spot (feet %, any character, one per seat); kind: sit (default) | read | scope
         parkPoses: { sit: "assets/park-sit-", read: "assets/park-read-", scope: "assets/park-scope-" }, // + <id>.webp
+        // v30: telescope poses have no telescope of their own. Seat x/y = the painted eyepiece; [ax, ay] = where the hands sit in each sprite (fraction); scopeFeet = eyepiece-to-ground (% of park height)
+        scopeAnchor: { gorbo: [.165, .188], loria: [.211, .076], scout: [.134, .137], olithia: [.173, .074] }, scopeFeet: 5.9,
         parkH: { sit: .17, read: .17, scope: .25 }, // sprite height as a fraction of the park width
         aspect: 2260 / 720, scroll: true,
         backdrop: "radial-gradient(circle at 50% 38%, #4a3568, #2a1c40 55%, #140e22)",
@@ -153,7 +155,7 @@ window.BOT_TOWN = {
         // tap zones (percent of the scene) that show a caption bubble
         spots: [
           { label: "Hill crest", caption: "Olithia's mat under the blossom tree.", join: true, seats: [{ x: 46, y: 18.2 }, { x: 60, y: 18.2 }], zone: { left: 26.8, top: 1.8, width: 61.4, height: 20.3 } }, // v26: tap to send Olithia up with her handpan
-          { label: "Stargazing spot", caption: "The telescope and the picnic blankets.", seats: [{ x: 63, y: 38.6, kind: "scope" }, { x: 32, y: 41.2 }, { x: 45, y: 41.8 }], zone: { left: 15.3, top: 28.1, width: 72.9, height: 14.0 } },
+          { label: "Stargazing spot", caption: "The telescope and the picnic blankets.", seats: [{ x: 51.6, y: 30.9, kind: "scope" }, { x: 32, y: 41.2 }, { x: 45, y: 41.8 }], zone: { left: 15.3, top: 28.1, width: 72.9, height: 14.0 } },
           { label: "Noticeboard", caption: "Town notes, lost mittens and tea invites.", seats: [{ x: 39, y: 69.5 }], zone: { left: 41.4, top: 61.1, width: 19.2, height: 7.9 } },
           { label: "Tea pavilion", caption: "The shared teapot is always warm here.", seats: [{ x: 74, y: 68.2 }, { x: 89, y: 68.2 }], zone: { left: 60.6, top: 52.5, width: 39.4, height: 20.7 } },
           { label: "Willow reading nook", caption: "A cushioned bench under the lantern-lit willow.", seats: [{ x: 15, y: 85.3, kind: "read" }, { x: 26, y: 85.3, kind: "read" }], zone: { left: 0, top: 64.7, width: 38.3, height: 28.1 } },
