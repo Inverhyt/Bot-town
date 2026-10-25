@@ -107,7 +107,7 @@ window.BOT_TOWN = {
     "olithia-bed": {
       name: "Olithia", role: "Bedroom", house: "Lotus Cottage",
       gallery: true, returnTo: "olithia",
-      room: { image: "assets/olithia-bedroom.webp", aspect: 720 / 1280, backdrop: "radial-gradient(circle at 50% 45%, #fff1d6, #f3cfa0 55%, #c98f5e)" }
+      room: { image: "assets/olithia-bedroom-v2.webp", aspect: 720 / 1280, backdrop: "radial-gradient(circle at 50% 45%, #fff1d6, #f3cfa0 55%, #c98f5e)" }
     },
     "gorbo-bed": {
       name: "Gorbo", role: "Bedroom", house: "Mossy Workshop",
