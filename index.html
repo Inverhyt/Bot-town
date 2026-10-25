@@ -38,7 +38,7 @@
         <b id="mailWriteTitle">Write to Gorbo</b>
         <p class="hint" id="mailWriteHint"></p>
         <textarea id="mailText" rows="6" maxlength="2000" placeholder="Dear Gorbo…"></textarea>
-        <button type="button" id="mailSend" class="pill main">Send</button>
+        <div class="sendrow"><button type="button" id="mailSend" class="pill main">Copy letter</button><button type="button" id="mailShare" class="pill small">Share…</button></div>
         <p id="mailSent" hidden></p>
       </div>
     </div>
@@ -59,8 +59,8 @@
     <ul id="boardTasks"></ul>
     <div id="taskTo" class="to" role="group" aria-label="Who is it for?"></div>
     <textarea id="taskText" rows="3" maxlength="1000"></textarea>
-    <button type="button" id="taskSend" class="pill main">Send</button>
-    <p class="hint">Send opens the share sheet, or copies it, to paste into that bot’s chat. It begins with “Task for …:”.</p>
+    <div class="sendrow"><button type="button" id="taskSend" class="pill main">Copy task</button><button type="button" id="taskShare" class="pill small">Share…</button></div>
+    <p class="hint">Copy it, then paste it into that bot’s chat. It begins with “Task for …:”.</p>
     <p id="taskSent" hidden></p>
   </div>
 </div>
@@ -106,4 +106,5 @@
     <button id="close" aria-label="Close">✕</button></div>
 </section>
 <script src="config.js"></script><script src="music.js"></script><script src="app.js"></script>
+<div id="copyToast" role="status" aria-live="polite" hidden></div>
 </body></html>

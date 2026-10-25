@@ -621,16 +621,32 @@
       el.appendChild(p);
     });
   }
-  // Share sheet first, clipboard second, the text itself last.
-  async function passOn(payload, who, out) {
+  // v27: Copy is primary (share sheets on some phones only offer "Save to Drive"); Share is secondary.
+  function copyFallback(t) {
+    const ta = document.createElement('textarea'); ta.value = t; ta.setAttribute('readonly', '');
+    ta.style.cssText = 'position:fixed;top:0;left:0;opacity:0;font-size:16px'; document.body.appendChild(ta);
+    ta.focus(); ta.select(); try { ta.setSelectionRange(0, t.length); } catch (e) {}
+    let ok = false; try { ok = document.execCommand('copy'); } catch (e) {} ta.remove(); return ok;
+  }
+  async function copyText(t) {
+    try { if (navigator.clipboard && window.isSecureContext) { await navigator.clipboard.writeText(t); return true; } } catch (e) {}
+    return copyFallback(t);
+  }
+  let toastT;
+  function toast(msg) { const el = $('#copyToast'); el.textContent = msg; el.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => { el.hidden = true; }, 3500); }
+  function showManual(payload, out) {
+    out.replaceChildren(); const p = document.createElement('span'); p.textContent = 'Press and hold to copy, then paste it in your chat:';
+    const ta = document.createElement('textarea'); ta.className = 'manualcopy'; ta.readOnly = true; ta.value = payload; ta.rows = Math.min(8, payload.split('\n').length + 1);
+    ta.onfocus = () => ta.select(); out.append(p, ta);
+  }
+  async function passOn(payload, who, out, mode) {
     out.hidden = false;
-    if (navigator.share) {
-      try { await navigator.share({ text: payload }); out.textContent = `Passed to the share sheet. Paste it into your ${who} chat if it is still waiting there.`; return true; }
+    if (mode === 'share' && navigator.share) {
+      try { await navigator.share({ text: payload }); out.textContent = `✓ Sent to the share sheet. Paste it into your ${who} chat if needed.`; return true; }
       catch (e) { if (e && e.name === 'AbortError') { out.hidden = true; return false; } }
     }
-    try { await navigator.clipboard.writeText(payload); out.textContent = `Copied. Paste it into your ${who} chat. It begins with “${payload.split('\n')[0]}”.`; }
-    catch (e) { out.textContent = `Copy this into your ${who} chat:\n` + payload; }
-    return true;
+    if (await copyText(payload)) { toast(`Copied! Paste it in your chat with ${who}`); out.textContent = `✓ Sent — copied. Paste it in your chat with ${who}.`; return true; }
+    showManual(payload, out); return true;
   }
 
   // ----- guests: a bot standing in a scene it isn't painted into, or its painted park pose -----
@@ -861,7 +877,7 @@
     $('#mailTo').querySelectorAll('button').forEach(b => { const on = b.dataset.to === id; b.classList.toggle('on', on); b.setAttribute('aria-pressed', on ? 'true' : 'false'); });
     const n = botName(id);
     $('#mailWriteTitle').textContent = 'Write to ' + n;
-    $('#mailWriteHint').textContent = `Send opens your phone’s share sheet, or copies the letter, so you can paste it into your chat with ${n}. It begins with “Letter to ${n}:”.`;
+    $('#mailWriteHint').textContent = `Tap Copy letter, then paste it into your chat with ${n}. It begins with “Letter to ${n}:”.`;
     $('#mailText').placeholder = `Dear ${n}…`;
   }
   function writeTo(id) { pickRecipient(id); showMail('write'); $('#mailSent').hidden = true; }
@@ -883,13 +899,15 @@
   $('#mailReply').onclick = () => writeTo(letterFrom(reading));
   $('#mailBack').onclick = () => showMail('home');
   $('#mailWriteBack').onclick = () => showMail('home');
-  $('#mailText').addEventListener('input', () => { $('#mailSend').disabled = !$('#mailText').value.trim(); });
-  $('#mailSend').disabled = true;
-  $('#mailSend').onclick = async () => {
+  $('#mailText').addEventListener('input', () => { $('#mailSend').disabled = $('#mailShare').disabled = !$('#mailText').value.trim(); });
+  $('#mailSend').disabled = $('#mailShare').disabled = true;
+  if (!navigator.share) $('#mailShare').hidden = true;
+  const mailGo = mode => async () => {
     const text = $('#mailText').value.trim(); if (!text) return;
     const n = botName(mailTo);
-    await passOn(`Letter to ${n}:\n` + text, n, $('#mailSent'));
+    await passOn(`Letter to ${n}:\n` + text, n, $('#mailSent'), mode);
   };
+  $('#mailSend').onclick = mailGo('copy'); $('#mailShare').onclick = mailGo('share');
   pickRecipient(mailTo);
 
   // ----- the town board: who's doing what, and Olithia's questions & tasks for the bots -----
@@ -936,14 +954,16 @@
   $('#boardBtn').onclick = () => openBoard();
   $('#boardClose').onclick = () => { $('#board').hidden = true; };
   $('#board').onclick = e => { if (e.target === $('#board')) $('#board').hidden = true; };
-  $('#taskText').addEventListener('input', () => { $('#taskSend').disabled = !$('#taskText').value.trim(); });
-  $('#taskSend').disabled = true;
-  $('#taskSend').onclick = async () => {
+  $('#taskText').addEventListener('input', () => { $('#taskSend').disabled = $('#taskShare').disabled = !$('#taskText').value.trim(); });
+  $('#taskSend').disabled = $('#taskShare').disabled = true;
+  if (!navigator.share) $('#taskShare').hidden = true;
+  const taskGo = mode => async () => {
     const text = $('#taskText').value.trim(); if (!text) return;
     const n = botName(taskTo);
-    const ok = await passOn(`Task for ${n}:\n` + text, n, $('#taskSent'));
+    const ok = await passOn(`Task for ${n}:\n` + text, n, $('#taskSent'), mode);
     if (ok) { store.set('sent-tasks', sentTasks().concat({ for: taskTo, text, date: new Date().toISOString().slice(0, 10) }).slice(-30)); $('#taskText').value = ''; $('#taskSend').disabled = true; renderBoard(); if (cur && isBot(curId)) renderTasks(); }
   };
+  $('#taskSend').onclick = taskGo('copy'); $('#taskShare').onclick = taskGo('share');
   // the mossy standing stone on the map is the town plaza: tap it for the board
   (() => { const h = document.createElement('div'); h.className = 'hot plaza'; h.setAttribute('role', 'button'); h.setAttribute('aria-label', 'Town board');
     Object.assign(h.style, { left: '40.3%', top: '41.5%', width: '19.4%', height: '6.1%' }); h.innerHTML = '<span class="label">Town board</span>';

@@ -1,4 +1,4 @@
-const CACHE = 'bot-town-v26';
+const CACHE = 'bot-town-v27';
 const ASSETS = ['./', 'index.html', 'style.css', 'config.js', 'music.js', 'app.js', 'manifest.json',
   'assets/map-v3.webp', 'assets/starfall-hill-v3-empty.webp', 'assets/starfall-hill-v3-night-empty.webp', 'assets/park-olithia-day.webp', 'assets/park-olithia-night.webp',
   'assets/park-gorbo-day.webp', 'assets/park-gorbo-night.webp', 'assets/park-loria-day.webp', 'assets/park-loria-night.webp', 'assets/park-scout-day.webp', 'assets/park-scout-night.webp',
