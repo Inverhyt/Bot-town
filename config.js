@@ -49,9 +49,9 @@ window.BOT_TOWN = {
         aspect: 720 / 1280, zoom: 1, // whole 16:9 cutaway fits a phone, so both doors are on screen
         backdrop: "radial-gradient(circle at 50% 45%, #fff0dc, #f2c7a0 55%, #b9674a)",
         poses: {
-          idle: "assets/loria-house-v3-idle.webp",
-          working: "assets/loria-house-v3-working.webp",
-          sitting: "assets/loria-house-v3-sitting.webp"
+          idle: "assets/loria-house-v4-idle.webp",
+          working: "assets/loria-house-v4-working.webp",
+          sitting: "assets/loria-house-v4-sitting.webp"
         },
         // far-left bedroom door. Art: x=66,y=352,w=64,h=180 on 1280×720, padded for taps.
         bedroom: { to: "loria-bed", label: "Loria's bedroom", door: { left: 1.5, top: 47.2, width: 12.3, height: 28.2 } },
@@ -117,7 +117,7 @@ window.BOT_TOWN = {
     "loria-bed": {
       name: "Loria", role: "Bedroom", house: "Loria's Bookshop",
       gallery: true, returnTo: "loria",
-      room: { image: "assets/loria-bedroom.webp", aspect: 720 / 1280, backdrop: "radial-gradient(circle at 50% 45%, #fff0dc, #f2c7a0 55%, #b9674a)" }
+      room: { image: "assets/loria-bedroom-v4.webp", aspect: 720 / 1280, backdrop: "radial-gradient(circle at 50% 45%, #fff0dc, #f2c7a0 55%, #b9674a)" }
     },
     "scout-bed": {
       name: "Scout", role: "Bedroom", house: "Scout's Cottage",
