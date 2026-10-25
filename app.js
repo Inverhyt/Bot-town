@@ -952,17 +952,41 @@
     setOliToy(t);
   }
   function buildToys(R, act) {
-    // seesaw: tap to tip it
-    const S = R.seesaw, pl = document.createElement('img'), po = document.createElement('img'); let tilt = 0;
-    [pl, po].forEach((e, i) => { e.className = 'pg-ss'; e.draggable = false; e.alt = ''; e.src = i ? S.post : S.plank; Object.assign(e.style, { left: S.box.left + '%', top: S.box.top + '%', width: S.box.width + '%', height: S.box.height + '%', zIndex: 640 + i }); act.appendChild(e); });
-    pl.style.transformOrigin = S.origin; pl.setAttribute('role', 'button'); pl.setAttribute('aria-label', 'Seesaw');
-    // v39: rests with one end on the grass; a tap tips it over to the other end with a gentle bump-and-settle
-    const sk = d => `skewY(${d.toFixed(2)}deg)`; let side = 'L'; pl.style.transform = sk(S.downL || -16);
-    const tip = () => { const from = side === 'L' ? S.downL : S.downR, to = side === 'L' ? S.downR : S.downL; side = side === 'L' ? 'R' : 'L'; buzz(10);
-      pgNote(side === 'R' ? 196 : 262, .5, 'sine', .12); pl.getAnimations().forEach(x => x.cancel()); pl.style.transform = sk(to);
-      if (!motionOK) return;
-      const at = f => sk(from + (to - from) * f);
-      pl.animate([{ transform: at(0), easing: 'cubic-bezier(.45,0,.9,.6)' }, { transform: at(1), offset: .55, easing: 'ease-out' }, { transform: at(.86), offset: .72, easing: 'ease-in' }, { transform: at(1), offset: .86, easing: 'ease-out' }, { transform: at(.97), offset: .93 }, { transform: at(1) }], { duration: 900 }); };
+    // seesaw (v40): the plank tilts in 3D about the axle; its cast shadow and the end's contact shadow follow
+    const S = R.seesaw, pl = document.createElement('img'), po = document.createElement('img'), psh = document.createElement('img'), tsh = document.createElement('img');
+    const W0 = 280, H0 = 160, [px, py] = S.pivot, [ax, ay] = S.e1, [sbx, sby] = S.e2, det = ax * sby - ay * sbx, iA = [sby / det, -sbx / det]; // row of B^-1 giving "distance along the plank"
+    [[pl, S.plank, 642], [po, S.post, 641], [psh, S.plankShadow, 630], [tsh, S.postShadow, 631]].forEach(([e, src, z]) => { e.className = 'pg-ss'; e.draggable = false; e.alt = ''; e.src = src;
+      Object.assign(e.style, { left: S.box.left + '%', top: S.box.top + '%', width: S.box.width + '%', height: S.box.height + '%', zIndex: z, transformOrigin: `${px / W0 * 100}% ${py / H0 * 100}%` }); act.appendChild(e); });
+    psh.style.pointerEvents = tsh.style.pointerEvents = 'none';
+    const dots = S.ends.map(() => { const d = document.createElement('div'); d.className = 'pg-ss-contact'; d.style.zIndex = 632; act.appendChild(d); return d; });
+    const toPct = (x, y) => [S.box.left + x / W0 * S.box.width, S.box.top + y / H0 * S.box.height];
+    let phi = S.phiL, side = 'L', raf = 0;
+    const pose = deg => { // v40: rigid 3D rotation in the plane of the plank and the vertical (basis e1, up = (0,-kv)), so thickness and handles stay solid
+      const r = deg * Math.PI / 180, s = Math.sin(r), c = Math.cos(r), kv = S.kv;
+      const ux = c * ax, uy = c * ay - s * kv, vx2 = -s * ax, vy2 = -s * ay - c * kv; // images of e1 and of up
+      const B = [[1 / ax, 0], [ay / (ax * kv), -1 / kv]];
+      const m = [ux * B[0][0] + vx2 * B[1][0], uy * B[0][0] + vy2 * B[1][0], ux * B[0][1] + vx2 * B[1][1], uy * B[0][1] + vy2 * B[1][1]];
+      pl.style.transform = `matrix(${m.map(v => v.toFixed(4)).join(',')},0,0)`;
+      // cast shadow: the plank's top face, each point dropped to the grass and drifted along the light by its height
+      const gs = s, gc = c, gx = gc * ax, gy = gc * ay - gs * kv, Gi = [[sby / det, -sbx / det], [-ay / det, ax / det]];
+      const g = [gx * Gi[0][0] + sbx * Gi[1][0], gy * Gi[0][0] + sby * Gi[1][0], gx * Gi[0][1] + sbx * Gi[1][1], gy * Gi[0][1] + sby * Gi[1][1]];
+      const k = kv * s, [lx, ly] = S.light;
+      const sm = [g[0] + k * lx * iA[0], g[1] + k * ly * iA[0], g[2] + k * lx * iA[1], g[3] + k * ly * iA[1]];
+      psh.style.transform = `translate(${(S.z0 * lx / W0 * 100).toFixed(3)}%,${(S.z0 * ly / H0 * 100).toFixed(3)}%) matrix(${sm.map(v => v.toFixed(4)).join(',')},0,0)`;
+      S.ends.forEach(([ex, ey], n) => { const vx = ex - px, vy = ey - py, al = vx / ax, H = (al * ay - vy) / kv, z = S.z0 + kv * (s * al + c * H);
+        const qx = px + m[0] * vx + m[2] * vy, qy = py + m[1] * vx + m[3] * vy, [L, T] = toPct(qx, qy + 1.5), d = dots[n];
+        d.style.left = L + '%'; d.style.top = T + '%'; d.style.opacity = Math.max(0, 1 - Math.max(0, z) / 14).toFixed(2); }); };
+    pose(phi);
+    pl.setAttribute('role', 'button'); pl.setAttribute('aria-label', 'Seesaw');
+    const tip = () => { const from = phi, to = side === 'L' ? S.phiR : S.phiL; side = side === 'L' ? 'R' : 'L'; buzz(10); pgNote(side === 'R' ? 196 : 262, .5, 'sine', .12);
+      cancelAnimationFrame(raf); if (!motionOK) { pose(phi = to); return; }
+      const t0 = performance.now(), D = 950;
+      const f = u => { // fall with gravity, land, one soft bump, settle (never past the grass)
+        if (u < .5) { const q = u / .5; return q * q; }
+        if (u < .75) { const q = (u - .5) / .25; return 1 - .12 * Math.sin(q * Math.PI); }
+        const q = (u - .75) / .25; return 1 - .035 * Math.sin(q * Math.PI); };
+      const step = now => { const u = Math.min(1, (now - t0) / D); phi = from + (to - from) * f(u); pose(phi); if (u < 1) raf = requestAnimationFrame(step); else if (u >= 1) { phi = to; pose(phi); buzz(6); } };
+      raf = requestAnimationFrame(step); };
     [pl, po].forEach(e => e.onclick = ev => { ev.stopPropagation(); tip(); });
     // v35: tap the slide to sit at the top (or hop off)
     const sl = document.createElement('div'); sl.className = 'link zone pg-slide'; sl.setAttribute('role', 'button'); sl.setAttribute('aria-label', 'Slide');
@@ -1110,7 +1134,7 @@
     j.textContent = here ? 'Head home' : 'Join in'; j.onclick = ev => { ev.stopPropagation(); setOli(here ? CFG.player : curId, 'idle'); };
     box.appendChild(j);
   }
-  function buildPlayFresh() { $('#actors').querySelectorAll('.block,.ball,.swing,.pboard,.pg-ss,.pg-slide,.pg-sand,.pg-chalk,.pg-chest,.pg-bubble,.pg-key,.pg-chimes,.pg-kite,.pg-string').forEach(e => e.remove()); buildPlay(); }
+  function buildPlayFresh() { $('#actors').querySelectorAll('.block,.ball,.swing,.pboard,.pg-ss,.pg-ss-contact,.pg-slide,.pg-sand,.pg-chalk,.pg-chest,.pg-bubble,.pg-key,.pg-chimes,.pg-kite,.pg-string').forEach(e => e.remove()); buildPlay(); }
 
   // ----- the town post: letters from any bot, write to any bot -----
   let letters = [];

@@ -366,3 +366,5 @@ button{font-family:inherit;color:inherit;cursor:pointer;touch-action:manipulatio
 
 #actors .swing-rider,#actors .pg-toy.boxed{transform:none}
 #actors .swing-rider,#actors .pg-toy.boxed{filter:none}
+
+#actors .pg-ss-contact{position:absolute;width:5%;height:.9%;margin:-.45% 0 0 -2.5%;border-radius:50%;background:radial-gradient(closest-side,rgba(30,40,10,.55),rgba(30,40,10,0));pointer-events:none}
