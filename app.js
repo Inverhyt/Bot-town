@@ -1151,8 +1151,9 @@
           const s = ac.createBufferSource(), f = ac.createBiquadFilter(), g = ac.createGain(); f.type = 'bandpass'; f.frequency.value = 1800; f.Q.value = .7; g.gain.value = .07; s.buffer = b; s.connect(f); f.connect(g); g.connect(ac.destination); s.start(); } catch (e) {}
         // the rake head rides the sweep line across the sand (canvas px -> scene %)
         const toPct = q => [bx + q[0] / sand.width * bw, by + q[1] / sand.height * bh];
-        rk.style.zIndex = 1400; rk.style.transition = 'none';
+        rk.style.transition = 'none';
         pgSmooth((p, mid) => { const [mx, my] = toPct(mid), hx = AX(kx + kw * K.head[0]), hy = AY(ky + kh * K.head[1]), w = Math.sin(p * Math.PI * 6) * .6;
+          rk.style.zIndex = Math.round(my * 10); // v49: depth follows the sweep line, so a kneeling character in front hides it
           rk.style.transform = `translate(${((mx - hx) / AX(kw) * 100 + w).toFixed(2)}%, ${((my - hy) / AY(kh) * 100).toFixed(2)}%) rotate(${(-4 + w).toFixed(2)}deg)`; },
           () => { rk.animate([{ transform: rk.style.transform }, { transform: 'none' }], { duration: motionOK ? 450 : 1, easing: 'ease-in-out' }).onfinish = () => { rk.style.cssText = r0; busy = false; }; });
       };
