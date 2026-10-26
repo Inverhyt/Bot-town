@@ -3,6 +3,9 @@
 // Painted houses use poses (idle / working / sitting) instead of a separate character sprite. v26: no pose buttons; the pose comes from locate().
 // Door rects are % so they scale; they were measured in image pixels and padded a little for fingers.
 window.BOT_TOWN = {
+  // v51: live chat relay on the Pi (README: the visitor key is public by design; bot tokens never ship here).
+  // The quick-tunnel address changes when the tunnel restarts: just update url. Set url to "" to turn live chat off.
+  relay: { url: "https://neck-creates-mitchell-passes.trycloudflare.com", key: "X5xP3hd2vbaUx557-bTQ9A" },
   blueStar: { label: "" }, // v32: the little blue star. Add a name here if you like; tapping shows 💙
   title: "Bot Town",
   player: "olithia", // whose sprite visits the burrow

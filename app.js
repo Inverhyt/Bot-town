@@ -192,7 +192,7 @@
     showRoom(applyBackdrop(), false);
     $('#roomImg').alt = cur.house; $('#roomFade').alt = '';
     $('#houseName').textContent = cur.house; $('#houseRole').textContent = `${cur.name} · ${cur.role}`;
-    $('#chat').hidden = true; $('#log').innerHTML = ''; hideBubble();
+    $('#chat').hidden = true; $('#log').innerHTML = ''; hideBubble(); if (window.BotTownChat && BotTownChat.close) try { BotTownChat.close(); } catch (e) {} // v51
     const painted = !!cur.room.poses, gallery = !!cur.gallery;
     $('#house').classList.toggle('has-poses', painted);
     $('#house').classList.toggle('gallery', gallery);
@@ -551,7 +551,11 @@
     if (actors.main) poke(actors.main); $('#chathead').textContent = cur.name;
     if ($('#chat').hidden) { $('#chat').hidden = false; if (!$('#log').children.length) say('them', pick(cur.dialog)); } else say('them', pick(cur.dialog));
   }
-  $('#tbChat').onclick = openChat;
+  // v51: in Gorbo's, Loria's or Scout's place, Chat talks to the real bot through the Pi relay (falls back to a copied letter)
+  const relayOn = () => !!(window.BotTownChat && CFG.relay && CFG.relay.url);
+  if (relayOn()) BotTownChat.init({ relay: CFG.relay.url.replace(/\/+$/, ''), key: CFG.relay.key, name: (C[CFG.player] && C[CFG.player].name) || 'Olithia',
+    onFallback: async (bot, text) => { const t = `Letter to ${botName(bot)}: ${text}`; toast((await copyText(t)) ? `Relay is napping — copied! Paste it in your chat with ${botName(bot)}.` : t); } });
+  $('#tbChat').onclick = () => { const b = ownerOf(curId); if (relayOn() && isBot(b)) { $('#chat').hidden = true; BotTownChat.open(b); } else openChat(); };
   $('#close').onclick = () => { $('#chat').hidden = true; };
   $('#replies').onclick = e => {
     const r = e.target.dataset.r; if (!r) return; say('me', r);
@@ -1458,10 +1462,12 @@
     if (ask) d.classList.add('ask');
     const draw = () => { const mine = store.get('react-' + id, null) || rec; bar.innerHTML = '';
       (ask ? ASKR.concat(REACT) : REACT).forEach(([k, lab]) => { const b = document.createElement('button'); b.type = 'button'; b.textContent = lab; b.className = (ask && (k === 'do' || k === 'notnow') ? 'big ' : '') + (mine === k ? 'on' : '');
-        b.onclick = ev => { ev.stopPropagation(); store.set('react-' + id, k); draw(); }; bar.appendChild(b); });
+        b.onclick = async ev => { ev.stopPropagation(); store.set('react-' + id, k); store.set('reactsent-' + id, null); draw();
+          if (relayOn() && isBot(f) && await BotTownChat.post(f, `Board reply: ${RLAB[k]} — "${n.text}"`)) { store.set('reactsent-' + id, k); toast(`Sent to ${who} ✓`); draw(); } }; bar.appendChild(b); });
       if (rec) { const r = document.createElement('small'); r.className = 'rec'; r.textContent = 'Recorded: ' + RLAB[rec]; bar.appendChild(r); }
       const local = store.get('react-' + id, null);
-      if (local && local !== rec) { const c = document.createElement('button'); c.type = 'button'; c.className = 'copy'; c.textContent = 'Copy reply';
+      if (local && local !== rec && store.get('reactsent-' + id, null) === local) { const s = document.createElement('small'); s.className = 'rec'; s.textContent = 'Sent to ' + who + ' ✓'; bar.appendChild(s); }
+      else if (local && local !== rec) { const c = document.createElement('button'); c.type = 'button'; c.className = 'copy'; c.textContent = 'Copy reply';
         const txt = `Board reply to ${who}: ${RLAB[local]} — "${n.text}"`;
         c.onclick = async ev => { ev.stopPropagation(); toast((await copyText(txt)) ? 'Copied! Paste it in chat.' : txt); }; bar.appendChild(c); } };
     draw();
