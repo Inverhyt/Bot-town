@@ -1458,9 +1458,12 @@
     if (ok) { store.set('sent-tasks', sentTasks().concat({ for: taskTo, text, date: new Date().toISOString().slice(0, 10) }).slice(-30)); $('#taskText').value = ''; $('#taskSend').disabled = true; renderBoard(); if (cur && isBot(curId)) renderTasks(); }
   };
   // the mossy standing stone on the map is the town plaza: tap it for the board
-  if (0) (() => { const h = document.createElement('div'); h.className = 'hot plaza'; // v55: town board hidden for now (kept for the newspaper) h.setAttribute('role', 'button'); h.setAttribute('aria-label', 'Town board');
-    Object.assign(h.style, { left: '40.3%', top: '41.5%', width: '19.4%', height: '6.1%' }); h.innerHTML = '<span class="label">Town board</span>';
-    h.addEventListener('click', () => { if (!mapDragged()) openBoard(); }); $('#hotspots').appendChild(h); })();
+  // v56: the mossy standing stone is scenery again; a tap is a little rest spot (a warm glow and a cosy line), never the town board
+  (() => { const h = document.createElement('div'); h.className = 'hot plaza rest'; h.setAttribute('role', 'button'); h.setAttribute('aria-label', 'Mossy stone: sit and rest');
+    Object.assign(h.style, { left: '40.3%', top: '41.5%', width: '19.4%', height: '6.1%' });
+    const RL = ['You sit by the mossy stone and rest a while 🍃', 'The stone is warm from the sun. Deep breath… 🌿', 'A little ladybug lands on the moss beside you 🐞', 'Quiet moment by the old stone ✨'];
+    h.addEventListener('click', () => { if (mapDragged()) return; h.classList.remove('glowing'); void h.offsetWidth; h.classList.add('glowing'); toast(RL[Math.floor(Math.random() * RL.length)]); });
+    $('#hotspots').appendChild(h); })();
   // v32: reactions under each bulletin note (saved locally; board.json reactions.olithia = recorded, shared across devices)
   const REACT = [['yes', '👍 Yes'], ['no', '👎 No'], ['love', '❤️']], ASKR = [['do', 'Yes, do it'], ['notnow', 'Not now']];
   const RLAB = { yes: '👍 yes', no: '👎 no', love: '❤️', do: 'yes, do it', notnow: 'not now' };

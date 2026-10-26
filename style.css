@@ -441,3 +441,7 @@ button{font-family:inherit;color:inherit;cursor:pointer;touch-action:manipulatio
 #botChips,#boardBtn,#mailBtn{display:none!important}
 #taskList li.thought{display:block;font-size:14.5px;line-height:1.4}
 #taskList li.thought small{display:block;opacity:.65;font-size:11.5px;margin-top:2px}
+/* v56: the mossy stone is a rest spot: a soft warm glow on tap */
+.hot.rest{border-radius:50%}
+.hot.rest.glowing{animation:restGlow 1.8s ease-out}
+@keyframes restGlow{0%{box-shadow:0 0 0 0 #ffe7a800;background:#fff3c800}25%{box-shadow:0 0 34px 14px #ffe7a8aa;background:radial-gradient(ellipse,#fff6d655,transparent 70%)}100%{box-shadow:0 0 0 0 #ffe7a800;background:transparent}}

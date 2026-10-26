@@ -129,22 +129,22 @@ window.BOT_TOWN = {
         aspect: 864 / 1152,
         backdrop: "radial-gradient(circle at 50% 45%, #fff6c8, #f5d36a 55%, #c9952a)",
         poses: {
-          idle: "assets/scout-house-v4-idle.webp",
-          working: "assets/scout-house-v4-working-v2.webp", // v25: seated at his desk, facing it
-          sitting: "assets/scout-house-v4-sitting.webp"
+          idle: "assets/scout-house-v5-idle.webp",
+          working: "assets/scout-house-v5-working.webp", // v56: repainted as a two-room cutaway like the other houses
+          sitting: "assets/scout-house-v5-sitting.webp"
         },
         // Olithia visiting: tap the seating area (armchair, tea table and sofa. Art: x=546–889, y=562–765 on 1152×864) to sit together
-        visit: "assets/scout-house-v4-visit.webp", seat: { left: 47.4, top: 65.1, width: 29.8, height: 23.4 },
+        visit: "assets/scout-house-v5-visit.webp", seat: { left: 56.6, top: 48.2, width: 32.2, height: 32.5 },
         // bedroom door on the back wall. Art: x=645-690, y=368-487 on 1152×864.
-        bedroom: { to: "scout-bed", label: "Scout's bedroom", door: { left: 53.8, top: 40.5, width: 9.5, height: 17.5 } },
+        bedroom: { to: "scout-bed", label: "Scout's bedroom", door: { left: 42.5, top: 24.7, width: 12, height: 39 } }, // v56: the arched door between the rooms
         // v28: tap the desk to send scout to work, the seating to sit, the floor (or scout) for idle
-        spots: [{ label: "Star chart", sky: true, zone: { left: 38.5, top: 36.5, width: 11, height: 11.5 } }], // v32
+        spots: [{ label: "Star chart", sky: true, zone: { left: 11.2, top: 19, width: 11, height: 21 } }], // v32 (v56: on the new wall)
         objects: [
-          { pose: "working", label: "Desk", zone: { left: 35, top: 48.5, width: 17, height: 13 } },
+          { pose: "working", label: "Desk", zone: { left: 9, top: 43, width: 25, height: 28.6 } },
           { pose: "idle", label: "Floor", floor: true, zone: { left: 4, top: 55, width: 92, height: 40 } }
         ],
-        empty: "assets/scout-house-v4.webp",
-        guests: { gorbo: { x: 70, y: 87 }, loria: { x: 47, y: 93 } }
+        empty: "assets/scout-house-v5.webp",
+        guests: { gorbo: { x: 70, y: 87 }, loria: { x: 40, y: 85 } }
       },
       tasks: ["Research trending cozy games", "Summarize fan feedback for Loria", "Fact-check this week's posts", "Map out My Leisure Time competitors"],
       dialog: ["Ooh, a visitor! Want to hear a fun fact?", "I found three new sources this morning! *tail wag*", "Loria says I'm the best fact-fetcher in town. 🦊", "Did you know foxes can hear a watch ticking 40 yards away?", "My notes are a bit messy, but I know where everything is!", "Come find me at my cottage on the hill!"]
@@ -279,11 +279,11 @@ window.BOT_TOWN = {
       gallery: true, returnTo: "scout",
       // v26: empty (day / night), awake (day / night) and asleep. Only the one that matches locate("scout") shows.
       room: {
-        door: { left: 24, top: 37, width: 12, height: 35 }, // v29: the painted door back to the house
-        image: "assets/scout-bedroom-v4.webp", night: "assets/scout-bedroom-v4-night.webp",
-        awake: "assets/scout-bedroom-v4-awake.webp", awakeNight: "assets/scout-bedroom-v4-awake-night.webp",
-        sleeping: "assets/scout-bedroom-v4-sleeping.webp", aspect: 864 / 1152, backdrop: "radial-gradient(circle at 50% 45%, #fff6c8, #f5d36a 55%, #c9952a)",
-        objects: [{ pose: "sleeping", label: "Bed", zone: { left: 40, top: 47, width: 30, height: 30 } }, { pose: "awake", label: "Floor", floor: true, zone: { left: 8, top: 62, width: 84, height: 30 } }],
+        door: { left: 21, top: 35, width: 13, height: 37 }, // v29 (v56: new art): the painted door back to the house
+        image: "assets/scout-bedroom-v5.webp", night: "assets/scout-bedroom-v5-night.webp",
+        awake: "assets/scout-bedroom-v5-awake.webp", awakeNight: "assets/scout-bedroom-v5-awake-night.webp",
+        sleeping: "assets/scout-bedroom-v5-sleeping.webp", aspect: 864 / 1152, backdrop: "radial-gradient(circle at 50% 45%, #fff6c8, #f5d36a 55%, #c9952a)",
+        objects: [{ pose: "sleeping", label: "Bed", zone: { left: 38.6, top: 44, width: 33.7, height: 34 } }, { pose: "awake", label: "Floor", floor: true, zone: { left: 8, top: 62, width: 84, height: 30 } }],
       }
     }
   }
