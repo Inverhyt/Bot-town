@@ -202,7 +202,8 @@ window.BOT_TOWN = {
         motto: "You are here for yourself. Be curious and have fun.",
         guests: { gorbo: { x: 30, y: 53 }, loria: { x: 44, y: 55 }, scout: { x: 22, y: 56 }, olithia: { x: 37, y: 52 } }, guestScale: 1, // anyone without a toy stands on the lawn
         // two swings on the painted crossbar: x,y = rope pivot (art px), L = rope length px, half/slope = rope spacing along the slanted bar
-        swings: [{ toy: "swing", x: 384, y: 630, L: 130, ground: 826, half: 27, slope: .47, z: 440, patch: "A" }, { toy: "swing2", x: 459, y: 597, L: 128, ground: 787, half: 22, slope: .47, z: 410, patch: "B" }],
+        swings: [{ toy: "swing", x: 400.5, y: 622.7, L: 130, ground: 820, // v50: nudged 18px along the bar, away from the front leg
+          half: 27, slope: .47, z: 440, patch: "A" }, { toy: "swing2", x: 459, y: 597, L: 128, ground: 787, half: 22, slope: .47, z: 410, patch: "B" }],
         swingRiders: "assets/pg42-sw", // v42 (was v37): painted rider+seat+ropes patch <A|B>-<id>.webp, 140x250 art px, crossbar pivot at (70,24); rotates around the pivot
         swingLeg: { src: "assets/pg3-swing-leg.webp", box: [40.28, 35.7, 11.39, 12.18], z: 446 }, // front-left leg in front of the left swing
         seesaw: { plank: "assets/pg43-seesaw-plank.webp", post: "assets/pg40-seesaw-stand.webp", plankShadow: "assets/pg43-seesaw-plankshadow.webp", postShadow: "assets/pg40-seesaw-standshadow.webp", box: { left: 4.17, top: 59.84, width: 38.89, height: 8.4 },
