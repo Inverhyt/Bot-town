@@ -1177,9 +1177,12 @@
           el.addEventListener('pointermove', mv); el.addEventListener('pointerup', up); el.addEventListener('pointercancel', up); });
         act.appendChild(el); }); }
     // chalkboard: shows her doodle; tap to draw
-    const C = R.chalk, ch = document.createElement('canvas'); ch.className = 'pg-chalk'; ch.width = 150; ch.height = 200;
-    Object.assign(ch.style, { left: C.left + '%', top: C.top + '%', width: C.width + '%', height: C.height + '%', transform: `skewY(${C.skew}deg)`, zIndex: 760 }); ch.setAttribute('role', 'button'); ch.setAttribute('aria-label', 'Chalkboard');
-    const cv = store.get('pg-chalk', null); if (cv) { const im = new Image(); im.onload = () => ch.getContext('2d').drawImage(im, 0, 0, 150, 200); im.src = cv; }
+    // v47: the doodle lives ON the painted slate: an affine plane through its inner corners (art px TL, TR, BL), transparent, grainy chalk
+    const C = R.chalk, SL = C.slate || { tl: [155, 1380], tr: [223.75, 1368], bl: [164.5, 1463] }, ch = document.createElement('canvas'); ch.className = 'pg-chalk'; ch.width = 166; ch.height = 200;
+    const sw = SL.tr[0] - SL.tl[0], sh = SL.bl[1] - SL.tl[1];
+    Object.assign(ch.style, { left: SL.tl[0] / R.artW * 100 + '%', top: SL.tl[1] / R.artH * 100 + '%', width: sw / R.artW * 100 + '%', height: sh / R.artH * 100 + '%', transformOrigin: '0 0',
+      transform: `matrix(1,${((SL.tr[1] - SL.tl[1]) / sw).toFixed(4)},${((SL.bl[0] - SL.tl[0]) / sh).toFixed(4)},1,0,0)`, zIndex: 760 }); ch.setAttribute('role', 'button'); ch.setAttribute('aria-label', 'Chalkboard');
+    const cv = store.get('pg-chalk', null); if (cv) { const im = new Image(); im.onload = () => chalkPreview(ch, im); im.src = cv; }
     ch.onclick = ev => { ev.stopPropagation(); openChalk(ch); }; act.appendChild(ch);
     // v45: the sand-filled toy chest opens Dig & Find (tap zone = the sand inside it)
     const chest = document.createElement('div'); chest.className = 'link zone pg-chest'; chest.setAttribute('role', 'button'); chest.setAttribute('aria-label', 'Toy chest: Dig & Find');
@@ -1272,6 +1275,11 @@
     if (!digState || digState.items.every(o => o.found)) newRound(); else { seedSand(); drawUnder(); digState.items.filter(o => o.found).forEach(o => { t.save(); t.globalCompositeOperation = 'destination-out'; t.beginPath(); t.arc(o.x, o.y, 26, 0, 6.3); t.fill(); t.restore(); }); render(); }
     showFinds(); m.hidden = false;
   }
+  // v47: lift the chalk off the saved slate picture: alpha = how far a pixel is from the slate colour, plus a little grain
+  function chalkPreview(cvs, src) { const W = cvs.width, H = cvs.height, t = document.createElement('canvas'); t.width = W; t.height = H; const tx = t.getContext('2d'); tx.drawImage(src, 0, 0, W, H);
+    const d = tx.getImageData(0, 0, W, H), p = d.data; for (let i = 0; i < p.length; i += 4) { const dr = p[i] - 47, dg = p[i + 1] - 74, db = p[i + 2] - 58, dist = Math.sqrt(dr * dr + dg * dg + db * db);
+      const a = Math.max(0, Math.min(1, (dist - 28) / 90)) * (.7 + Math.random() * .3); p[i + 3] = Math.round(a * 235); }
+    const pc = cvs.getContext('2d'); pc.clearRect(0, 0, W, H); pc.putImageData(d, 0, 0); }
   function openChalk(preview) {
     const m = $('#chalk'), c = $('#chalkPad'), x = c.getContext('2d'); let col = '#fdfbf2', last = null;
     x.fillStyle = '#2f4a3a'; x.fillRect(0, 0, c.width, c.height);
@@ -1280,10 +1288,14 @@
     const pt = e => { const r = c.getBoundingClientRect(); return [(e.clientX - r.left) / r.width * c.width, (e.clientY - r.top) / r.height * c.height]; };
     c.onpointerdown = e => { e.preventDefault(); c.setPointerCapture(e.pointerId); last = pt(e); };
     c.onpointermove = e => { if (!last) return; const p = pt(e); x.lineCap = 'round'; x.strokeStyle = col; x.globalAlpha = col === 'erase' ? 1 : .85; if (col === 'erase') x.strokeStyle = '#2f4a3a';
-      x.lineWidth = col === 'erase' ? 22 : 5 + Math.random() * 1.5; x.beginPath(); x.moveTo(last[0], last[1]); x.lineTo(p[0], p[1]); x.stroke(); x.globalAlpha = 1; last = p; };
+      if (col === 'erase') { x.lineWidth = 22; x.beginPath(); x.moveTo(last[0], last[1]); x.lineTo(p[0], p[1]); x.stroke(); }
+      else { x.globalAlpha = .62; x.lineWidth = 4.2 + Math.random(); x.beginPath(); x.moveTo(last[0], last[1]); x.lineTo(p[0], p[1]); x.stroke(); // v47: soft core + chalk grain
+        const d = Math.hypot(p[0] - last[0], p[1] - last[1]), n = Math.ceil(d * 2.2); x.fillStyle = col;
+        for (let i = 0; i < n; i++) { const t = Math.random(), r = (Math.random() - .5) * 7.5, q = (Math.random() - .5) * 7.5; x.globalAlpha = .25 + Math.random() * .5; x.fillRect(last[0] + (p[0] - last[0]) * t + r, last[1] + (p[1] - last[1]) * t + q, 1 + Math.random() * 1.2, 1 + Math.random() * 1.2); } }
+      x.globalAlpha = 1; last = p; };
     c.onpointerup = c.onpointercancel = () => { last = null; };
     const done = () => { m.hidden = true; let url; try { url = c.toDataURL('image/jpeg', .7); store.set('pg-chalk', url); } catch (e) {}
-      const pc = preview.getContext('2d'); pc.clearRect(0, 0, 150, 200); pc.drawImage(c, 0, 0, 150, 200); };
+      chalkPreview(preview, c); };
     $('#chalkDone').onclick = done; $('#chalkClear').onclick = () => { x.fillStyle = '#2f4a3a'; x.fillRect(0, 0, c.width, c.height); };
     m.onclick = e => { if (e.target === m) done(); };
     m.hidden = false;

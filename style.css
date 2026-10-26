@@ -329,7 +329,7 @@ button{font-family:inherit;color:inherit;cursor:pointer;touch-action:manipulatio
 #actors .pg-toy{transform:translate(-50%,-100%);pointer-events:auto;filter:drop-shadow(0 3px 2px #0003)}
 #actors .pg-ss{position:absolute;pointer-events:auto;cursor:pointer;-webkit-user-drag:none}
 #actors .pg-sand{position:absolute;pointer-events:auto;touch-action:none;cursor:crosshair}
-#actors .pg-chalk{position:absolute;pointer-events:auto;cursor:pointer;mix-blend-mode:screen;opacity:.95}
+#actors .pg-chalk{position:absolute;pointer-events:auto;cursor:pointer;opacity:.9;filter:blur(.25px) sepia(.12) brightness(.9)}
 #actors .pg-key{position:absolute;pointer-events:auto;cursor:pointer;border-radius:3px}
 #actors .pg-key.hit{animation:pgkey .35s ease-out}
 @keyframes pgkey{0%{background:#fff8;transform:translateY(8%)}100%{background:#fff0;transform:none}}
