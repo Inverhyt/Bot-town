@@ -211,6 +211,11 @@ window.BOT_TOWN = {
         sandbox: [[60.28, 63.15], [75.56, 60.68], [89.31, 63.46], [74.31, 66.25]], // v38: inner sand corners of the painted frame (art px / size)
         chalk: { left: 21.53, top: 72.34, width: 8.33, height: 4.83, skew: 0 },
         chest: { left: 57.64, top: 70.6, width: 20.14, height: 8.92 },
+        // v45: Dig & Find opens from the sand inside the open chest (art px polygon); the rake rests against the sandbox rim; stones wait on the grass
+        chestSand: [[428, 1424], [458, 1402], [545, 1421], [512, 1462]],
+        rake: { src: "assets/pg45-rake.webp", box: [558, 1262, 64, 45.6], head: [.16, .66] },
+        stones: [{ src: "assets/pg45-stone0.webp", w: 19, h: 11.7, home: [430, 1262] }, { src: "assets/pg45-stone1.webp", w: 18, h: 11, home: [453, 1281] }, { src: "assets/pg45-stone2.webp", w: 16, h: 9.7, home: [478, 1295] },
+          { src: "assets/pg45-stone3.webp", w: 18, h: 11, home: [434, 1288] }, { src: "assets/pg45-stone4.webp", w: 15, h: 8.6, home: [502, 1310] }],
         xylo: { left: 58.06, top: 23.36, width: 11.67, height: 2.52 }, chimes: { left: 62.5, top: 17.74, width: 5.0, height: 5.14 },
         kite: { x: 80, y: 4.5, anchor: [83.33, 17.32], maxY: 9 },
         // a toy each (one per toy); h = sprite height % of scene height, feet at x,y (%)

@@ -410,3 +410,14 @@ button{font-family:inherit;color:inherit;cursor:pointer;touch-action:manipulatio
 #critList b{font:700 15px Grandstander,cursive;color:#6b3f1f}
 #critList .cnt{color:#a0612a;font-weight:700}
 #critList small{display:block;color:#6b3f1f;font-size:13px;line-height:1.35}
+/* v45: rake, stones, chest sand */
+#actors .pg-rake{position:absolute;pointer-events:auto;cursor:pointer;-webkit-user-drag:none;filter:drop-shadow(1px 2px 1.2px rgba(34,44,12,.55));transform-origin:16% 66%}
+#actors .pg-stone{position:absolute;pointer-events:auto;touch-action:none;cursor:grab}
+#actors .pg-stone img{position:absolute;left:50%;bottom:30%;transform:translateX(-50%);height:auto;pointer-events:none;filter:drop-shadow(.5px 1.5px 1px rgba(40,44,16,.55))}
+#actors .pg-stone .ring{position:absolute;left:50%;bottom:22%;width:110%;aspect-ratio:2.4/1;transform:translate(-50%,0);border-radius:50%;opacity:0;pointer-events:none;
+  background:radial-gradient(closest-side,transparent 52%,rgba(130,86,40,.30) 62%,rgba(255,236,190,.35) 74%,rgba(140,94,46,.14) 86%,transparent 100%)}
+#actors .pg-stone.in .ring{opacity:1}
+#actors .pg-stone.in img{filter:drop-shadow(.5px 1.2px .8px rgba(110,70,30,.55))}
+#actors .pg-stone.lift img{filter:drop-shadow(3px 9px 3px rgba(30,30,10,.35));translate:0 -25%}
+#actors .pg-stone.lift .ring{opacity:0}
+#actors .pg-grain{position:absolute;width:3px;height:3px;border-radius:50%;background:#e2c48e;pointer-events:none}

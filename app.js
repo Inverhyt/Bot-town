@@ -969,9 +969,7 @@
     const root = b => (b.on == null ? b : root(blocks[b.on])); blocks.forEach(b => { if (b.on != null) { const r = root(b); els[b.id].style.zIndex = z(r) + (r.y - b.y) / BH; } }); // stacks: upper blocks in front
     const reset = document.createElement('button'); reset.type = 'button'; reset.className = 'pill pg-reset'; reset.textContent = 'Tidy blocks';
     reset.onclick = ev => { ev.stopPropagation(); store.set('pg-blocks' + (R.stateKey || ''), null); buildPlayFresh(); };
-    const smooth = document.createElement('button'); smooth.type = 'button'; smooth.className = 'pill pg-reset'; smooth.textContent = 'Smooth sand';
-    smooth.onclick = ev => { ev.stopPropagation(); pgSmooth(); };
-    $('#playTools').replaceChildren(reset, smooth); playTools();
+    $('#playTools').replaceChildren(reset); playTools();
     buildToys(R, act);
     // ball: flick it, or tap for a little kick
     const ball = document.createElement('div'); ball.className = 'ball'; ball.setAttribute('role', 'button'); ball.setAttribute('aria-label', 'Ball');
@@ -1098,7 +1096,7 @@
     const P = R.sandbox, xs = P.map(p => p[0]), ys = P.map(p => p[1]), bx = Math.min(...xs), by = Math.min(...ys), bw = Math.max(...xs) - bx, bh = Math.max(...ys) - by;
     const sand = document.createElement('canvas'); sand.className = 'pg-sand'; sand.width = Math.round(bw * R.artW / 50); sand.height = Math.round(bh * R.artH / 50); // v38: 2px per art px, true aspect (no stretched streaks)
     Object.assign(sand.style, { left: bx + '%', top: by + '%', width: bw + '%', height: bh + '%', zIndex: 20, clipPath: `polygon(${P.map(p => ((p[0] - bx) / bw * 100).toFixed(1) + '% ' + ((p[1] - by) / bh * 100).toFixed(1) + '%').join(',')})` });
-    sand.setAttribute('aria-label', 'Sandbox: tap to dig for treasure, drag to draw, double-tap for a castle'); act.appendChild(sand);
+    sand.setAttribute('aria-label', 'Sandbox: drag to draw, double-tap for a castle, press and hold to sit'); act.appendChild(sand);
     const sc = sand.getContext('2d'), sv = store.get('pg-sand-v38', null);
     if (sv) { const im = new Image(); im.onload = () => sc.drawImage(im, 0, 0); im.src = sv; }
     const sp = e => { const r = sand.getBoundingClientRect(); return [(e.clientX - r.left) / r.width * sand.width, (e.clientY - r.top) / r.height * sand.height]; };
@@ -1119,18 +1117,73 @@
       sc.strokeStyle = 'rgba(150,100,48,.30)'; sc.lineWidth = 6.5; sc.beginPath(); sc.moveTo(drawing[0], drawing[1]); sc.lineTo(p[0], p[1]); sc.stroke();
       sc.strokeStyle = 'rgba(118,76,34,.24)'; sc.lineWidth = 3; sc.beginPath(); sc.moveTo(drawing[0], drawing[1] + 1); sc.lineTo(p[0], p[1] + 1); sc.stroke();
       sc.strokeStyle = 'rgba(255,232,180,.32)'; sc.lineWidth = 1.6; sc.beginPath(); sc.moveTo(drawing[0], drawing[1] - 2.6); sc.lineTo(p[0], p[1] - 2.6); sc.stroke(); sc.restore(); drawing = p; });
-    const endSand = e => { clearTimeout(hold); hold0 = null; if (drawing && moved) saveSand(); drawing = null; if (!moved && e && e.type === 'pointerup') openT = setTimeout(() => openDig(), 340); };
+    const endSand = e => { clearTimeout(hold); hold0 = null; if (drawing && moved) saveSand(); drawing = null; }; // v45: Dig & Find lives in the chest now
     sand.addEventListener('pointerup', endSand); sand.addEventListener('pointercancel', endSand);
-    pgSmooth = () => { sc.clearRect(0, 0, sand.width, sand.height); store.set('pg-sand-v38', null); };
+    // v45: rake + zen lines. Sandbox corners in canvas px: A left, B back, C right, D front
+    const Q = P.map(p => [(p[0] - bx) / bw * sand.width, (p[1] - by) / bh * sand.height]), [qA, qB, qC, qD] = Q, lerp = (u, v, t) => [u[0] + (v[0] - u[0]) * t, u[1] + (v[1] - u[1]) * t];
+    const zenLine = t => { const s = lerp(qA, qD, t), e = lerp(qB, qC, t); sc.save(); sc.lineCap = 'round'; sc.filter = 'blur(.8px)';
+      sc.strokeStyle = 'rgba(140,94,46,.24)'; sc.lineWidth = 2.6; sc.beginPath(); sc.moveTo(s[0], s[1] + .8); sc.lineTo(e[0], e[1] + .8); sc.stroke();
+      sc.strokeStyle = 'rgba(255,236,190,.3)'; sc.lineWidth = 1.3; sc.beginPath(); sc.moveTo(s[0], s[1] - 1.2); sc.lineTo(e[0], e[1] - 1.2); sc.stroke(); sc.restore(); };
+    const clearTo = p => { sc.save(); sc.beginPath(); const e1 = lerp(qB, qC, p), e2 = lerp(qA, qD, p); [qA, qB, e1, e2].forEach((q, i) => i ? sc.lineTo(q[0], q[1]) : sc.moveTo(q[0], q[1])); sc.closePath(); sc.clip();
+      sc.clearRect(0, 0, sand.width, sand.height); sc.restore(); };
+    const N = 13;
+    pgSmooth = (onStep, done) => { const t0 = performance.now(), D = motionOK ? 1600 : 1; let drawn = 0;
+      const step = now => { const p = Math.min(1, (now - t0) / D), pe = p < .5 ? 2 * p * p : 1 - Math.pow(-2 * p + 2, 2) / 2; clearTo(Math.min(1, pe + .04));
+        for (let i = 0; i < N; i++) { const t = (i + .5) / N; if (t <= pe) zenLine(t); } // redraw the lines already passed (cleared band is re-lined)
+        if (onStep) onStep(pe, lerp(lerp(qA, qD, pe), lerp(qB, qC, pe), .5));
+        if (p < 1) requestAnimationFrame(step); else { saveSand(); if (done) done(); } };
+      requestAnimationFrame(step); };
+    // the rake: tap it to sweep the sand smooth
+    if (R.rake) { const K = R.rake, [kx, ky, kw, kh] = K.box, rk = document.createElement('img'); rk.className = 'pg-rake'; rk.src = K.src; rk.alt = 'Rake'; rk.draggable = false; rk.setAttribute('role', 'button'); rk.setAttribute('aria-label', 'Rake: smooth the sand');
+      const AX = v => v / R.artW * 100, AY = v => v / R.artH * 100;
+      Object.assign(rk.style, { left: AX(kx) + '%', top: AY(ky) + '%', width: AX(kw) + '%', height: AY(kh) + '%', zIndex: Math.round(AY(ky + kh * .8) * 10) });
+      let busy = false;
+      rk.onclick = ev => { ev.stopPropagation(); if (busy) return; busy = true; buzz(8); const r0 = rk.style.cssText;
+        try { const ac = pgAC = pgAC || new (window.AudioContext || window.webkitAudioContext)(); const len = 1.5, b = ac.createBuffer(1, ac.sampleRate * len, ac.sampleRate), d = b.getChannelData(0);
+          for (let i = 0; i < d.length; i++) { const t = i / ac.sampleRate; d[i] = (Math.random() * 2 - 1) * Math.sin(Math.PI * t / len) * (.55 + .45 * Math.abs(Math.sin(t * 7))); }
+          const s = ac.createBufferSource(), f = ac.createBiquadFilter(), g = ac.createGain(); f.type = 'bandpass'; f.frequency.value = 1800; f.Q.value = .7; g.gain.value = .07; s.buffer = b; s.connect(f); f.connect(g); g.connect(ac.destination); s.start(); } catch (e) {}
+        // the rake head rides the sweep line across the sand (canvas px -> scene %)
+        const toPct = q => [bx + q[0] / sand.width * bw, by + q[1] / sand.height * bh];
+        rk.style.zIndex = 1400; rk.style.transition = 'none';
+        pgSmooth((p, mid) => { const [mx, my] = toPct(mid), hx = AX(kx + kw * K.head[0]), hy = AY(ky + kh * K.head[1]), w = Math.sin(p * Math.PI * 6) * .6;
+          rk.style.transform = `translate(${((mx - hx) / AX(kw) * 100 + w).toFixed(2)}%, ${((my - hy) / AY(kh) * 100).toFixed(2)}%) rotate(${(-4 + w).toFixed(2)}deg)`; },
+          () => { rk.animate([{ transform: rk.style.transform }, { transform: 'none' }], { duration: motionOK ? 450 : 1, easing: 'ease-in-out' }).onfinish = () => { rk.style.cssText = r0; busy = false; }; });
+      };
+      act.appendChild(rk); }
+    // v45: smooth stones: drag one into the sand (it settles with a little groove ring), drag it back out to put it away
+    if (R.stones) { const AX = v => v / R.artW * 100, AY = v => v / R.artH * 100, saved = store.get('pg-stones', {}) || {};
+      const inSand = (x, y) => { let ins = false; for (let i = 0, j = P.length - 1; i < P.length; j = i++) { const [xi, yi] = P[i], [xj, yj] = P[j]; if (((yi > y) !== (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi) + xi)) ins = !ins; } return ins; };
+      const shrink = (x, y, k) => { const cx = P.reduce((s, p) => s + p[0], 0) / 4, cy = P.reduce((s, p) => s + p[1], 0) / 4; return [cx + (x - cx) * k, cy + (y - cy) * k]; };
+      R.stones.forEach((S, i) => { const el = document.createElement('div'); el.className = 'pg-stone'; el.setAttribute('role', 'button'); el.setAttribute('aria-label', 'Smooth stone');
+        el.innerHTML = `<i class="ring"></i><img src="${S.src}" alt="" draggable="false">`;
+        const wP = AX(S.w + 14), hP = AY(S.h + 14); // finger-friendly hit box around the stone
+        let pos = saved[i] || null; // [x%, y%] of the stone's foot when in the sand
+        const put = () => { const [x, y] = pos || [AX(S.home[0]), AY(S.home[1])]; Object.assign(el.style, { left: (x - wP / 2) + '%', top: (y - hP + AY(7)) + '%', width: wP + '%', height: hP + '%', zIndex: pos ? 30 + Math.round(y) : Math.round(y * 10) });
+          el.classList.toggle('in', !!pos); };
+        el.querySelector('img').style.width = (S.w / (S.w + 14) * 100) + '%'; put();
+        el.addEventListener('pointerdown', e => { e.stopPropagation(); e.preventDefault(); el.setPointerCapture(e.pointerId); el.classList.add('lift'); el.style.zIndex = 3000;
+          const r = act.getBoundingClientRect(), mv = ev => { const x = (ev.clientX - r.left) / r.width * 100, y = (ev.clientY - r.top) / r.height * 100 + AY(4); Object.assign(el.style, { left: (x - wP / 2) + '%', top: (y - hP + AY(7)) + '%' }); el._xy = [x, y]; };
+          const up = ev => { el.removeEventListener('pointermove', mv); el.removeEventListener('pointerup', up); el.removeEventListener('pointercancel', up); el.classList.remove('lift');
+            if (el._xy) { let [x, y] = el._xy; if (inSand(x, y)) pos = [x, y]; else { const [sx, sy] = shrink(x, y, .82); pos = (inSand(...shrink(x, y, .9)) || Math.hypot(sx - x, (sy - y) * 2.6) < 2.5) ? shrink(x, y, .9) : null; }
+              if (pos && !inSand(...pos)) pos = null;
+              buzz(pos ? 10 : 6); try { pgNote(pos ? 196 : 262, .3, 'sine', .1); } catch (e) {} }
+            el._xy = null; saved[i] = pos; store.set('pg-stones', saved); put();
+            if (pos && motionOK) el.querySelector('img').animate([{ translate: '0 -18%' }, { translate: '0 3%' }, { translate: '0 0' }], { duration: 260, easing: 'ease-out' }); };
+          el.addEventListener('pointermove', mv); el.addEventListener('pointerup', up); el.addEventListener('pointercancel', up); });
+        act.appendChild(el); }); }
     // chalkboard: shows her doodle; tap to draw
     const C = R.chalk, ch = document.createElement('canvas'); ch.className = 'pg-chalk'; ch.width = 150; ch.height = 200;
     Object.assign(ch.style, { left: C.left + '%', top: C.top + '%', width: C.width + '%', height: C.height + '%', transform: `skewY(${C.skew}deg)`, zIndex: 760 }); ch.setAttribute('role', 'button'); ch.setAttribute('aria-label', 'Chalkboard');
     const cv = store.get('pg-chalk', null); if (cv) { const im = new Image(); im.onload = () => ch.getContext('2d').drawImage(im, 0, 0, 150, 200); im.src = cv; }
     ch.onclick = ev => { ev.stopPropagation(); openChalk(ch); }; act.appendChild(ch);
-    // toy chest: bubbles to pop
-    const chest = document.createElement('div'); chest.className = 'link zone pg-chest'; chest.setAttribute('role', 'button'); chest.setAttribute('aria-label', 'Toy chest: bubbles');
-    Object.assign(chest.style, { left: R.chest.left + '%', top: R.chest.top + '%', width: R.chest.width + '%', height: R.chest.height + '%', zIndex: 700 });
-    chest.onclick = ev => { ev.stopPropagation(); buzz(8); for (let i = 0; i < 7; i++) setTimeout(() => bubble(R.chest.left + R.chest.width * (.3 + Math.random() * .4), R.chest.top + 2), i * 160); };
+    // v45: the sand-filled toy chest opens Dig & Find (tap zone = the sand inside it)
+    const chest = document.createElement('div'); chest.className = 'link zone pg-chest'; chest.setAttribute('role', 'button'); chest.setAttribute('aria-label', 'Toy chest: Dig & Find');
+    const CS = R.chestSand.map(([x, y]) => [x / R.artW * 100, y / R.artH * 100]), cxs = CS.map(p => p[0]), cys = CS.map(p => p[1]), cbx = Math.min(...cxs) - .8, cby = Math.min(...cys) - .5, cbw = Math.max(...cxs) - cbx + .8, cbh = Math.max(...cys) - cby + .5;
+    Object.assign(chest.style, { left: cbx + '%', top: cby + '%', width: cbw + '%', height: cbh + '%', zIndex: 700, clipPath: `polygon(${CS.map(p => ((p[0] - cbx) / cbw * 100).toFixed(1) + '% ' + ((p[1] - cby) / cbh * 100).toFixed(1) + '%').join(',')})` });
+    chest.onclick = ev => { ev.stopPropagation(); buzz(8); try { pgNote(330, .25, 'sine', .08); } catch (e) {}
+      if (motionOK) for (let i = 0; i < 6; i++) { const g = document.createElement('i'); g.className = 'pg-grain'; Object.assign(g.style, { left: (cbx + cbw * (.3 + Math.random() * .4)) + '%', top: (cby + cbh * .5) + '%', zIndex: 3000 }); act.appendChild(g);
+        g.animate([{ transform: 'translate(0,0)', opacity: 1 }, { transform: `translate(${(Math.random() - .5) * 30}px, ${-14 - Math.random() * 16}px)`, opacity: 0 }], { duration: 500, easing: 'ease-out' }); setTimeout(() => g.remove(), 520); }
+      setTimeout(openDig, motionOK ? 260 : 0); };
     act.appendChild(chest);
     const bubble = (x, y) => { const b = document.createElement('div'); b.className = 'pg-bubble'; const s = 2.2 + Math.random() * 2.6; Object.assign(b.style, { left: x + '%', top: y + '%', width: s + '%', zIndex: 3000 });
       act.appendChild(b); const dx = (Math.random() - .5) * 160, dy = -(180 + Math.random() * 220), d = 5200 + Math.random() * 2800;
@@ -1209,7 +1262,7 @@
     cv.onpointermove = e => { if (!last) return; const p = pt(e), dd = Math.hypot(p[0] - last[0], p[1] - last[1]); for (let k = 0; k < dd; k += 5) brush(last[0] + (p[0] - last[0]) * k / dd, last[1] + (p[1] - last[1]) * k / dd); last = p; render(); if (++n % 6 === 0) check(); };
     cv.onpointerup = cv.onpointercancel = () => { last = null; check(); };
     $('#digNew').onclick = newRound;
-    $('#digDraw').onclick = () => { m.hidden = true; toast('Draw mode: drag on the sandbox to draw, double-tap for a castle.'); };
+    $('#digDraw').onclick = () => { m.hidden = true; toast('Draw in the sandbox: drag to draw, double-tap for a castle. Tap the rake to smooth it.'); };
     $('#digDone').onclick = () => { m.hidden = true; };
     if (!digState || digState.items.every(o => o.found)) newRound(); else { seedSand(); drawUnder(); digState.items.filter(o => o.found).forEach(o => { t.save(); t.globalCompositeOperation = 'destination-out'; t.beginPath(); t.arc(o.x, o.y, 26, 0, 6.3); t.fill(); t.restore(); }); render(); }
     showFinds(); m.hidden = false;
@@ -1236,7 +1289,7 @@
     j.textContent = here ? 'Head home' : 'Join in'; j.onclick = ev => { ev.stopPropagation(); setOli(here ? CFG.player : curId, 'idle'); };
     box.appendChild(j);
   }
-  function buildPlayFresh() { $('#actors').querySelectorAll('.block,.ball,.swing,.pboard,.pg-ss,.pg-ss-contact,.pg-swshadow,.pg-slide,.pg-sand,.pg-chalk,.pg-chest,.pg-bubble,.pg-key,.pg-chimes,.pg-kite,.pg-string').forEach(e => e.remove()); buildPlay(); }
+  function buildPlayFresh() { $('#actors').querySelectorAll('.block,.ball,.swing,.pboard,.pg-ss,.pg-ss-contact,.pg-swshadow,.pg-slide,.pg-sand,.pg-chalk,.pg-chest,.pg-bubble,.pg-rake,.pg-stone,.pg-grain,.pg-key,.pg-chimes,.pg-kite,.pg-string').forEach(e => e.remove()); buildPlay(); }
 
   // ----- the town post: letters from any bot, write to any bot -----
   let letters = [];
