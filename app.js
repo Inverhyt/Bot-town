@@ -1402,7 +1402,8 @@
   pickRecipient(mailTo);
 
   // ----- the town board: who's doing what, and Olithia's questions & tasks for the bots -----
-  let taskItems = [], boardNotes = [];
+  let taskItems = [], boardNotes = [], townNews = [];
+  const pacDay = (t = Date.now()) => new Date(t).toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' });
   let taskTo = BOTS[0] || 'gorbo';
   const statusLabel = s => ({ done: 'Done', doing: 'Doing', open: 'Open', answered: 'Answered' }[s] || 'Open');
   const sentTasks = () => { const s = store.get('sent-tasks', []); return Array.isArray(s) ? s : []; };
@@ -1414,8 +1415,27 @@
   async function pullBoard() {
     try { const r = await fetch('tasks.json', { cache: 'no-store' }); if (!r.ok) throw 0; const d = await r.json(); taskItems = (d && Array.isArray(d.items) ? d.items : []).filter(t => t && isBot(String(t.for).toLowerCase()) && t.text).map(t => ({ for: String(t.for).toLowerCase(), text: String(t.text), status: String(t.status || 'open').toLowerCase() })); }
     catch (e) { /* keep what we had */ }
-    try { const r = await fetch('board.json', { cache: 'no-store' }); if (!r.ok) throw 0; const d = await r.json(); boardNotes = (d && Array.isArray(d.notes) ? d.notes : []).filter(n => n && n.text); }
-    catch (e) { /* keep what we had */ }
+    // v53: both boards come from the relay: bot replies tagged [request] -> park board (today only, Pacific), [notice] -> town board (last 7 days)
+    let fromRelay = false;
+    if (CFG.relay && CFG.relay.url && CFG.relay.key) {
+      try {
+        const since = Date.now() / 1000 - 7 * 86400, req = [], news = [];
+        const all = await Promise.all(['gorbo', 'loria', 'scout'].map(async b => {
+          const r = await fetch(`${CFG.relay.url.replace(/\/$/, '')}/messages?bot=${b}&since=${since}`, { headers: { 'X-BotTown-Key': CFG.relay.key }, cache: 'no-store' });
+          if (!r.ok) throw 0; return [b, (await r.json()).messages || []]; }));
+        all.forEach(([b, ms]) => ms.forEach(m => { if (m.direction !== 'out' || typeof m.text !== 'string') return;
+          const t = m.text.match(/^\s*\[(notice|request)\]\s*([\s\S]+)/i); if (!t) return;
+          const n = { id: 'r' + m.id, from: b, text: t[2].trim(), ts: m.ts, date: pacDay(m.ts * 1000) };
+          (t[1].toLowerCase() === 'notice' ? news : req).push(n); }));
+        townNews = news.sort((x, y) => y.ts - x.ts);
+        boardNotes = req.filter(n => n.date === pacDay()).sort((x, y) => y.ts - x.ts).map(n => ({ ...n, ask: true }));
+        fromRelay = true;
+      } catch (e) { /* relay down: fall back to board.json */ }
+    }
+    if (!fromRelay) {
+      try { const r = await fetch('board.json', { cache: 'no-store' }); if (!r.ok) throw 0; const d = await r.json(); boardNotes = (d && Array.isArray(d.notes) ? d.notes : []).filter(n => n && n.text && (!n.date || n.date === pacDay())); }
+      catch (e) { /* keep what we had */ }
+    }
     if (!$('#board').hidden) renderBoard();
     if (cur && cur.play) buildPlayFresh();
     if (cur && isBot(curId) && !$('#tasks').hidden) renderTasks();
@@ -1429,6 +1449,9 @@
       row.innerHTML = `<i>${spr ? `<img src="${spr.face || spr.src}" alt="">` : ''}</i><div><b>${esc(botName(b))}</b><span>${esc(doing)}</span><small>${esc(w.pose === 'sleeping' ? placeName(b) + ' bedroom' : placeName(w.place))}${w.live ? '' : ' · usual schedule'}</small></div>`;
       who.appendChild(row);
     });
+    const nw = $('#boardNews'); nw.innerHTML = '';
+    if (!townNews.length) nw.innerHTML = '<li class="none">No notices this week.</li>';
+    townNews.forEach(n => { const li = document.createElement('li'); li.innerHTML = `<b>${esc(botName(n.from))}</b> <small>${esc(n.date)}</small><p></p>`; li.querySelector('p').textContent = n.text; nw.appendChild(li); });
     const ul = $('#boardTasks'); ul.innerHTML = '';
     const items = boardItems();
     if (!items.length) { const li = document.createElement('li'); li.className = 'none'; li.textContent = 'No questions yet. Ask one below.'; ul.appendChild(li); }
