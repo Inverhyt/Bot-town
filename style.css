@@ -282,8 +282,7 @@ button{font-family:inherit;color:inherit;cursor:pointer;touch-action:manipulatio
 
 .sendrow{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 .pill.small{min-height:38px;padding:4px 12px;font-size:13px;opacity:.85}.pill.small:disabled{opacity:.4}
-.manualcopy{display:block;width:100%;box-sizing:border-box;margin-top:6px;font:16px/1.35 Fredoka,sans-serif;padding:8px;border-radius:10px;border:2px solid #c98f1e;background:#fffaf0;user-select:text;-webkit-user-select:text}
-#copyToast{position:fixed;z-index:60;left:50%;bottom:calc(env(safe-area-inset-bottom) + 90px);transform:translateX(-50%);max-width:calc(100% - 40px);padding:12px 16px;border-radius:14px;background:#3d6b32;color:#fff;font:600 15px Fredoka,sans-serif;box-shadow:0 4px 12px rgba(0,0,0,.25);text-align:center}
+#copyToast{pointer-events:none;position:fixed;z-index:60;left:50%;bottom:calc(env(safe-area-inset-bottom) + 90px);transform:translateX(-50%);max-width:calc(100% - 40px);padding:8px 13px;border-radius:12px;background:rgba(61,74,110,.92);color:#fff;font:600 13.5px Fredoka,sans-serif;box-shadow:0 4px 12px rgba(0,0,0,.25);text-align:center}
 
 /* v28: tap-zone hints + poem box */
 .link.zone.obj.hint{animation:objHint 1.6s ease-in-out 3}
@@ -311,7 +310,6 @@ button{font-family:inherit;color:inherit;cursor:pointer;touch-action:manipulatio
 #notesList .reacts button{font:inherit;font-size:13px;padding:4px 9px;border-radius:14px;border:1px solid #e0cc98;background:#fff6d8;color:#5a4128;cursor:pointer}
 #notesList .reacts button.big{font-weight:600}
 #notesList .reacts button.on{background:#f3c35a;border-color:#c8902a;box-shadow:0 0 0 2px #f3c35a55}
-#notesList .reacts button.copy{background:#5a8f6a;color:#fff;border-color:#467656}
 #notesList .reacts .rec{color:#467656;font-size:12px}
 #notesList .note.ask{border-color:#e8b96a}
 
@@ -439,3 +437,7 @@ button{font-family:inherit;color:inherit;cursor:pointer;touch-action:manipulatio
 #boardNews li small{opacity:.65;font-size:11.5px}
 #boardNews li p{margin:3px 0 0;font-size:14px;line-height:1.35;white-space:pre-wrap}
 #boardNews li.none{background:none;border:0;opacity:.7;font-style:italic}
+/* v55: no bot strip, town board or town post on the map for now */
+#botChips,#boardBtn,#mailBtn{display:none!important}
+#taskList li.thought{display:block;font-size:14.5px;line-height:1.4}
+#taskList li.thought small{display:block;opacity:.65;font-size:11.5px;margin-top:2px}

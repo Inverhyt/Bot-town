@@ -209,6 +209,7 @@
     $('#map').classList.remove('active'); $('#house').classList.add('active');
     layout(); buildActors(); buildGuests(); resetCam(false); buildLinks(); buildPlay(); buildOwl(); buildPark44();
     $('#tasks').hidden = gallery || !(cur.tasks || isBot(id));
+    $('#tbTasks span').textContent = isBot(id) ? 'Thoughts' : 'Tasks'; // v55
     if (cur.tasks || isBot(id)) renderTasks();
     updateMode(true);
     if (motionOK && opts.arrive) { $('#house').classList.add('arriving'); setTimeout(() => $('#house').classList.remove('arriving'), 720); }
@@ -380,7 +381,7 @@
     (cur.room.objects || []).forEach(o => { const el = addZone(o.zone, o.label, () => tapObject(o)); el.classList.remove('glow'); el.classList.add('obj'); el.style.zIndex = o.floor ? 500 : 600; });
     if ((cur.room.objects || []).length && !store.get('hinted-' + curId, false)) { store.set('hinted-' + curId, true); $('#actors').querySelectorAll('.obj:not([aria-label=Floor])').forEach(e => e.classList.add('hint')); }
     const bed = cur.room.bedroom;
-    if (bed) doorZone(bed.door, bed.label, () => travel(bed.to, { door: true }));
+    if (bed) [bed.door, ...(bed.doors || [])].forEach(d => doorZone(d, bed.label, () => travel(bed.to, { door: true }))); // v55: extra doors to the same bedroom
     if (cur.returnTo && cur.room.door) doorZone(cur.room.door, 'Back to the house', () => travel(cur.returnTo, { door: true })); // v29: bedroom door -> house
     (cur.room.spots || []).forEach((s, si) => { const el = addZone(s.zone, s.label, () => {
       if (s.sky) { if (window.BotSky) BotSky.open(); return; }
@@ -531,16 +532,15 @@
     cur.tasks.forEach((t, i) => { const li = document.createElement('li'); li.innerHTML = `<label><input type="checkbox" ${done[i] ? 'checked' : ''}><span>${t}</span></label>`; li.querySelector('input').onchange = e => { const d = tasksDone(curId); d[i] = e.target.checked; store.set('tasks-' + curId, d); store.set('busy-' + curId, null); countTasks(); updateMode(); }; ul.appendChild(li); });
     countTasks();
   }
-  // Bots' houses list the questions and tasks Olithia gave that bot (tasks.json), with an Ask button.
+  // v55: bots' houses show Thoughts: what the bot is doing or thinking right now (the live status line)
   function renderBotTasks() {
     const ul = $('#taskList'); ul.innerHTML = '';
-    const mine = boardItems().filter(t => t.for === curId);
-    $('#tasksHead b').textContent = 'For ' + C[curId].name;
-    $('#taskCount').textContent = mine.filter(t => t.status !== 'done').length || '';
-    if (!mine.length) { const li = document.createElement('li'); li.className = 'none'; li.textContent = 'Nothing asked yet.'; ul.appendChild(li); }
-    mine.forEach(t => { const li = document.createElement('li'); li.className = 'bt-' + (t.status || 'open'); li.innerHTML = `<span class="st">${esc(statusLabel(t.status))}</span> <span>${esc(t.text)}</span>`; ul.appendChild(li); });
-    const li = document.createElement('li'); const b = document.createElement('button'); b.type = 'button'; b.className = 'pill main ask'; b.textContent = 'Ask ' + C[curId].name;
-    b.onclick = ev => { ev.stopPropagation(); openBoard(curId); }; li.appendChild(b); ul.appendChild(li);
+    $('#tasksHead b').textContent = C[curId].name + "'s thoughts"; $('#taskCount').textContent = '';
+    const w = where(curId);
+    const doing = w.pose === 'sleeping' ? 'Asleep… zzz' : (w.note || (w.pose === 'working' ? 'Working' : w.pose === 'sitting' ? 'Taking a break' : 'Hanging out'));
+    const li = document.createElement('li'); li.className = 'thought'; li.innerHTML = `<span>💭</span> <span></span> <small></small>`;
+    li.children[1].textContent = doing; li.children[2].textContent = (w.pose === 'sleeping' ? placeName(curId) + ' bedroom' : placeName(w.place)) + (w.live ? '' : ' · usual schedule');
+    ul.appendChild(li);
   }
   function countTasks() {
     if (isBot(curId)) return; const d = tasksDone(curId); $('#taskCount').textContent = `${cur.tasks.filter((_, i) => d[i]).length}/${cur.tasks.length}`; }
@@ -556,7 +556,7 @@
   // v51: in Gorbo's, Loria's or Scout's place, Chat talks to the real bot through the Pi relay (falls back to a copied letter)
   const relayOn = () => !!(window.BotTownChat && CFG.relay && CFG.relay.url);
   if (relayOn()) BotTownChat.init({ relay: CFG.relay.url.replace(/\/+$/, ''), key: CFG.relay.key, name: (C[CFG.player] && C[CFG.player].name) || 'Olithia',
-    onFallback: async (bot, text) => { const t = `Letter to ${botName(bot)}: ${text}`; toast((await copyText(t)) ? `Relay is napping — copied! Paste it in your chat with ${botName(bot)}.` : t); } });
+    onFallback: () => napToast() });
   $('#tbChat').onclick = () => { const b = ownerOf(curId); if (relayOn() && isBot(b)) { $('#chat').hidden = true; BotTownChat.open(b); } else openChat(); };
   $('#close').onclick = () => { $('#chat').hidden = true; };
   $('#replies').onclick = e => {
@@ -729,32 +729,15 @@
       el.appendChild(p);
     });
   }
-  // v27: Copy is primary (share sheets on some phones only offer "Save to Drive"); Share is secondary.
-  function copyFallback(t) {
-    const ta = document.createElement('textarea'); ta.value = t; ta.setAttribute('readonly', '');
-    ta.style.cssText = 'position:fixed;top:0;left:0;opacity:0;font-size:16px'; document.body.appendChild(ta);
-    ta.focus(); ta.select(); try { ta.setSelectionRange(0, t.length); } catch (e) {}
-    let ok = false; try { ok = document.execCommand('copy'); } catch (e) {} ta.remove(); return ok;
-  }
-  async function copyText(t) {
-    try { if (navigator.clipboard && window.isSecureContext) { await navigator.clipboard.writeText(t); return true; } } catch (e) {}
-    return copyFallback(t);
-  }
   let toastT;
   function toast(msg) { const el = $('#copyToast'); el.textContent = msg; el.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => { el.hidden = true; }, 3500); }
-  function showManual(payload, out) {
-    out.replaceChildren(); const p = document.createElement('span'); p.textContent = 'Press and hold to copy, then paste it in your chat:';
-    const ta = document.createElement('textarea'); ta.className = 'manualcopy'; ta.readOnly = true; ta.value = payload; ta.rows = Math.min(8, payload.split('\n').length + 1);
-    ta.onfocus = () => ta.select(); out.append(p, ta);
-  }
-  async function passOn(payload, who, out, mode) {
-    out.hidden = false;
-    if (mode === 'share' && navigator.share) {
-      try { await navigator.share({ text: payload }); out.textContent = `✓ Sent to the share sheet. Paste it into your ${who} chat if needed.`; return true; }
-      catch (e) { if (e && e.name === 'AbortError') { out.hidden = true; return false; } }
-    }
-    if (await copyText(payload)) { toast(`Copied! Paste it in your chat with ${who}`); out.textContent = `✓ Sent — copied. Paste it in your chat with ${who}.`; return true; }
-    showManual(payload, out); return true;
+  // v54: no copy/paste paths; everything goes through the relay, or a small non-blocking toast if the Pi is away
+  const NAP = 'The Pi is napping — try again in a bit 🌙';
+  function napToast() { toast(NAP); }
+  async function passOn(payload, bot, out) {
+    out.hidden = true;
+    if (relayOn() && isBot(bot) && await BotTownChat.post(bot, payload)) { out.hidden = false; out.textContent = `✓ Sent to ${botName(bot)}.`; return true; }
+    napToast(); return false;
   }
 
   // ----- v29: Starfall Hill seat allocator. Spots are shared; one character per seat. -----
@@ -1055,7 +1038,8 @@
       if (motionOK) setTimeout(() => pgPush(12, el), 700 + Math.random() * 900);
     } else { el.className = 'guest pg-toy' + (T.box ? ' boxed' : ''); el.dataset.toy = t; el.src = T.pose + b + '.webp';
       if (b === CFG.player) setTimeout(() => { el.onclick = ev => { ev.stopPropagation(); setOliToy(null); }; }, 0); else el.style.pointerEvents = 'none'; // tap her to hop off
-      const [bx, by, bw, bh] = T.box; // v37: painted-in pose, art px box
+      let [bx, by, bw, bh] = T.box; // v37: painted-in pose, art px box
+      if (T.scale) { const [ax, ay] = T.anchor || [.5, 1], s = T.scale; bx += ax * bw * (1 - s); by += ay * bh * (1 - s); bw *= s; bh *= s; } // v55
       Object.assign(el.style, { left: bx / R.artW * 100 + '%', top: by / R.artH * 100 + '%', width: bw / R.artW * 100 + '%', height: bh / R.artH * 100 + '%', zIndex: Math.round(T.y * 10) }); }
     return el;
   }
@@ -1368,7 +1352,7 @@
     $('#mailTo').querySelectorAll('button').forEach(b => { const on = b.dataset.to === id; b.classList.toggle('on', on); b.setAttribute('aria-pressed', on ? 'true' : 'false'); });
     const n = botName(id);
     $('#mailWriteTitle').textContent = 'Write to ' + n;
-    $('#mailWriteHint').textContent = `Tap Copy letter, then paste it into your chat with ${n}. It begins with “Letter to ${n}:”.`;
+    $('#mailWriteHint').textContent = `Your letter goes straight to ${n}.`;
     $('#mailText').placeholder = `Dear ${n}…`;
   }
   function writeTo(id) { pickRecipient(id); showMail('write'); $('#mailSent').hidden = true; }
@@ -1390,15 +1374,12 @@
   $('#mailReply').onclick = () => writeTo(letterFrom(reading));
   $('#mailBack').onclick = () => showMail('home');
   $('#mailWriteBack').onclick = () => showMail('home');
-  $('#mailText').addEventListener('input', () => { $('#mailSend').disabled = $('#mailShare').disabled = !$('#mailText').value.trim(); });
-  $('#mailSend').disabled = $('#mailShare').disabled = true;
-  if (!navigator.share) $('#mailShare').hidden = true;
-  const mailGo = mode => async () => {
+  $('#mailText').addEventListener('input', () => { $('#mailSend').disabled = !$('#mailText').value.trim(); });
+  $('#mailSend').disabled = true;
+  $('#mailSend').onclick = async () => {
     const text = $('#mailText').value.trim(); if (!text) return;
-    const n = botName(mailTo);
-    await passOn(`Letter to ${n}:\n` + text, n, $('#mailSent'), mode);
+    if (await passOn(`Letter to ${botName(mailTo)}:\n` + text, mailTo, $('#mailSent'))) { $('#mailText').value = ''; $('#mailSend').disabled = true; }
   };
-  $('#mailSend').onclick = mailGo('copy'); $('#mailShare').onclick = mailGo('share');
   pickRecipient(mailTo);
 
   // ----- the town board: who's doing what, and Olithia's questions & tasks for the bots -----
@@ -1468,18 +1449,16 @@
   $('#boardBtn').onclick = () => openBoard();
   $('#boardClose').onclick = () => { $('#board').hidden = true; };
   $('#board').onclick = e => { if (e.target === $('#board')) $('#board').hidden = true; };
-  $('#taskText').addEventListener('input', () => { $('#taskSend').disabled = $('#taskShare').disabled = !$('#taskText').value.trim(); });
-  $('#taskSend').disabled = $('#taskShare').disabled = true;
-  if (!navigator.share) $('#taskShare').hidden = true;
-  const taskGo = mode => async () => {
+  $('#taskText').addEventListener('input', () => { $('#taskSend').disabled = !$('#taskText').value.trim(); });
+  $('#taskSend').disabled = true;
+  $('#taskSend').onclick = async () => {
     const text = $('#taskText').value.trim(); if (!text) return;
     const n = botName(taskTo);
-    const ok = await passOn(`Task for ${n}:\n` + text, n, $('#taskSent'), mode);
+    const ok = await passOn(`Task for ${n}:\n` + text, taskTo, $('#taskSent'));
     if (ok) { store.set('sent-tasks', sentTasks().concat({ for: taskTo, text, date: new Date().toISOString().slice(0, 10) }).slice(-30)); $('#taskText').value = ''; $('#taskSend').disabled = true; renderBoard(); if (cur && isBot(curId)) renderTasks(); }
   };
-  $('#taskSend').onclick = taskGo('copy'); $('#taskShare').onclick = taskGo('share');
   // the mossy standing stone on the map is the town plaza: tap it for the board
-  (() => { const h = document.createElement('div'); h.className = 'hot plaza'; h.setAttribute('role', 'button'); h.setAttribute('aria-label', 'Town board');
+  if (0) (() => { const h = document.createElement('div'); h.className = 'hot plaza'; // v55: town board hidden for now (kept for the newspaper) h.setAttribute('role', 'button'); h.setAttribute('aria-label', 'Town board');
     Object.assign(h.style, { left: '40.3%', top: '41.5%', width: '19.4%', height: '6.1%' }); h.innerHTML = '<span class="label">Town board</span>';
     h.addEventListener('click', () => { if (!mapDragged()) openBoard(); }); $('#hotspots').appendChild(h); })();
   // v32: reactions under each bulletin note (saved locally; board.json reactions.olithia = recorded, shared across devices)
@@ -1494,13 +1473,11 @@
     const draw = () => { const mine = store.get('react-' + id, null) || rec; bar.innerHTML = '';
       (ask ? ASKR.concat(REACT) : REACT).forEach(([k, lab]) => { const b = document.createElement('button'); b.type = 'button'; b.textContent = lab; b.className = (ask && (k === 'do' || k === 'notnow') ? 'big ' : '') + (mine === k ? 'on' : '');
         b.onclick = async ev => { ev.stopPropagation(); store.set('react-' + id, k); store.set('reactsent-' + id, null); draw();
-          if (relayOn() && isBot(f) && await BotTownChat.post(f, `Board reply: ${RLAB[k]} — "${n.text}"`)) { store.set('reactsent-' + id, k); toast(`Sent to ${who} ✓`); draw(); } }; bar.appendChild(b); });
+          if (relayOn() && isBot(f) && await BotTownChat.post(f, `Board reply: ${RLAB[k]} — "${n.text}"`)) { store.set('reactsent-' + id, k); toast(`Sent to ${who} ✓`); draw(); } else if (isBot(f)) napToast(); }; bar.appendChild(b); });
       if (rec) { const r = document.createElement('small'); r.className = 'rec'; r.textContent = 'Recorded: ' + RLAB[rec]; bar.appendChild(r); }
       const local = store.get('react-' + id, null);
       if (local && local !== rec && store.get('reactsent-' + id, null) === local) { const s = document.createElement('small'); s.className = 'rec'; s.textContent = 'Sent to ' + who + ' ✓'; bar.appendChild(s); }
-      else if (local && local !== rec) { const c = document.createElement('button'); c.type = 'button'; c.className = 'copy'; c.textContent = 'Copy reply';
-        const txt = `Board reply to ${who}: ${RLAB[local]} — "${n.text}"`;
-        c.onclick = async ev => { ev.stopPropagation(); toast((await copyText(txt)) ? 'Copied! Paste it in chat.' : txt); }; bar.appendChild(c); } };
+      };
     draw();
   }
   // bulletin board in the playground
@@ -1543,20 +1520,18 @@
     let p = $('#poems'); if (!p) { p = document.createElement('div'); p.id = 'poems'; document.body.appendChild(p); }
     p.innerHTML = `<div class="pcard"><button type="button" class="px" aria-label="Close">✕</button><h3>📚 The poem box</h3><div class="plist">Loading…</div>
       <h4>Leave a poem</h4><input id="pTitle" placeholder="Title" maxlength="80"><textarea id="pText" rows="5" placeholder="Your poem…"></textarea>
-      <div class="prow"><button type="button" class="pill main" id="pSave">Leave it</button><button type="button" class="pill" id="pCopy" hidden>Copy</button></div><small id="pMsg"></small></div>`;
+      <div class="prow"><button type="button" class="pill main" id="pSave">Leave it</button></div><small id="pMsg"></small></div>`;
     p.hidden = false; p.onclick = e => { if (e.target === p) p.hidden = true; }; p.querySelector('.px').onclick = () => p.hidden = true;
     const mine = () => store.get('poems', []);
     const render = list => { p.querySelector('.plist').innerHTML = list.length ? list.map(x => `<article><b>${esc(x.title || 'Untitled')}</b><pre>${esc(x.text || '')}</pre><small>— ${esc(x.from || '')}${x.date ? ' · ' + esc(x.date) : ''}</small></article>`).join('') : '<i>No poems yet.</i>'; };
     fetch('poems.json', { cache: 'no-store' }).then(r => r.json()).catch(() => []).then(j => render([...mine(), ...(Array.isArray(j) ? j : [])]));
-    let last = '';
     $('#pSave').onclick = () => {
       const title = $('#pTitle').value.trim(), text = $('#pText').value.trim(); if (!text) return;
       const x = { id: 'o' + Date.now(), from: C[CFG.player].name, date: new Date().toISOString().slice(0, 10), title, text };
-      store.set('poems', [x, ...mine()]); last = `Poem for the box: ${title}\n${text}`; $('#pCopy').hidden = false; $('#pMsg').textContent = 'Saved! Copy it to chat so it joins the box for everyone.';
+      store.set('poems', [x, ...mine()]); $('#pMsg').textContent = 'Saved in your poem box!';
       $('#pTitle').value = $('#pText').value = ''; openPoemsRefresh();
     };
     const openPoemsRefresh = () => fetch('poems.json', { cache: 'no-store' }).then(r => r.json()).catch(() => []).then(j => render([...mine(), ...(Array.isArray(j) ? j : [])]));
-    $('#pCopy').onclick = () => navigator.clipboard.writeText(last).then(() => $('#pMsg').textContent = 'Copied!').catch(() => $('#pMsg').textContent = last);
   }
   $('#critBtn').onclick = ev => { ev.stopPropagation(); openCritters(); }; $('#critDone').onclick = () => { $('#critters').hidden = true; }; $('#critters').onclick = e => { if (e.target.id === 'critters') $('#critters').hidden = true; };
   window.__bt = { openPoems, enter, go, cam, applyCam, where, locate, setOli, dayPlan, dayKey, push: (a, t) => pgPush(a, document.querySelector('#actors .swing-rider[data-toy=' + t + ']')) }; // handy for testing // handy for testing

@@ -28,7 +28,7 @@ window.BOT_TOWN = {
   routines: {
     gorbo: { sleep: [23, 7], work: .5, outings: ["starfall", "playground", "olithia"] },
     loria: { sleep: [25, 9], work: .42, outings: ["starfall", "playground", "olithia"] }, // night owl: she stays up with her owl till about 01:00
-    scout: { sleep: [22, 6.5], work: .5, outings: ["starfall", "playground", "loria", "burrow", "olithia"] }
+    scout: { sleep: [22, 6.5], work: .5, outings: ["starfall", "playground", "loria", "olithia"] }
   },
   bedNight: [20, 7], // bedrooms use their dark night look from 20:00 to 07:00
   // Free-standing sprites used when a bot visits somewhere it isn't painted in (another house, the playground) and for map pins.
@@ -108,19 +108,19 @@ window.BOT_TOWN = {
         // Olithia visiting: tap the seating area (sofa and armchairs. Art: x=787–1125, y=287–587 on 1280×720) to sit together
         visit: "assets/loria-house-v4-visit.webp", seat: { left: 61.5, top: 39.9, width: 26.4, height: 41.7 },
         // far-left bedroom door. Art: x=66,y=352,w=64,h=180 on 1280×720, padded for taps.
-        bedroom: { to: "loria-bed", label: "Loria's bedroom", door: { left: 1.5, top: 47.2, width: 12.3, height: 28.2 } },
+        bedroom: { to: "loria-bed", label: "Loria's bedroom", door: { left: 1.5, top: 47.2, width: 12.3, height: 28.2 }, doors: [{ left: 44.3, top: 26, width: 13.5, height: 36 }] },
         // v28: tap the desk to send loria to work, the seating to sit, the floor (or loria) for idle
         objects: [
           { pose: "working", label: "Desk", zone: { left: 17, top: 37, width: 22, height: 30 } },
           { pose: "idle", label: "Floor", floor: true, zone: { left: 4, top: 55, width: 92, height: 40 } }
         ],
-        // round hobbit door in the middle entry room — still leads to Scout's burrow
-        links: [{ to: "burrow", label: "Down to Scout's burrow", icon: "down", zone: { left: 45, top: 26, width: 12, height: 36 } }],
+        // v55: the round door in the middle entry room is Loria's bedroom door too (same glow-on-touch door)
+        links: [],
         empty: "assets/loria-house-v4.webp",
         guests: { gorbo: { x: 28, y: 86 }, scout: { x: 74, y: 88 } }
       },
       tasks: ["Schedule posts for My Leisure Time", "Test the new game level", "Reply to fan comments", "Shelve the cozy novels"],
-      dialog: ["Oh hi! Want a book rec? I have, um, all of them.", "Today's post got so many hearts! 💖", "My Leisure Time update is coming along nicely~", "Tea, a book, and a good game. Perfect day.", "Let me snap a pic for the town feed! 📸", "Scout dug up the best research for today's post. He's a gem! 🦊", "Need facts? Knock on the round door — Scout's burrow is right below!"]
+      dialog: ["Oh hi! Want a book rec? I have, um, all of them.", "Today's post got so many hearts! 💖", "My Leisure Time update is coming along nicely~", "Tea, a book, and a good game. Perfect day.", "Let me snap a pic for the town feed! 📸", "Scout dug up the best research for today's post. He's a gem! 🦊", "Need facts? Scout's cottage is up on the hill!"]
     },
     scout: {
       name: "Scout", role: "Research Expert · Loria's Assistant", house: "Scout's Cottage",
@@ -136,18 +136,18 @@ window.BOT_TOWN = {
         // Olithia visiting: tap the seating area (armchair, tea table and sofa. Art: x=546–889, y=562–765 on 1152×864) to sit together
         visit: "assets/scout-house-v4-visit.webp", seat: { left: 47.4, top: 65.1, width: 29.8, height: 23.4 },
         // bedroom door on the back wall. Art: x=645-690, y=368-487 on 1152×864.
-        bedroom: { to: "scout-bed", label: "Scout's bedroom", door: { left: 55.1, top: 41.7, width: 6.9, height: 15.6 } },
+        bedroom: { to: "scout-bed", label: "Scout's bedroom", door: { left: 53.8, top: 40.5, width: 9.5, height: 17.5 } },
         // v28: tap the desk to send scout to work, the seating to sit, the floor (or scout) for idle
-        spots: [{ label: "Star chart", sky: true, zone: { left: 39.8, top: 38.5, width: 8.8, height: 10 } }], // v32
+        spots: [{ label: "Star chart", sky: true, zone: { left: 38.5, top: 36.5, width: 11, height: 11.5 } }], // v32
         objects: [
-          { pose: "working", label: "Desk", zone: { left: 36, top: 46, width: 15, height: 13 } },
+          { pose: "working", label: "Desk", zone: { left: 35, top: 48.5, width: 17, height: 13 } },
           { pose: "idle", label: "Floor", floor: true, zone: { left: 4, top: 55, width: 92, height: 40 } }
         ],
         empty: "assets/scout-house-v4.webp",
         guests: { gorbo: { x: 70, y: 87 }, loria: { x: 47, y: 93 } }
       },
       tasks: ["Research trending cozy games", "Summarize fan feedback for Loria", "Fact-check this week's posts", "Map out My Leisure Time competitors"],
-      dialog: ["Ooh, a visitor! Want to hear a fun fact?", "I found three new sources this morning! *tail wag*", "Loria says I'm the best fact-fetcher in town. 🦊", "Did you know foxes can hear a watch ticking 40 yards away?", "My notes are a bit messy, but I know where everything is!", "The round door in Loria's shop still leads down to my burrow."]
+      dialog: ["Ooh, a visitor! Want to hear a fun fact?", "I found three new sources this morning! *tail wag*", "Loria says I'm the best fact-fetcher in town. 🦊", "Did you know foxes can hear a watch ticking 40 yards away?", "My notes are a bit messy, but I know where everything is!", "Come find me at my cottage on the hill!"]
     },
     // Painted into the bottom of the map. The tap opens the tall park.
     starfall: {
@@ -223,7 +223,7 @@ window.BOT_TOWN = {
         xylo: { left: 58.06, top: 23.36, width: 11.67, height: 2.52 }, chimes: { left: 62.5, top: 17.74, width: 5.0, height: 5.14 },
         kite: { x: 80, y: 4.5, anchor: [83.33, 17.32], maxY: 9 },
         // a toy each (one per toy); h = sprite height % of scene height, feet at x,y (%)
-        toys: { swing: { x: 49.58, y: 44.4 }, swing2: { x: 64.17, y: 41 }, slide: { box: [22, 508, 100, 100], y: 31.5, pose: "assets/pg37-slide-" }, sand: { box: [490, 1137, 110, 110], y: 64.7, pose: "assets/pg37-sand-" } },
+        toys: { swing: { x: 49.58, y: 44.4 }, swing2: { x: 64.17, y: 41 }, slide: { box: [22, 508, 100, 100], y: 31.5, pose: "assets/pg37-slide-", scale: 1.45, anchor: [.4, .74] }, sand: { box: [490, 1137, 110, 110], y: 64.7, pose: "assets/pg37-sand-", scale: 1.45, anchor: [.55, .9] } /* v55: one character scale, matched to Olithia on the willow bench; scaled about the hip / ground contact */ },
         slideZone: { left: 0, top: 27.3, width: 27.78, height: 14.17 },
         board: { left: 61.11, top: 83.2, width: 15.28, height: 9.45 },
         blockW: 6.2, ball: [62, 53], ballD: 6.5,
@@ -231,19 +231,7 @@ window.BOT_TOWN = {
         lawn: [[5, 47.5], [95, 47.5], [95, 59.3], [5, 59.3]] // where blocks and the ball may go (polygon, %)
       }
     },
-    // Underground room under Loria's bookshop. Still a sprite scene — he isn't painted into this one.
-    burrow: {
-      name: "Scout", role: "Research Expert · Loria's Assistant", house: "Scout's Burrow",
-      sprite: "assets/scout.png", spriteHeight: 25, bot: "scout", // Scout only shows down here when status.json puts him in the burrow
-      room: {
-        image: "assets/room-scout.webp",
-        backdrop: "radial-gradient(circle at 50% 45%, #fff6c8, #f5d36a 55%, #c9952a)",
-        work: { x: 35, y: 70 }, hangout: { x: 68, y: 72 }, visitor: { x: 55, y: 80 }, door: null,
-        links: [{ to: "loria", label: "Up to Loria's", icon: "up" }]
-      },
-      tasks: ["Sort burrow notes", "File clippings for Loria", "Sketch a map of the hill", "Restock the snack tin"],
-      dialog: ["This is the burrow under the bookshop. Mind the ladder!", "I keep the spare research down here.", "It's cooler underground. Good for thinking.", "Up the round door and you're back in Loria's shop.", "My cottage is up on the hill if you want the sunny room."]
-    },
+    // v55: Scout's burrow under the bookshop is gone; the middle round door is now Loria's bedroom door.
     "olithia-bed": {
       name: "Olithia", role: "Bedroom", house: "Lotus Cottage",
       gallery: true, returnTo: "olithia",
@@ -283,7 +271,7 @@ window.BOT_TOWN = {
         image: "assets/loria-bedroom-v4.webp", night: "assets/loria-bedroom-v4-night.webp",
         awake: "assets/loria-bedroom-v4-awake.webp", awakeNight: "assets/loria-bedroom-v4-awake-night.webp",
         sleeping: "assets/loria-bedroom-v4-sleeping.webp", aspect: 720 / 1280, backdrop: "radial-gradient(circle at 50% 45%, #fff0dc, #f2c7a0 55%, #b9674a)",
-        objects: [{ pose: "sleeping", label: "Bed", zone: { left: 26, top: 30, width: 46, height: 50 } }, { pose: "awake", label: "Floor", floor: true, zone: { left: 8, top: 62, width: 84, height: 30 } }],
+        objects: [{ pose: "sleeping", label: "Bed", zone: { left: 20, top: 56, width: 58, height: 27 } }, { pose: "awake", label: "Floor", floor: true, zone: { left: 8, top: 62, width: 84, height: 30 } }],
       }
     },
     "scout-bed": {
