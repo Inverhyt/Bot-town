@@ -56,16 +56,27 @@ window.BOT_TOWN = {
         empty: "assets/olithia-house-v4.webp", // v26: shown when she is in her bedroom or out
         // v26: no pose buttons. Tap an object to move her there (tap it again, or the floor, for idle). Art % of 1152×864.
         objects: [
-          { pose: "working", label: "Desk", zone: { left: 11, top: 41, width: 21, height: 30 } },
-          { pose: "sitting", label: "Sofa", zone: { left: 55, top: 48, width: 40, height: 34 } },
+          // v57: the desk and sofa zones are split around the notebook and newspaper props so no two tap areas overlap
+          { pose: "working", label: "Desk", zone: { left: 11, top: 41, width: 21, height: 5 } },
+          { pose: "working", label: "Desk", zone: { left: 21, top: 46, width: 11, height: 25 } },
+          { pose: "working", label: "Desk", zone: { left: 11, top: 58, width: 10, height: 13 } },
+          { pose: "sitting", label: "Sofa", zone: { left: 55, top: 48, width: 40, height: 16 } },
+          { pose: "sitting", label: "Sofa", zone: { left: 55, top: 64, width: 14, height: 18 } },
+          { pose: "sitting", label: "Sofa", zone: { left: 81, top: 64, width: 14, height: 18 } },
+          { pose: "sitting", label: "Sofa", zone: { left: 69, top: 77, width: 12, height: 5 } },
           { pose: "idle", label: "Floor", floor: true, zone: { left: 4, top: 55, width: 92, height: 40 } }
+        ],
+        // v57: painted props laid on the art (box = % of 1152×864) with a generous tap zone each
+        props: [
+          { id: "notebook", label: "Olithia's notebook", src: "assets/prop-notebook.webp", box: { left: 13.2, top: 51.2, width: 5.2, height: 6.8 }, zone: { left: 11, top: 46, width: 10, height: 12 } },
+          { id: "paper", label: "The Bot Town Gazette", src: "assets/prop-newspaper.webp", box: { left: 71.6, top: 67.8, width: 6, height: 6.4 }, zone: { left: 69, top: 64, width: 12, height: 13 } }
         ],
         // arched bedroom doorway in the left room. Art: x=445,y=130,w=150,h=390 on 1152×864.
         bedroom: { to: "olithia-bed", label: "Olithia's bedroom", door: { left: 38.63, top: 15.05, width: 13.02, height: 45.14 } },
         // where visiting bots stand (feet, % of the scene)
         guests: { gorbo: { x: 54, y: 86 }, loria: { x: 88, y: 87 }, scout: { x: 70, y: 90 } }
       },
-      tasks: ["Plan today's quests", "Check in on Gorbo's bug list", "Water the lotus pond", "Brew chamomile tea"],
+      // v57: her old To-do list is replaced by the notebook prop
       dialog: ["Welcome home! Mochi saved you the sunny spot.", "Shall we check on everyone in town today?", "I made tea — it's still warm!", "Every little task is a tiny adventure. 🌿", "Mochi says mrrp. I think that means hello."]
     },
     gorbo: {

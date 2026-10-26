@@ -185,7 +185,7 @@
     if (hide.complete && hide.naturalWidth && hide.src === abs) paint();
   }
   function enter(id, opts = {}) {
-    closeDig(); // v52
+    closeDig(); $('#notebook').hidden = $('#paper').hidden = true; // v52, v57
     curId = id; cur = C[id];
     visiting = id !== CFG.player && locate(CFG.player).scene === id;
     pose = cur.room.poses && isChar(id) && hostHome() ? locate(id).pose : 'idle';
@@ -210,6 +210,7 @@
     layout(); buildActors(); buildGuests(); resetCam(false); buildLinks(); buildPlay(); buildOwl(); buildPark44();
     $('#tasks').hidden = gallery || !(cur.tasks || isBot(id));
     $('#tbTasks span').textContent = isBot(id) ? 'Thoughts' : 'Tasks'; // v55
+    $('#tbTasks').hidden = $('#tasks').hidden; $('#tbChat').hidden = id === CFG.player; // v57: no chat in her own house; she chats in the bots' houses
     if (cur.tasks || isBot(id)) renderTasks();
     updateMode(true);
     if (motionOK && opts.arrive) { $('#house').classList.add('arriving'); setTimeout(() => $('#house').classList.remove('arriving'), 720); }
@@ -219,6 +220,7 @@
   }
   function toMap(fromPop) {
     closeDig(); // v52
+    $('#notebook').hidden = $('#paper').hidden = true;
     $('#house').classList.remove('active'); $('#map').classList.add('active'); $('#music').hidden = true;
     $('#house').style.opacity = '';
     cur = null; curId = null;
@@ -380,6 +382,11 @@
     // v26: Olithia's cottage and bedroom: tap an object to move her there (tap it again or the floor for idle)
     (cur.room.objects || []).forEach(o => { const el = addZone(o.zone, o.label, () => tapObject(o)); el.classList.remove('glow'); el.classList.add('obj'); el.style.zIndex = o.floor ? 500 : 600; });
     if ((cur.room.objects || []).length && !store.get('hinted-' + curId, false)) { store.set('hinted-' + curId, true); $('#actors').querySelectorAll('.obj:not([aria-label=Floor])').forEach(e => e.classList.add('hint')); }
+    (cur.room.props || []).forEach(p => { // v57: painted props (notebook, newspaper): glow on touch, open their page
+      const img = document.createElement('img'); img.className = 'prop'; img.src = p.src; img.alt = ''; img.draggable = false;
+      Object.assign(img.style, { left: p.box.left + '%', top: p.box.top + '%', width: p.box.width + '%', height: p.box.height + '%' }); $('#actors').appendChild(img);
+      const el = addZone(p.zone, p.label, () => { el.classList.add('open'); setTimeout(() => { el.classList.remove('open'); p.id === 'notebook' ? openNotebook() : openPaper(); }, motionOK ? 200 : 0); });
+      el.className = 'link zone door propz'; hintOnce(el, 'prop-' + p.id); });
     const bed = cur.room.bedroom;
     if (bed) [bed.door, ...(bed.doors || [])].forEach(d => doorZone(d, bed.label, () => travel(bed.to, { door: true }))); // v55: extra doors to the same bedroom
     if (cur.returnTo && cur.room.door) doorZone(cur.room.door, 'Back to the house', () => travel(cur.returnTo, { door: true })); // v29: bedroom door -> house
@@ -1382,8 +1389,63 @@
   };
   pickRecipient(mailTo);
 
+  // ----- v57: Olithia's notebook (to-dos from Loria) and the Bot Town Gazette (Scout's news + notices) -----
+  const doneMap = () => store.get('todo-done', {}) || {};
+  const ymd = d => d.toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' });
+  function weekBounds() { const t = new Date(pacDay() + 'T12:00:00'); const dow = (t.getDay() + 6) % 7; const mon = new Date(t); mon.setDate(t.getDate() - dow);
+    const sun = new Date(mon); sun.setDate(mon.getDate() + 6); const nsun = new Date(sun); nsun.setDate(sun.getDate() + 7); return [ymd(sun), ymd(nsun)]; }
+  const prettyDue = d => { const x = new Date(d + 'T12:00:00'); return x.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }); };
+  function openNotebook() {
+    const today = pacDay(), month = today.slice(0, 7), [endW, endNW] = weekBounds(), dm = doneMap(), now = Date.now();
+    const list = todos.filter(t => (t.due ? t.due.slice(0, 7) <= month : t.date.slice(0, 7) === month)) // this month (and anything overdue)
+      .filter(t => !dm[t.id] || now - dm[t.id] < 864e5)
+      .sort((x, y) => (x.due || '9999') < (y.due || '9999') ? -1 : (x.due || '9999') > (y.due || '9999') ? 1 : x.ts - y.ts);
+    const groups = [['This week', t => t.due && t.due <= endW], ['Next week', t => t.due && t.due > endW && t.due <= endNW], ['Later this month', t => !t.due || t.due > endNW]];
+    const box = $('#nbList'); box.innerHTML = '';
+    $('#nbDate').textContent = new Date(today + 'T12:00:00').toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+    if (!list.length) box.innerHTML = '<p class="nb-empty">Nothing on the list yet ~ a quiet month 🌿</p>';
+    groups.forEach(([name, f]) => { const g = list.filter(f); if (!g.length) return;
+      const h = document.createElement('h4'); h.textContent = name; box.appendChild(h);
+      g.forEach(t => { const done = !!dm[t.id], row = document.createElement('label'); row.className = 'nb-item' + (done ? ' done' : '');
+        row.innerHTML = `<input type="checkbox" ${done ? 'checked disabled' : ''}><span class="nb-task"></span>${t.tag ? `<i class="nb-tag nb-${t.tag.toLowerCase()}">${esc(t.tag)}</i>` : ''}${t.due ? `<small>${esc(prettyDue(t.due))}</small>` : ''}`;
+        row.querySelector('.nb-task').textContent = t.task;
+        row.querySelector('input').onchange = async e => { if (!e.target.checked) return; const d = doneMap(); d[t.id] = Date.now(); store.set('todo-done', d); openNotebook();
+          if (!(relayOn() && await BotTownChat.post('loria', `Board reply: done — "${t.task}"`))) napToast(); else toast('Ticked off — Loria knows ✓'); };
+        box.appendChild(row); }); });
+    $('#notebook').hidden = false;
+  }
+  function openPaper() {
+    const box = $('#gzList'); box.innerHTML = '';
+    $('#gzDate').textContent = new Date(pacDay() + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+    if (!paperItems.length) box.innerHTML = '<p class="gz-empty">No news this week. Scout is out gathering stories…</p>';
+    paperItems.forEach((n, i) => { const a = document.createElement('article'); a.className = 'gz-art' + (i === 0 ? ' lead' : '');
+      a.innerHTML = `<h3></h3><p class="gz-by">${esc(botName(n.from))} · ${esc(prettyDue(n.date))}</p>${n.summary ? '<p class="gz-sum"></p>' : ''}${n.link ? '<a class="gz-link" target="_blank" rel="noopener">Read more →</a>' : ''}`;
+      a.querySelector('h3').textContent = n.headline; if (n.summary) a.querySelector('.gz-sum').textContent = n.summary; if (n.link) a.querySelector('a').href = n.link;
+      box.appendChild(a); });
+    $('#paper').hidden = false;
+  }
+  const askBotChat = b => { $('#notebook').hidden = $('#paper').hidden = true; if (relayOn()) BotTownChat.open(b); else napToast(); };
+  $('#nbClose').onclick = () => { $('#notebook').hidden = true; }; $('#gzClose').onclick = () => { $('#paper').hidden = true; };
+  $('#notebook').onclick = e => { if (e.target.id === 'notebook') $('#notebook').hidden = true; };
+  $('#paper').onclick = e => { if (e.target.id === 'paper') $('#paper').hidden = true; };
+  $('#nbAsk').onclick = e => { e.preventDefault(); askBotChat('loria'); }; $('#gzAsk').onclick = e => { e.preventDefault(); askBotChat('scout'); };
+  addEventListener('keydown', e => { if (e.key === 'Escape') { $('#notebook').hidden = true; $('#paper').hidden = true; } });
+
   // ----- the town board: who's doing what, and Olithia's questions & tasks for the bots -----
-  let taskItems = [], boardNotes = [], townNews = [];
+  let taskItems = [], boardNotes = [], townNews = [], todos = [], paperItems = [];
+  // v57: notebook to-dos ([todo] task | due YYYY-MM-DD | IG/FB/Story, both optional, any order) and the newspaper ([news] headline | summary | link, plus [notice])
+  const NOTEBOOK_BOTS = ['loria', 'gorbo'];
+  function parseTodo(n) {
+    const parts = n.text.split('|').map(s => s.trim()).filter(Boolean); let due = '', tag = '';
+    const task = parts.shift() || n.text;
+    parts.forEach(p => { const d = p.match(/^(?:due\s*:?\s*)?(\d{4}-\d{2}-\d{2})$/i), g = p.match(/^#?(ig|fb|story)$/i);
+      if (d) due = d[1]; else if (g) tag = ({ ig: 'IG', fb: 'FB', story: 'Story' })[g[1].toLowerCase()]; });
+    return { ...n, task, due, tag };
+  }
+  function parseNews(n) {
+    const [headline, summary = '', link = ''] = n.text.split('|').map(s => s.trim());
+    return { ...n, headline: headline || n.text, summary, link: /^https?:\/\//i.test(link) ? link : '' };
+  }
   const pacDay = (t = Date.now()) => new Date(t).toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' });
   let taskTo = BOTS[0] || 'gorbo';
   const statusLabel = s => ({ done: 'Done', doing: 'Doing', open: 'Open', answered: 'Answered' }[s] || 'Open');
@@ -1400,14 +1462,19 @@
     let fromRelay = false;
     if (CFG.relay && CFG.relay.url && CFG.relay.key) {
       try {
-        const since = Date.now() / 1000 - 7 * 86400, req = [], news = [];
+        const since = Date.now() / 1000 - 35 * 86400, wk = Date.now() / 1000 - 7 * 86400, req = [], news = [], todo = [], paper = []; // v57: 35 days for this month's to-dos
         const all = await Promise.all(['gorbo', 'loria', 'scout'].map(async b => {
           const r = await fetch(`${CFG.relay.url.replace(/\/$/, '')}/messages?bot=${b}&since=${since}`, { headers: { 'X-BotTown-Key': CFG.relay.key }, cache: 'no-store' });
           if (!r.ok) throw 0; return [b, (await r.json()).messages || []]; }));
         all.forEach(([b, ms]) => ms.forEach(m => { if (m.direction !== 'out' || typeof m.text !== 'string') return;
-          const t = m.text.match(/^\s*\[(notice|request)\]\s*([\s\S]+)/i); if (!t) return;
-          const n = { id: 'r' + m.id, from: b, text: t[2].trim(), ts: m.ts, date: pacDay(m.ts * 1000) };
-          (t[1].toLowerCase() === 'notice' ? news : req).push(n); }));
+          const t = m.text.match(/^\s*\[(notice|request|todo|news)\]\s*([\s\S]+)/i); if (!t) return;
+          const kind = t[1].toLowerCase(), n = { id: 'r' + m.id, from: b, text: t[2].trim(), ts: m.ts, date: pacDay(m.ts * 1000) };
+          if (kind === 'todo') { if (NOTEBOOK_BOTS.includes(b)) todo.push(parseTodo(n)); return; } // v57
+          if (m.ts < wk) return;
+          if (kind === 'news') { paper.push(parseNews(n)); return; }
+          if (kind === 'notice') paper.push({ ...n, headline: n.text, summary: '', link: '' });
+          (kind === 'notice' ? news : req).push(n); }));
+        todos = todo; paperItems = paper.sort((x, y) => y.ts - x.ts);
         townNews = news.sort((x, y) => y.ts - x.ts);
         boardNotes = req.filter(n => n.date === pacDay()).sort((x, y) => y.ts - x.ts).map(n => ({ ...n, ask: true }));
         fromRelay = true;
@@ -1458,11 +1525,10 @@
     if (ok) { store.set('sent-tasks', sentTasks().concat({ for: taskTo, text, date: new Date().toISOString().slice(0, 10) }).slice(-30)); $('#taskText').value = ''; $('#taskSend').disabled = true; renderBoard(); if (cur && isBot(curId)) renderTasks(); }
   };
   // the mossy standing stone on the map is the town plaza: tap it for the board
-  // v56: the mossy standing stone is scenery again; a tap is a little rest spot (a warm glow and a cosy line), never the town board
-  (() => { const h = document.createElement('div'); h.className = 'hot plaza rest'; h.setAttribute('role', 'button'); h.setAttribute('aria-label', 'Mossy stone: sit and rest');
-    Object.assign(h.style, { left: '40.3%', top: '41.5%', width: '19.4%', height: '6.1%' });
-    const RL = ['You sit by the mossy stone and rest a while 🍃', 'The stone is warm from the sun. Deep breath… 🌿', 'A little ladybug lands on the moss beside you 🐞', 'Quiet moment by the old stone ✨'];
-    h.addEventListener('click', () => { if (mapDragged()) return; h.classList.remove('glowing'); void h.offsetWidth; h.classList.add('glowing'); toast(RL[Math.floor(Math.random() * RL.length)]); });
+  // v57: the mossy standing stone opens the Town board again (glow on touch); the bottom Town board / Town post buttons stay removed
+  (() => { const h = document.createElement('div'); h.className = 'hot plaza rest'; h.setAttribute('role', 'button'); h.setAttribute('aria-label', 'Town board');
+    Object.assign(h.style, { left: '40.3%', top: '41.5%', width: '19.4%', height: '6.1%' }); h.innerHTML = '<span class="label">Town board</span>';
+    h.addEventListener('click', () => { if (mapDragged()) return; h.classList.remove('glowing'); void h.offsetWidth; h.classList.add('glowing'); setTimeout(() => openBoard(), motionOK ? 220 : 0); });
     $('#hotspots').appendChild(h); })();
   // v32: reactions under each bulletin note (saved locally; board.json reactions.olithia = recorded, shared across devices)
   const REACT = [['yes', '👍 Yes'], ['no', '👎 No'], ['love', '❤️']], ASKR = [['do', 'Yes, do it'], ['notnow', 'Not now']];

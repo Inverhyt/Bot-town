@@ -445,3 +445,41 @@ button{font-family:inherit;color:inherit;cursor:pointer;touch-action:manipulatio
 .hot.rest{border-radius:50%}
 .hot.rest.glowing{animation:restGlow 1.8s ease-out}
 @keyframes restGlow{0%{box-shadow:0 0 0 0 #ffe7a800;background:#fff3c800}25%{box-shadow:0 0 34px 14px #ffe7a8aa;background:radial-gradient(ellipse,#fff6d655,transparent 70%)}100%{box-shadow:0 0 0 0 #ffe7a800;background:transparent}}
+/* v57: painted props in Olithia's house */
+#actors img.prop{position:absolute;pointer-events:none;z-index:590;filter:drop-shadow(0 2px 1.5px rgba(70,40,15,.45))}
+.link.zone.propz{border-radius:45%}
+/* v57: notebook: a handwritten planner page */
+.modal .nb-page{position:relative;width:min(380px,calc(100% - 28px));max-height:calc(100% - 60px);overflow:auto;padding:22px 20px 18px 46px;border-radius:6px 14px 14px 6px;
+  background:repeating-linear-gradient(#fdf8ea 0 27px,#c9d9e6 27px 28px),#fdf8ea;background-position:0 64px;box-shadow:0 10px 30px rgba(40,20,5,.4),inset 10px 0 0 #f2e6c9,inset 11px 0 0 #e4a3a3;
+  font:17px/28px Grandstander,cursive;color:#3b2a1d}
+.nb-page:before{content:"";position:absolute;left:14px;top:18px;bottom:18px;width:10px;background:radial-gradient(circle,#c7b48e 3px,transparent 4px) 0 0/10px 28px repeat-y}
+.nb-page h2{margin:0;font:700 26px/30px Grandstander,cursive;color:#7a3e2a;transform:rotate(-1.5deg)}
+.nb-date{margin:0 0 6px;font-size:14px;opacity:.7}
+.nb-page h4{margin:10px 0 0;font:700 16px/28px Grandstander,cursive;color:#2f6b6b;text-decoration:underline wavy #2f6b6b66}
+.nb-item{display:flex;align-items:center;gap:8px;min-height:28px;cursor:pointer}
+.nb-item input{appearance:none;flex:none;width:18px;height:18px;border:2px solid #5b4330;border-radius:4px 6px 3px 5px;transform:rotate(-3deg);margin:0;display:grid;place-items:center}
+.nb-item input:checked:after{content:"✓";font:700 18px/1 Grandstander,cursive;color:#2f7a3a;margin-top:-4px}
+.nb-task{flex:1;line-height:22px}
+.nb-item.done .nb-task{text-decoration:line-through 2px #a0522d;opacity:.55}
+.nb-item small{flex:none;font-size:12.5px;color:#8a5a33}
+.nb-tag{flex:none;font:700 11px/1 Grandstander,cursive;font-style:normal;padding:3px 7px;border-radius:8px 4px 9px 5px;transform:rotate(-4deg);border:1.5px solid currentColor;background:#fff7}
+.nb-ig{color:#b5427a}.nb-fb{color:#3b5ea8}.nb-story{color:#b8741a}
+.nb-empty{opacity:.7;font-style:italic}
+.nb-x,.gz-x{position:absolute;right:10px;top:8px;border:0;background:none;font:20px Grandstander,cursive;color:#7a5a3e;cursor:pointer;min-width:36px;min-height:36px}
+.nb-ask{display:inline-block;margin-top:12px;color:#7a3e2a;font:600 16px Grandstander,cursive;text-decoration:underline wavy #7a3e2a66}
+/* v57: the Bot Town Gazette: newsprint, serif, columns */
+.modal .gz-page{position:relative;width:min(560px,calc(100% - 24px));max-height:calc(100% - 50px);overflow:auto;padding:18px 18px 16px;
+  background:#f3ecd8 radial-gradient(ellipse at 30% 20%,#fbf6e6,#efe5cb 70%);box-shadow:0 10px 30px rgba(30,20,5,.45);color:#2a2620;font:15px/1.45 Georgia,"Times New Roman",serif;border-radius:3px}
+.gz-page h2{margin:0;text-align:center;font:700 30px/1.1 "Old English Text MT","UnifrakturMaguntia",Georgia,serif;letter-spacing:.5px;border-bottom:3px double #2a2620;padding-bottom:6px}
+.gz-date{margin:4px 0 10px;text-align:center;font:italic 12.5px Georgia,serif;border-bottom:1px solid #2a2620;padding-bottom:4px}
+#gzList{column-count:2;column-gap:18px;column-rule:1px solid #2a262055}
+@media (max-width:420px){#gzList{column-count:1}}
+.gz-art{break-inside:avoid;margin:0 0 12px}
+.gz-art h3{margin:0 0 2px;font:700 17px/1.2 Georgia,serif}
+.gz-art.lead h3{font-size:21px}
+.gz-by{margin:0 0 4px;font:italic 12px Georgia,serif;opacity:.7}
+.gz-sum{margin:0;text-align:justify;hyphens:auto}
+.gz-art.lead .gz-sum:first-letter{float:left;font:700 34px/0.9 Georgia,serif;margin:4px 4px 0 0}
+.gz-link{font:italic 13px Georgia,serif;color:#5a2e14}
+.gz-ask{display:block;margin-top:8px;text-align:right;font:italic 14px Georgia,serif;color:#5a2e14}
+.gz-empty{font-style:italic;opacity:.7}
