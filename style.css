@@ -176,7 +176,13 @@ button{font-family:inherit;color:inherit;cursor:pointer;touch-action:manipulatio
 #viewport.door-open::after{content:"";position:absolute;inset:0;z-index:5;pointer-events:none;background:radial-gradient(circle,#fff4dc,transparent 68%);animation:flash .6s ease forwards}
 @keyframes flash{from{opacity:.5}to{opacity:0}}
 .toast{position:absolute;z-index:30;left:50%;top:46%;transform:translate(-50%,-50%);width:min(320px,calc(100% - 36px));padding:14px 14px 12px;text-align:center}
-#install.toast{position:fixed;top:auto;bottom:calc(env(safe-area-inset-bottom) + 78px);left:12px;right:12px;width:auto;transform:none}
+/* v52: compact install pill, docked top-right beside the title, dismissible */
+#install.toast{position:fixed;z-index:30;top:calc(env(safe-area-inset-top) + 12px);bottom:auto;left:auto;right:8px;width:auto;max-width:calc(50% - 80px);background:#fffaf0;border:2.5px solid var(--wood);box-shadow:0 3px 8px rgba(60,35,15,.3);transform:none;display:flex;align-items:center;gap:6px;padding:5px 5px 5px 12px;border-radius:999px;text-align:left}
+#install.toast[hidden]{display:none}
+@media (max-width:600px){#install p{display:none}#install.toast{padding:4px}}
+#install p{margin:0;font-size:12.5px;line-height:1.2;flex:1}
+#install button{flex:none;min-height:36px;min-width:36px;padding:0 10px;border-radius:999px;font-size:13px;box-shadow:0 2px 0 #8a5a33}
+#install #installNo{padding:0;width:36px}
 #tiltAsk.toast{top:calc(env(safe-area-inset-top) + 148px);left:12px;right:12px;width:auto;transform:none}
 .toast b{font:700 18px Grandstander,cursive}
 .toast p{margin:6px 0 12px;font-size:14px;line-height:1.35}
@@ -426,3 +432,4 @@ button{font-family:inherit;color:inherit;cursor:pointer;touch-action:manipulatio
 #actors .pg-stone.lift img{filter:drop-shadow(3px 9px 3px rgba(30,30,10,.35));translate:0 -25%}
 #actors .pg-stone.lift .ring{opacity:0}
 #actors .pg-grain{position:absolute;width:3px;height:3px;border-radius:50%;background:#e2c48e;pointer-events:none}
+#map:not(.active) #install{display:none} /* v52: only on the map, never over scene buttons */

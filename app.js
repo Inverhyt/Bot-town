@@ -185,6 +185,7 @@
     if (hide.complete && hide.naturalWidth && hide.src === abs) paint();
   }
   function enter(id, opts = {}) {
+    closeDig(); // v52
     curId = id; cur = C[id];
     visiting = id !== CFG.player && locate(CFG.player).scene === id;
     pose = cur.room.poses && isChar(id) && hostHome() ? locate(id).pose : 'idle';
@@ -216,6 +217,7 @@
     if (!opts.skipPush) history.pushState({ id }, '', '#' + id);
   }
   function toMap(fromPop) {
+    closeDig(); // v52
     $('#house').classList.remove('active'); $('#map').classList.add('active'); $('#music').hidden = true;
     $('#house').style.opacity = '';
     cur = null; curId = null;
@@ -696,7 +698,7 @@
     if (!store.get('install-no') && !matchMedia('(display-mode: standalone)').matches) $('#install').hidden = false;
   });
   if (/iphone|ipad|ipod/i.test(navigator.userAgent) && !navigator.standalone && !store.get('install-no') && !matchMedia('(display-mode: standalone)').matches) {
-    $('#installText').textContent = 'In Safari, tap Share, then Add to Home Screen.';
+    $('#installText').textContent = 'Safari: Share → Add to Home Screen';
     $('#installYes').hidden = true; $('#install').hidden = false;
   }
   $('#installNo').onclick = () => { $('#install').hidden = true; store.set('install-no', true); };
@@ -1198,7 +1200,7 @@
     chest.onclick = ev => { ev.stopPropagation(); buzz(8); try { pgNote(330, .25, 'sine', .08); } catch (e) {}
       if (motionOK) for (let i = 0; i < 6; i++) { const g = document.createElement('i'); g.className = 'pg-grain'; Object.assign(g.style, { left: (cbx + cbw * (.3 + Math.random() * .4)) + '%', top: (cby + cbh * .5) + '%', zIndex: 3000 }); act.appendChild(g);
         g.animate([{ transform: 'translate(0,0)', opacity: 1 }, { transform: `translate(${(Math.random() - .5) * 30}px, ${-14 - Math.random() * 16}px)`, opacity: 0 }], { duration: 500, easing: 'ease-out' }); setTimeout(() => g.remove(), 520); }
-      setTimeout(openDig, motionOK ? 260 : 0); };
+      clearTimeout(digT); digT = setTimeout(() => { if (curId === 'playground' && $('#house').classList.contains('active')) openDig(); }, motionOK ? 260 : 0); };
     act.appendChild(chest);
     const bubble = (x, y) => { const b = document.createElement('div'); b.className = 'pg-bubble'; const s = 2.2 + Math.random() * 2.6; Object.assign(b.style, { left: x + '%', top: y + '%', width: s + '%', zIndex: 3000 });
       act.appendChild(b); const dx = (Math.random() - .5) * 160, dy = -(180 + Math.random() * 220), d = 5200 + Math.random() * 2800;
@@ -1243,7 +1245,13 @@
     while (items.length < 5 && guard++ < 400) { const x = 40 + Math.random() * 220, y = 50 + Math.random() * 300; if (items.every(o => Math.hypot(o.x - x, o.y - y) > 62)) items.push({ ...pick(), x, y, rot: (Math.random() - .5) * .8, found: false }); }
     return items;
   }
+  // v52: Dig & Find closes on Escape, a tap outside, or any scene change (finds are saved as they are found)
+  let digT = 0;
+  function closeDig() { clearTimeout(digT); const m = $('#dig'); if (m && !m.hidden) { m.hidden = true; const cv = $('#digPad'); cv.onpointerdown = cv.onpointermove = cv.onpointerup = cv.onpointercancel = null; } }
+  addEventListener('keydown', e => { if (e.key === 'Escape' && !$('#dig').hidden) { e.preventDefault(); closeDig(); } });
+  $('#dig').addEventListener('click', e => { if (e.target.id === 'dig') closeDig(); });
   function openDig() {
+    if (!$('#dig').hidden) return;
     const m = $('#dig'), cv = $('#digPad'), c = cv.getContext('2d'), W = cv.width, H = cv.height;
     const under = document.createElement('canvas'); under.width = W; under.height = H; const u = under.getContext('2d');
     const top = document.createElement('canvas'); top.width = W; top.height = H; const t = top.getContext('2d');
@@ -1277,8 +1285,8 @@
     cv.onpointermove = e => { if (!last) return; const p = pt(e), dd = Math.hypot(p[0] - last[0], p[1] - last[1]); for (let k = 0; k < dd; k += 5) brush(last[0] + (p[0] - last[0]) * k / dd, last[1] + (p[1] - last[1]) * k / dd); last = p; render(); if (++n % 6 === 0) check(); };
     cv.onpointerup = cv.onpointercancel = () => { last = null; check(); };
     $('#digNew').onclick = newRound;
-    $('#digDraw').onclick = () => { m.hidden = true; toast('Draw in the sandbox: drag to draw, double-tap for a castle. Tap the rake to smooth it.'); };
-    $('#digDone').onclick = () => { m.hidden = true; };
+    $('#digDraw').onclick = () => { closeDig(); toast('Draw in the sandbox: drag to draw, double-tap for a castle. Tap the rake to smooth it.'); };
+    $('#digDone').onclick = closeDig;
     if (!digState || digState.items.every(o => o.found)) newRound(); else { seedSand(); drawUnder(); digState.items.filter(o => o.found).forEach(o => { t.save(); t.globalCompositeOperation = 'destination-out'; t.beginPath(); t.arc(o.x, o.y, 26, 0, 6.3); t.fill(); t.restore(); }); render(); }
     showFinds(); m.hidden = false;
   }
