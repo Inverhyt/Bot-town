@@ -258,7 +258,11 @@ button{font-family:inherit;color:inherit;cursor:pointer;touch-action:manipulatio
 #actors .ball{position:absolute;border-radius:50%;background:conic-gradient(#d9534f 0 25%,#fff4e2 0 50%,#d9534f 0 75%,#fff4e2 0);box-shadow:inset -3px -4px 6px #0004,0 4px 3px #0004;touch-action:none;cursor:pointer}
 #actors .swing{position:absolute;transform-origin:50% 4%;cursor:pointer;-webkit-user-drag:none;z-index:300}
 #actors .pboard{border-radius:6px;z-index:2}
-#actors .pboard i{position:absolute;width:36%;height:28%;background:#fffbe8;box-shadow:0 1px 2px #0005;border-radius:1px}
+#actors .pboard .pb-face{position:absolute;transform-origin:0 0;pointer-events:none}
+#actors .pboard .pb-face i{position:absolute;width:39%;height:38%;border-radius:1px 1px 2px 1px;
+  background:linear-gradient(160deg,rgba(255,250,232,.55),transparent 38%),linear-gradient(to bottom right,transparent 82%,rgba(120,90,50,.22) 90%,rgba(250,240,215,.9) 91%,rgba(214,196,160,.95) 100%),repeating-linear-gradient(to bottom,transparent 0 17%,rgba(120,96,64,.16) 17% 19%),linear-gradient(170deg,var(--paper),color-mix(in srgb,var(--paper) 82%,#7a5a34));
+  box-shadow:1px 2px 1.5px rgba(46,26,10,.5),0 0 0 .4px rgba(110,84,50,.35);filter:sepia(.28) brightness(.84) saturate(1.05)}
+#actors .pboard .pb-face i b{position:absolute;left:50%;top:5%;width:16%;aspect-ratio:1;transform:translate(-50%,-30%);border-radius:50%;background:radial-gradient(circle at 35% 30%,#fff9 0 18%,var(--pin) 30%,color-mix(in srgb,var(--pin) 55%,#000) 100%);box-shadow:.6px 1.2px 1px rgba(30,15,5,.6)}
 @media (prefers-reduced-motion: reduce){.bot-pin i{animation:none!important}.bot-pin{transition:none}}
 #actors .guest,#actors .cameo,#actors .block,#actors .ball,#actors .swing,#actors .pboard{pointer-events:auto}
 

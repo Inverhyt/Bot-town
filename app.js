@@ -927,7 +927,12 @@
     // bulletin board: painted board, little paper notes, tap to read board.json
     const bd = document.createElement('div'); bd.className = 'link zone pboard'; bd.setAttribute('role', 'button'); bd.setAttribute('aria-label', 'Bulletin board');
     Object.assign(bd.style, { left: R.board.left + '%', top: R.board.top + '%', width: R.board.width + '%', height: R.board.height + '%' });
-    boardNotes.slice(0, 4).forEach((n, i) => { const p = document.createElement('i'); p.style.left = (8 + (i % 2) * 44) + '%'; p.style.top = (14 + Math.floor(i / 2) * 36) + '%'; p.style.transform = `rotate(${[-6, 4, 3, -4][i]}deg)`; bd.appendChild(p); });
+    // v46: notes sit on the board's painted face: a skewed plane (art px TL 453,1597 / TR 532,1618 / BL 453,1685), aged paper, a tack, a soft shadow
+    const face = document.createElement('div'); face.className = 'pb-face'; const BF = R.boardFace || { x: 453, y: 1597, w: 79, h: 88, dy: 21 }, bA = R.board;
+    Object.assign(face.style, { left: ((BF.x / R.artW * 100 - bA.left) / bA.width * 100) + '%', top: ((BF.y / R.artH * 100 - bA.top) / bA.height * 100) + '%', width: (BF.w / R.artW * 100 / bA.width * 100) + '%', height: (BF.h / R.artH * 100 / bA.height * 100) + '%', transform: `skewY(${(Math.atan2(BF.dy, BF.w) * 180 / Math.PI).toFixed(2)}deg)` });
+    const NP = [[7, 7, -2.5], [53, 9, 2], [9, 53, 1.5], [52, 55, -2]], tints = ['#efe3c6', '#eadcbc', '#f1e6cc', '#e8d8b6'], pins = ['#b8463b', '#3f6f9a', '#c79a3a', '#5b8a4a'];
+    boardNotes.slice(0, 4).forEach((n, i) => { const p = document.createElement('i'); const [x, y, r] = NP[i]; Object.assign(p.style, { left: x + '%', top: y + '%', transform: `rotate(${r}deg)` }); p.style.setProperty('--paper', tints[i]); p.style.setProperty('--pin', pins[i]); p.innerHTML = '<b></b>'; face.appendChild(p); });
+    bd.appendChild(face);
     bd.onclick = ev => { ev.stopPropagation(); openNotes(); };
     act.appendChild(bd);
     // blocks
