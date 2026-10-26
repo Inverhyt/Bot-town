@@ -240,7 +240,9 @@
   function layout() { W = innerWidth; H = W * (cur.room.aspect || .75); stage.style.width = W + 'px'; stage.style.height = H + 'px'; }
   function applyCam() {
     if (cur && cur.room.scroll) { // scroll-only scene: full width, vertical pan, no zoom
-      cam.s = 1; cam.x = 0; cam.y = Math.min(0, Math.max(innerHeight - H, cam.y));
+      // v48: on play scenes, extra scroll room so the bottom props can rise clear of the docked buttons
+      const dock = cur.play ? $('#playTools') : null, pad = dock && dock.offsetHeight ? innerHeight - dock.getBoundingClientRect().top + 10 : 0;
+      cam.s = 1; cam.x = 0; cam.y = Math.min(0, Math.max(innerHeight - H - pad, cam.y));
       stage.style.transform = `translate(0px,${cam.y}px) scale(1)`; return;
     }
     cam.s = Math.min(3.5, Math.max(.7, cam.s));

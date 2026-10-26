@@ -198,7 +198,7 @@ window.BOT_TOWN = {
       room: {
         // v36: a tall scrolling playground (720x1905) with roomy zones, like Starfall Hill
         image: "assets/playground-v3.webp", aspect: 1905 / 720, scroll: true, artW: 720, artH: 1905, stateKey: "-v36",
-        backdrop: "linear-gradient(#bfe0f5, #8fbf6a)",
+        backdrop: "linear-gradient(#bfe0f5, #8fbf6a 40%, #6f7914 92%)", // v48: bottom matches the grass under the docked buttons
         motto: "You are here for yourself. Be curious and have fun.",
         guests: { gorbo: { x: 30, y: 53 }, loria: { x: 44, y: 55 }, scout: { x: 22, y: 56 }, olithia: { x: 37, y: 52 } }, guestScale: 1, // anyone without a toy stands on the lawn
         // two swings on the painted crossbar: x,y = rope pivot (art px), L = rope length px, half/slope = rope spacing along the slanted bar
