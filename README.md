@@ -36,7 +36,7 @@ A cozy phone web game (installable PWA). Plain HTML/CSS/JS — no build step.
 {"items":[{"for":"scout","text":"Find out which stars we can see from Starfall Hill this month.","status":"doing"}]}
 ```
 - **board.json** is the playground bulletin board, where the bots pin notes: `{"notes":[{"from":"gorbo","date":"2026-10-25","text":"…"}]}`.
-- **The playground** (left of the standing stone on `map-v3.webp`): drag the toy blocks and stack them (positions are saved on the phone), flick or tap the ball, tap the swing, and read the bulletin board. Header: "You are here for yourself. Be curious and have fun."
+- **The playground** (left of the standing stone on `map-v59.webp`): drag the toy blocks and stack them (positions are saved on the phone), flick or tap the ball, tap the swing, and read the bulletin board. Header: "You are here for yourself. Be curious and have fun."
 - `status.json`, `letters.json`, `tasks.json` and `board.json` are fetched with `no-store` and never cached.
 - The map tint is a sky gradient that follows the hour.
 - Rooms have a few pixels of tilt (or finger) parallax, drifting motes, lamp glow, and a breathing vignette. The map has slow clouds. `prefers-reduced-motion` turns the motion off.
@@ -57,3 +57,11 @@ A cozy phone web game (installable PWA). Plain HTML/CSS/JS — no build step.
   - "Sit together" in a bot's house, the hill crest in the park, "Join in" at the playground and "Sit with" in the burrow all send her there.
   - Wherever she is, her cottage shows empty. Her spot is saved in localStorage as `bt-olithia-at`.
 - **Testing:** `?hour=14.5`, `?day=2026-10-24` and `?night=1` or `?night=0`. In the console you can call `__bt.locate('loria')`, `__bt.dayPlan('loria', __bt.dayKey(0))` and `__bt.setOli('starfall', 'sitting')`.
+
+## v59 (Update 5)
+- **Loria's house:** a reading chair, a "currently reading" sign and a flower-pressing corner, all tappable. Pressed flowers are saved on the device.
+- **Scout's house:** a lookout nook, a corkboard and a small treasure hunt. Five finds are hidden around town (map, Gorbo's, Starfall, the playground, Olithia's cottage). Each find lights up a pin on his wall map. Progress is saved in localStorage.
+- **Rain:** gentle, seeded per day. Drizzle outdoors, a tint indoors, a soft noise bed under the music, and rainy bot thoughts. Bots and Mr. Bubbles stay in. Test with `?rain=1` or `?rain=0`.
+- **Map:** `map-v59.webp` has a cleaner lawn around the standing stone and clearer paths.
+- **Polish:** a clean empty bed, the desk card's "Open the notebook" stays in view on phones, Scout's night bedroom is brighter and he is smaller in bed, and his desk fits at 390px.
+- **Cleanup:** 47 unreferenced old art files were removed (the old house/bedroom/playground/starfall versions). Service worker: `bot-town-v59`.

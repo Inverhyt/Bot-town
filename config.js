@@ -42,6 +42,22 @@ window.BOT_TOWN = {
       starfall: [{ x: 44, y: 40.5 }, { x: 52, y: 19 }, { x: 73, y: 34 }],
       playground: [{ x: 20.8, y: 44.4 }, { x: 84.7, y: 45.1 }, { x: 45.8, y: 51.7 }]
     }, scale: { starfall: 1.3, playground: 1.3 }, lines: ["Mrrp! 🐾", "*purrrr*", "Mew? (He wants a belly rub.)", "*slow blink* 💚", "Meow~ 🔔"] },
+  // v59: gentle rain. Seeded per day: about 3 days in 10 have a drizzle lasting a few hours. ?rain=1 forces it on, ?rain=0 off.
+  weather: { chance: .3, start: [6, 17], hours: [2, 5] },
+  // v59: Scout's treasure hunt. scene = 'map' (x/y = % of the map) or a room id (x/y = % of its stage); w = width in % of that stage.
+  // wall = where the pin lights up on the corkboard map (map px of the 720x2290 town map); pp = pin spot on the painted corkboard (% of it)
+  hunt: { title: "Scout's treasure hunt", scout: "assets/face-scout.webp", items: [
+    { id: "acorn", name: "Golden acorn", art: "assets/hunt-acorn.webp", ratio: 94 / 120, scene: "map", x: 76.4, y: 11.5, w: 2.6, wall: [550, 262], pp: [26, 36],
+      clue: "A golden acorn gleams where the oldest oak throws its shade, just north of Gorbo's workshop.", found: "A golden acorn, warm from the sun. Scout will want to pin this one!" },
+    { id: "key", name: "Brass key", art: "assets/hunt-key.webp", ratio: 87 / 120, scene: "gorbo", x: 20, y: 80, w: 3.6, wall: [550, 560], pp: [70, 28],
+      clue: "A little brass key hides where Gorbo's gadgets gather dust, low and near the workbench.", found: "A tiny brass key tied with a green ribbon. It must open something small." },
+    { id: "star", name: "Star shard", art: "assets/hunt-star.webp", ratio: 117 / 120, scene: "starfall", x: 15, y: 34, w: 5.2, wall: [360, 1950], pp: [48, 70],
+      clue: "A star fell on Starfall Hill. Look in the grass west of the telescope blanket.", found: "A shard of pale blue starlight. It hums very softly." },
+    { id: "button", name: "Pearl button", art: "assets/hunt-button.webp", ratio: 1, scene: "playground", x: 46, y: 26, w: 5, wall: [130, 790], pp: [30, 62],
+      clue: "Someone lost a pearly button near the playground. Try the grass between the treehouse and the slide.", found: "A pearly button with four little holes. Somebody's best cardigan is one short." },
+    { id: "feather", name: "Teal quill", art: "assets/hunt-feather.webp", ratio: 72 / 120, scene: "olithia", x: 15, y: 81, w: 3.6, wall: [200, 250], pp: [72, 66],
+      clue: "A teal quill drifted into Olithia's cottage and landed by her desk.", found: "A cream and teal quill. It still smells faintly of ink and rain." }
+  ], done: "Every find is pinned. Scout hands you a gold star: \"Best treasure hunter in Bot Town!\" 🌟" },
   // v58: what each bot is doing or thinking, by pose and place. The day plan (seeded by the date) picks one line per stretch; it shows in each bot's Thoughts.
   thoughts: {
     gorbo: { working: ["Debugging the town's lantern timers 🔧", "Oiling gears at the workbench", "Compiling something very important…", "Fixing a bug that only shows up on Tuesdays"],
@@ -49,6 +65,7 @@ window.BOT_TOWN = {
       sitting: ["Taking a break in the armchair ☕", "Reading old patch notes for fun", "Thinking about what to build next"],
       awake: ["Just woke up. Hair looks like a bird's nest.", "Waiting for the kettle in his slippers", "Stretching and planning the day"],
       evening: ["Winding down with a warm mug", "Getting ready for bed, one more gadget to go", "Tucking the tools away for the night"],
+      rain: ["Listening to the rain on the workshop roof 🌧️", "Rain on the roof, cogs humming. Perfect tinkering weather.", "Moved the soldering iron away from the window. Drip drip."],
       sleeping: ["Zzz… dreaming of a perfectly green test run"], olithia: ["Dropped by Olithia's for tea 🍵", "Showing Olithia a little gadget", "Chatting on Olithia's sofa"],
       starfall: ["Looking at the stars from Starfall Hill ✨", "Fixing the telescope strap"], playground: ["Pushing the swing, strictly for testing", "Building a tower of blocks"] },
     loria: { working: ["Writing today's post for My Leisure Time ✍️", "Editing photos for the town feed 📸", "Planning the week's to-dos", "Answering comments with lots of hearts"],
@@ -56,6 +73,7 @@ window.BOT_TOWN = {
       sitting: ["Curled up with a book and her owl 🦉", "Sipping tea, thinking about stories", "Reading fan messages with a smile"],
       awake: ["Up late, up early — the owl approves", "Sleepy, hunting for her slippers", "Writing one more idea in her journal"],
       evening: ["Brushing her hair before bed, the owl on watch", "Lighting the bedside lamp for one more chapter", "Writing tomorrow's to-dos by candlelight"],
+      rain: ["Reading by the window while the rain taps the glass 📖", "Rainy day, big cup of tea, no plans at all", "Watching raindrops race down the window"],
       sleeping: ["Zzz… dreaming about a bookshop made of clouds"], olithia: ["Visiting Olithia, to check in on today's to-dos 📓", "Sharing tea and ideas at Olithia's", "Borrowing Olithia's sunny spot"],
       starfall: ["Reading by the willow 🌿", "Writing at the tea pavilion"], playground: ["Taking cozy photos at the playground", "Swinging with a book in her lap"] },
     scout: { working: ["Chasing down today's news 🗞️", "Fact-checking a headline", "Digging up research for Loria", "Mapping out what other cozy games are doing"],
@@ -63,6 +81,7 @@ window.BOT_TOWN = {
       sitting: ["Resting with a cup of tea, ears twitching", "Reading the paper (he wrote half of it)", "Looking at the star chart"],
       awake: ["Stretching with a big yawn", "Packing his satchel for the day", "Checking the sky out the window"],
       evening: ["Folding up the day's newspaper clippings", "Getting cozy in his blanket, ears drooping", "Reading tomorrow's headlines in his head"],
+      rain: ["Tail curled up, watching the drizzle with a mug of tea", "Writing up the rain report for the Gazette ☔", "Checking the sky: gentle rain until the afternoon, he predicts"],
       sleeping: ["Zzz… chasing a very fast headline"], olithia: ["Dropping off the latest news at Olithia's 🗞️", "Visiting Olithia with a fun fact", "Sitting by Olithia's tea table"],
       starfall: ["Stargazing from Starfall Hill ✨", "Noting down what the stars are doing"], playground: ["Racing the slide for science", "Digging in the sandbox for fossils"] }
   },
@@ -164,7 +183,13 @@ window.BOT_TOWN = {
         // v55: the round door in the middle entry room is Loria's bedroom door too (same glow-on-touch door)
         links: [],
         empty: "assets/loria-house-v4.webp",
-        guests: { gorbo: { x: 28, y: 86 }, scout: { x: 74, y: 88 } }
+        // v59: painted props (feet = where they stand, w = width, all % of the stage; ratio = image height / width): tap each for its little nook
+        props: [
+          { id: "loria-chair", label: "Reading chair", src: "assets/prop-loria-chair.webp", ratio: 379 / 440, feet: { x: 16.4, y: 89, w: 12 } },
+          { id: "loria-sign", label: "Currently reading", src: "assets/prop-loria-sign.webp", ratio: 435 / 300, feet: { x: 27.2, y: 91, w: 6 } },
+          { id: "loria-press", label: "Flower-pressing corner", src: "assets/prop-loria-press.webp", ratio: 513 / 560, feet: { x: 38.5, y: 90, w: 14 } }
+        ],
+        guests: { gorbo: { x: 63, y: 88 }, scout: { x: 76, y: 89 } }
       },
       tasks: ["Schedule posts for My Leisure Time", "Test the new game level", "Reply to fan comments", "Shelve the cozy novels"],
       dialog: ["Oh hi! Want a book rec? I have, um, all of them.", "Today's post got so many hearts! 💖", "My Leisure Time update is coming along nicely~", "Tea, a book, and a good game. Perfect day.", "Let me snap a pic for the town feed! 📸", "Scout dug up the best research for today's post. He's a gem! 🦊", "Need facts? Scout's cottage is up on the hill!"]
@@ -173,7 +198,7 @@ window.BOT_TOWN = {
       name: "Scout", role: "Research Expert · Loria's Assistant", house: "Scout's Cottage",
       hotspot: { left: 1.7, top: 54.5, width: 50.4, height: 22.4 },
       room: {
-        aspect: 864 / 1152,
+        aspect: 864 / 1152, zoom: 1.1, // v59: a touch wider so the whole desk fits a phone (it was running off the left edge)
         backdrop: "radial-gradient(circle at 50% 45%, #fff6c8, #f5d36a 55%, #c9952a)",
         poses: {
           idle: "assets/scout-house-v5-idle.webp",
@@ -191,7 +216,12 @@ window.BOT_TOWN = {
           { pose: "idle", label: "Floor", floor: true, zone: { left: 4, top: 55, width: 92, height: 40 } }
         ],
         empty: "assets/scout-house-v5.webp",
-        guests: { gorbo: { x: 70, y: 87 }, loria: { x: 40, y: 85 } }
+        // v59: his lookout nook and the treasure-hunt corkboard (painted over the picture frames on the back wall)
+        props: [
+          { id: "scout-nook", label: "Lookout nook", src: "assets/prop-scout-nook.webp", ratio: 406 / 440, feet: { x: 82.5, y: 87, w: 14 } },
+          { id: "scout-board", label: "Treasure hunt corkboard", src: "assets/prop-scout-board.webp", ratio: 393 / 520, box: { left: 64.2, top: 17.5, width: 14.4 }, wall: true }
+        ],
+        guests: { gorbo: { x: 66, y: 89 }, loria: { x: 40, y: 85 } }
       },
       tasks: ["Research trending cozy games", "Summarize fan feedback for Loria", "Fact-check this week's posts", "Map out My Leisure Time competitors"],
       dialog: ["Ooh, a visitor! Want to hear a fun fact?", "I found three new sources this morning! *tail wag*", "Loria says I'm the best fact-fetcher in town. 🦊", "Did you know foxes can hear a watch ticking 40 yards away?", "My notes are a bit messy, but I know where everything is!", "Come find me at my cottage on the hill!"]
@@ -331,7 +361,7 @@ window.BOT_TOWN = {
         door: { left: 21, top: 35, width: 13, height: 37 }, // v29 (v56: new art): the painted door back to the house
         image: "assets/scout-bedroom-v5.webp", night: "assets/scout-bedroom-v5-night.webp",
         awake: "assets/scout-bedroom-v5-awake.webp", awakeNight: "assets/scout-bedroom-v5-awake-night.webp",
-        sleeping: "assets/scout-bedroom-v5-sleeping.webp", aspect: 864 / 1152, backdrop: "radial-gradient(circle at 50% 45%, #fff6c8, #f5d36a 55%, #c9952a)",
+        sleeping: "assets/scout-bedroom-v5-sleeping.webp", aspect: 864 / 1152, nightBackdrop: "radial-gradient(circle at 50% 45%, #232d52, #131a33)", backdrop: "radial-gradient(circle at 50% 45%, #fff6c8, #f5d36a 55%, #c9952a)",
         objects: [{ pose: "sleeping", label: "Bed", zone: { left: 38.6, top: 44, width: 33.7, height: 34 } }, { pose: "awake", label: "Floor", floor: true, zone: { left: 8, top: 62, width: 84, height: 30 } }],
       }
     }

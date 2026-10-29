@@ -85,7 +85,7 @@
       const x = r(), hr = t % 24; let place = bot, pose = 'idle', dur = .75 + r();
       if (x < R.work) { pose = 'working'; dur = 1.25 + r() * 1.75; }
       else if (x < R.work + .3) {
-        const ok = (R.outings || []).filter(o => o !== last && C[o] && (o !== 'playground' || (hr >= 8 && hr < 19)) && (!(C[o].room && C[o].room.poses) || (hr >= 10 && hr < 21)));
+        const wet = rainAt(key, hr), ok = (R.outings || []).filter(o => o !== last && C[o] && !(wet && (o === 'playground' || o === 'starfall')) && (o !== 'playground' || (hr >= 8 && hr < 19)) && (!(C[o].room && C[o].room.poses) || (hr >= 10 && hr < 21)));
         if (ok.length) { place = ok[Math.floor(r() * ok.length)]; pose = place === 'starfall' ? 'sitting' : 'idle'; } else pose = 'sitting';
       } else pose = r() < .5 ? 'sitting' : 'idle';
       if (place + pose === last) pose = pose === 'idle' ? 'sitting' : 'idle';
@@ -98,12 +98,13 @@
       const cand = rows.filter(rw => rw[1] === bot && rw[2] !== 'working' && rw[0] >= 12 && rw[0] <= 19);
       if (cand.length) { const rw = cand[Math.floor(rngOf(hashS(ck + 'visit'))() * cand.length)]; rw[1] = 'olithia'; rw[2] = 'idle'; }
     }
-    rows.forEach((rw, i) => { rw[3] = thoughtFor(bot, rw[1], rw[2], hashS(ck + '|' + i), rw[0] > 12); });
+    rows.forEach((rw, i) => { rw[3] = thoughtFor(bot, rw[1], rw[2], hashS(ck + '|' + i), rw[0] > 12, rainAt(key, rw[0])); });
     return (planCache[ck] = { wake, bed, rows });
   }
   // v58: a line for what a bot is doing / thinking, chosen by pose and place (seeded so it holds steady through a stretch of the day)
-  function thoughtFor(bot, place, pose, seed, late) {
+  function thoughtFor(bot, place, pose, seed, late, rain) {
     const T = (CFG.thoughts || {})[bot] || {}, at = arr => arr && arr.length ? arr[seed % arr.length] : '';
+    if (rain && pose !== 'sleeping' && !String(place).endsWith('-bed') && place !== 'starfall' && place !== 'playground' && seed % 2 === 0 && T.rain) return at(T.rain); // v59: half of the indoor stretches on a rainy day
     if (String(place).endsWith('-bed')) return pose === 'sleeping' ? at(T.sleeping) : at(late ? T.evening : T.awake);
     if (place === bot) return at(T[pose]) || at(T.idle);
     if (place === 'olithia' || place === 'starfall' || place === 'playground') return at(T[place]);
@@ -171,7 +172,7 @@
     const url = roomURL();
     const nCat = cur.room.noCat || {}, night = [cur.room.sleeping, cur.room.night, cur.room.awakeNight, nCat.night, nCat.awakeNight].filter(Boolean).includes(url);
     $('#house').style.background = night
-      ? 'radial-gradient(circle at 50% 45%, #141a2e, #0b0f1c)'
+      ? (cur.room.nightBackdrop || 'radial-gradient(circle at 50% 45%, #141a2e, #0b0f1c)')
       : (cur.room.backdrop || '');
     return url;
   }
@@ -200,7 +201,7 @@
     if (hide.complete && hide.naturalWidth && hide.src === abs) paint();
   }
   function enter(id, opts = {}) {
-    closeDig(); $('#notebook').hidden = $('#paper').hidden = $('#deskTodos').hidden = true; deskShown = false; // v52, v57, v58
+    closeDig(); $('#notebook').hidden = $('#paper').hidden = $('#deskTodos').hidden = $('#nook').hidden = true; deskShown = false; // v52, v57, v58
     curId = id; cur = C[id];
     visiting = id !== CFG.player && locate(CFG.player).scene === id;
     pose = cur.room.poses && isChar(id) && hostHome() ? locate(id).pose : 'idle';
@@ -227,7 +228,7 @@
     $('#tbTasks span').textContent = isBot(id) ? 'Thoughts' : 'Tasks'; // v55
     $('#tbTasks').hidden = $('#tasks').hidden; $('#tbChat').hidden = id === CFG.player; // v57: no chat in her own house; she chats in the bots' houses
     if (cur.tasks || isBot(id)) renderTasks();
-    updateMode(true); deskPopup();
+    updateMode(true); deskPopup(); buildFinds(); weatherSync();
     if (motionOK && opts.arrive) { $('#house').classList.add('arriving'); setTimeout(() => $('#house').classList.remove('arriving'), 720); }
     if (motionOK && opts.door) { vp.classList.remove('door-shut'); vp.classList.add('door-open'); setTimeout(() => vp.classList.remove('door-open'), 680); }
     maybeTiltPrompt();
@@ -235,8 +236,8 @@
   }
   function toMap(fromPop) {
     closeDig(); // v52
-    $('#notebook').hidden = $('#paper').hidden = $('#deskTodos').hidden = true; deskShown = false;
-    $('#house').classList.remove('active'); $('#map').classList.add('active'); $('#music').hidden = true;
+    $('#notebook').hidden = $('#paper').hidden = $('#deskTodos').hidden = $('#nook').hidden = true; deskShown = false;
+    $('#house').classList.remove('active'); $('#map').classList.add('active'); $('#music').hidden = true; weatherSync(); buildFinds();
     $('#house').style.opacity = '';
     cur = null; curId = null;
     if (!fromPop && location.hash) history.back();
@@ -397,11 +398,19 @@
     // v26: Olithia's cottage and bedroom: tap an object to move her there (tap it again or the floor for idle)
     (cur.room.objects || []).forEach(o => { const el = addZone(o.zone, o.label, () => tapObject(o)); el.classList.remove('glow'); el.classList.add('obj'); el.style.zIndex = o.floor ? 500 : 600; });
     if ((cur.room.objects || []).length && !store.get('hinted-' + curId, false)) { store.set('hinted-' + curId, true); $('#actors').querySelectorAll('.obj:not([aria-label=Floor])').forEach(e => e.classList.add('hint')); }
-    (cur.room.props || []).forEach(p => { // v57: painted props (notebook, newspaper): glow on touch, open their page
-      const img = document.createElement('img'); img.className = 'prop'; img.src = p.src; img.alt = ''; img.draggable = false;
-      Object.assign(img.style, { left: p.box.left + '%', top: p.box.top + '%', width: p.box.width + '%', height: p.box.height + '%' }); $('#actors').appendChild(img);
-      const el = addZone(p.zone, p.label, () => { el.classList.add('open'); setTimeout(() => { el.classList.remove('open'); p.id === 'notebook' ? openNotebook() : openPaper(); }, motionOK ? 200 : 0); });
-      el.className = 'link zone door propz'; hintOnce(el, 'prop-' + p.id); });
+    (cur.room.props || []).forEach(p => { // v57: painted props (notebook, newspaper): glow on touch, open their page. v59: feet/ratio props (Loria's nooks, Scout's nook and corkboard)
+      const asp = cur.room.aspect || .75;
+      let box = p.box, zone = p.zone;
+      if (p.feet) { const hh = p.feet.w * p.ratio / asp; box = { left: p.feet.x - p.feet.w / 2, top: p.feet.y - hh, width: p.feet.w, height: hh }; }
+      else if (box && box.height === undefined) box = { ...box, height: box.width * p.ratio / asp };
+      if (!zone) zone = { left: box.left + box.width * .04, top: box.top + box.height * .08, width: box.width * .92, height: box.height * .88 };
+      const img = document.createElement('img'); img.className = 'prop' + (p.wall ? ' wall' : ''); img.src = p.src; img.alt = ''; img.draggable = false; img.dataset.prop = p.id;
+      Object.assign(img.style, { left: box.left + '%', top: box.top + '%', width: box.width + '%', height: box.height + '%' });
+      if (p.feet) img.style.zIndex = Math.round(p.feet.y * 10);
+      $('#actors').appendChild(img);
+      if (p.id === 'scout-board') drawBoardPins(img, box);
+      const el = addZone(zone, p.label, () => { el.classList.add('open'); setTimeout(() => { el.classList.remove('open'); openProp(p.id); }, motionOK ? 200 : 0); });
+      el.className = 'link zone door propz'; if (p.feet) el.style.zIndex = Math.round(p.feet.y * 10) + 1; hintOnce(el, 'prop-' + p.id); });
     const bed = cur.room.bedroom;
     if (bed) [bed.door, ...(bed.doors || [])].forEach(d => doorZone(d, bed.label, () => travel(bed.to, { door: true }))); // v55: extra doors to the same bedroom
     if (cur.returnTo && cur.room.door) doorZone(cur.room.door, 'Back to the house', () => travel(cur.returnTo, { door: true })); // v29: bedroom door -> house
@@ -559,7 +568,7 @@
     const ul = $('#taskList'); ul.innerHTML = '';
     $('#tasksHead b').textContent = C[curId].name + "'s thoughts"; $('#taskCount').textContent = '';
     const w = where(curId);
-    const doing = w.note || thoughtFor(curId, w.place, w.pose, hashS(curId + dayKey(0) + Math.floor(hourNow() / 1.5))) || (w.pose === 'sleeping' ? 'Asleep… zzz' : w.pose === 'working' ? 'Working' : w.pose === 'sitting' ? 'Taking a break' : 'Hanging out'); // v58
+    const doing = w.note || thoughtFor(curId, w.place, w.pose, hashS(curId + dayKey(0) + Math.floor(hourNow() / 1.5)), false, rainNow()) || (w.pose === 'sleeping' ? 'Asleep… zzz' : w.pose === 'working' ? 'Working' : w.pose === 'sitting' ? 'Taking a break' : 'Hanging out'); // v58
     const li = document.createElement('li'); li.className = 'thought'; li.innerHTML = `<span>💭</span> <span></span> <small></small>`;
     li.children[1].textContent = doing; li.children[2].textContent = (w.pose === 'sleeping' ? placeName(curId) + ' bedroom' : placeName(w.place)) + (w.live ? '' : ' · usual schedule');
     ul.appendChild(li);
@@ -603,7 +612,7 @@
   // ---------- loader ----------
   (function () {
     const tips = CFG.loadingTips || [];
-    const urls = ['assets/map-v3.webp', 'assets/frog.webp', ...Object.values((CFG.cat && CFG.cat.art) || {}), ...Object.values(CFG.sprites || {}).map(s => s.src), ...Object.values(C).flatMap(c => [c.sprite, c.mapImage, c.room && c.room.image, c.room && c.room.sleeping, c.room && c.room.night, c.room && c.room.awake, c.room && c.room.awakeNight, c.room && c.room.sleepingDay, ...Object.values((c.room && c.room.noCat) || {}), c.room && c.room.visit, c.room && c.room.empty, c.room && c.room.swing && c.room.swing.src, ...Object.values(c.room.cameos || {}).flatMap(k => [k.day, k.night]), ...Object.values(c.room.poses || {}), ...(c.pets || []).filter(p => p.sprite).map(p => p.sprite)])].filter(Boolean);
+    const urls = ['assets/map-v59.webp', 'assets/frog.webp', ...Object.values((CFG.cat && CFG.cat.art) || {}), ...Object.values(CFG.sprites || {}).map(s => s.src), ...Object.values(C).flatMap(c => [c.sprite, c.mapImage, c.room && c.room.image, c.room && c.room.sleeping, c.room && c.room.night, c.room && c.room.awake, c.room && c.room.awakeNight, c.room && c.room.sleepingDay, ...Object.values((c.room && c.room.noCat) || {}), c.room && c.room.visit, c.room && c.room.empty, c.room && c.room.swing && c.room.swing.src, ...Object.values(c.room.cameos || {}).flatMap(k => [k.day, k.night]), ...Object.values(c.room.poses || {}), ...(c.pets || []).filter(p => p.sprite).map(p => p.sprite)])].filter(Boolean);
     let done = 0, ti = 0; const t0 = Date.now(), slow = +(new URLSearchParams(location.search).get('loaddelay') || 0);
     const tipEl = $('#tip'); if (tips.length) tipEl.textContent = tips[0];
     const tipTimer = setInterval(() => { tipEl.style.opacity = 0; setTimeout(() => { ti = (ti + 1) % tips.length; tipEl.textContent = tips[ti]; tipEl.style.opacity = 1; }, 300); }, 1800);
@@ -840,7 +849,7 @@
     const wake = q(K.sleep[1] + (r() - .5)), bed = q(K.sleep[0] + (r() - .5) * 1.5);
     const rows = [[wake, 'olithia', 'sit', 0]]; let t = q(wake + .5 + r() * .75), last = 'olithia';
     while (t < bed - .5) {
-      const ok = K.places.filter(p => p !== last && C[p] && (p !== 'playground' || (t >= 8 && t < 19))), place = ok[Math.floor(r() * ok.length)], x = r();
+      const ok = K.places.filter(p => p !== last && C[p] && !(rainAt(key, t) && (p === 'playground' || p === 'starfall')) && (p !== 'playground' || (t >= 8 && t < 19))), place = ok[Math.floor(r() * ok.length)], x = r();
       const pose = x < .3 ? 'sleep' : x < .62 ? 'sit' : 'walk', dur = pose === 'sleep' ? 1 + r() * 1.5 : .5 + r() * 1.25;
       rows.push([t, place, pose, Math.floor(r() * 3)]); last = place; t = q(t + dur);
     }
@@ -876,7 +885,7 @@
     $('#actors').querySelectorAll('.link:not(.pboard):not(.pg-slide):not(.pg-chest):not(.pg-chimes)').forEach(e => e.remove()); buildLinks();
     const wantMain = !cur.bot || locate(cur.bot).scene === curId, wantVis = !!(cur.room.visitor && visiting);
     if (cur.sprite && !cur.room.poses && !cur.gallery && (!!actors.main !== wantMain || !!actors.visitor !== wantVis)) buildActors();
-    buildGuests(); buildCat(); buildOwl(); updateMode(true); deskPopup(); if (cur.play) playTools();
+    buildGuests(); buildCat(); buildOwl(); updateMode(true); deskPopup(); buildFinds(); if (cur.play) playTools();
     if (!$('#tasks').hidden && (cur.tasks || isBot(curId))) renderTasks();
   }
 
@@ -1495,6 +1504,7 @@
   }
   $('#dtClose').onclick = () => { $('#deskTodos').hidden = true; };
   $('#dtOpen').onclick = () => { $('#deskTodos').hidden = true; openNotebook(); };
+  function openProp(id) { ({ notebook: openNotebook, paper: openPaper, 'loria-chair': openChair, 'loria-sign': openSign, 'loria-press': openPress, 'scout-nook': openLookout, 'scout-board': openHunt }[id] || (() => {}))(); }
   function openPaper() {
     const box = $('#gzList'); box.innerHTML = '';
     $('#gzDate').textContent = new Date(pacDay() + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
@@ -1505,12 +1515,12 @@
       box.appendChild(a); });
     $('#paper').hidden = false;
   }
-  const askBotChat = b => { $('#notebook').hidden = $('#paper').hidden = true; if (relayOn()) BotTownChat.open(b); else napToast(); };
+  const askBotChat = b => { $('#notebook').hidden = $('#paper').hidden = $('#nook').hidden = true; if (relayOn()) BotTownChat.open(b); else napToast(); };
   $('#nbClose').onclick = () => { $('#notebook').hidden = true; }; $('#gzClose').onclick = () => { $('#paper').hidden = true; };
   $('#notebook').onclick = e => { if (e.target.id === 'notebook') $('#notebook').hidden = true; };
   $('#paper').onclick = e => { if (e.target.id === 'paper') $('#paper').hidden = true; };
   $('#nbAsk').onclick = e => { e.preventDefault(); askBotChat('loria'); }; $('#gzAsk').onclick = e => { e.preventDefault(); askBotChat('scout'); };
-  addEventListener('keydown', e => { if (e.key === 'Escape') { $('#notebook').hidden = true; $('#paper').hidden = true; } });
+  addEventListener('keydown', e => { if (e.key === 'Escape') { $('#notebook').hidden = true; $('#paper').hidden = true; $('#nook').hidden = true; } });
 
   // ----- the town board: who's doing what, and Olithia's questions & tasks for the bots -----
   let taskItems = [], boardNotes = [], townNews = [], todos = [], paperItems = [];
@@ -1633,6 +1643,180 @@
     // now and then the frog hops on his own
     setInterval(() => { if (document.hidden || busy || !$('#map').classList.contains('active') || !motionOK) return; if (Math.random() < .5) { busy = true; hop((at + 1) % pads.length).then(() => { busy = false; }); } }, 14000);
   })();
+  // ===== v59 (Update 5): Loria's nooks, Scout's lookout + treasure hunt, gentle rain =====
+  function dayNum() { return Math.floor(new Date(pacDay() + 'T12:00:00') / 864e5); }
+  function nook(title, cls, build) {
+    const m = $('#nook'); $('#nkTitle').textContent = title; const b = $('#nkBody'); b.innerHTML = ''; m.dataset.kind = cls || ''; build(b);
+    $('#deskTodos').hidden = true; m.hidden = false; $('#nkBody').scrollTop = 0;
+  }
+  function nkBtn(label, fn, cls) { const x = document.createElement('button'); x.type = 'button'; x.className = 'nk-btn ' + (cls || ''); x.textContent = label; x.onclick = fn; return x; }
+  function nkP(t, cls) { const p = document.createElement('p'); if (cls) p.className = cls; p.textContent = t; return p; }
+  $('#nkClose').onclick = () => { $('#nook').hidden = true; };
+  $('#nook').onclick = e => { if (e.target.id === 'nook') $('#nook').hidden = true; };
+
+  // --- Loria's reading chair: a cozy page to read (turn the page for another)
+  const COZY_PAGES = [
+    'The rain had only just started when the lamplighter reached the last street. She hung her coat by the fire, set the kettle on, and decided the rest of the evening belonged to the book on the arm of the chair.',
+    'There is a particular kind of quiet that lives between pages. It smells of old paper and cinnamon, and it never asks you to hurry.',
+    'The fox kept his map folded in three. "A good map," he said, "tells you where the path is. A great one tells you where the tea is."',
+    'Somewhere past the fourth hill there was a bakery that only opened when it snowed. Nobody had ever seen the baker, but the bread was always warm.',
+    'The little robot read every book twice: once for the story, and once for the way the words sounded in the quiet room.',
+    'Moss grows in the direction of good company, the old owl liked to say. By that measure the cottage was very nearly a forest.',
+    'She pressed the first flower of autumn between two pages and promised to find it again in winter, exactly when she would need it.',
+    'At the end of the lane stood a door painted the color of apricots. Behind it lived a very old, very patient, very comfortable armchair.'
+  ];
+  function openChair() {
+    const n = store.get('pages-read', 0) || 0, i = (dayNum() * 3 + n) % COZY_PAGES.length;
+    nook("Loria's reading chair", 'chair', b => {
+      b.appendChild(nkP('The chair is warm from the lamp, and a stack of books waits on the little table. Loria left a page open for you:', 'nk-lead'));
+      const q = nkP(COZY_PAGES[i], 'nk-page-text'); b.appendChild(q);
+      b.appendChild(nkP(n ? `Pages read in this chair: ${n}` : 'Pages read in this chair: none yet', 'nk-small'));
+      const row = document.createElement('div'); row.className = 'nk-row';
+      row.appendChild(nkBtn('Turn the page', () => { store.set('pages-read', n + 1); openChair(); }));
+      row.appendChild(nkBtn('Curl up for a while', () => { store.set('pages-read', n + 3); $('#nook').hidden = true; toast('You curl up and read for a while 📖 Loria smiles.'); }, 'alt'));
+      b.appendChild(row);
+    });
+  }
+  // --- the 'currently reading' sign: Loria's book of the week (made-up titles, so no one is misquoted)
+  const BOOKS = [
+    ['The Lantern Keeper\'s Almanac', 'Ottoline Fenn', 'A year of small lights, told one cozy chapter per season.', 312],
+    ['Moss & Moonlight', 'Wren Alderidge', 'Two friends open a bookshop inside a hollow oak.', 268],
+    ['A Fox\'s Guide to Quiet Mornings', 'Thistle Marlowe', 'Fifty ways to start the day softly. Scout approves.', 204],
+    ['The Teapot Atlas', 'Juniper Vale', 'A map of every kitchen where someone once said "stay a while".', 340],
+    ['Seven Seasons in Fernhollow', 'Briar Quillon', 'A slow, sunny novel about one village and its very long autumn.', 396],
+    ['Letters to a Sleepy Dragon', 'Marigold Pike', 'Pen pals across the mountains. Mostly about soup.', 188],
+    ['The Clockwork Gardener', 'Alder Wickham', 'A tiny robot learns patience from the tomatoes.', 276],
+    ['Rainy Day Recipes for Brave Cooks', 'Posy Hartwell', 'Comfort food with a side of tall tales.', 232]
+  ];
+  function openSign() {
+    const wk = Math.floor((dayNum() + 3) / 7), [t, au, blurb, pages] = BOOKS[wk % BOOKS.length], dow = ((new Date(pacDay() + 'T12:00:00').getDay() + 6) % 7), pg = Math.min(pages, Math.round(pages * (dow + 1) / 7 / 2) * 2);
+    nook('Currently reading', 'sign', b => {
+      const card = document.createElement('div'); card.className = 'nk-book'; card.innerHTML = '<b></b><i></i><p></p>'; card.children[0].textContent = t; card.children[1].textContent = 'by ' + au; card.children[2].textContent = blurb; b.appendChild(card);
+      const bar = document.createElement('div'); bar.className = 'nk-bar'; bar.innerHTML = `<span style="width:${Math.round(pg / pages * 100)}%"></span>`; b.appendChild(bar);
+      b.appendChild(nkP(`Loria is on page ${pg} of ${pages}`, 'nk-small'));
+      b.appendChild(nkP(['"The middle chapters are the coziest part."', '"I keep rereading the first page just for the smell of it."', '"Tell me when you finish yours and we\'ll swap."'][wk % 3] + ' — Loria', 'nk-quote'));
+      b.appendChild(nkBtn('Ask Loria what\'s next', () => { $('#nook').hidden = true; askBotChat('loria'); }, 'alt'));
+    });
+  }
+  // --- flower-pressing corner: press today's flowers into the album (kept on this phone); pressed flowers are ready after three days
+  const FLOWERS = [['cherry', '🌸', 'Cherry blossom'], ['daisy', '🌼', 'Daisy'], ['tulip', '🌷', 'Tulip'], ['sunflower', '🌻', 'Sunflower petal'], ['rose', '🌹', 'Rose'], ['hibiscus', '🌺', 'Hibiscus'],
+    ['aster', '💮', 'Wild aster'], ['clover', '🍀', 'Four-leaf clover'], ['maple', '🍁', 'Maple leaf'], ['fern', '🌿', 'Fern frond'], ['meadow', '🌾', 'Meadow grass'], ['marigold', '🏵️', 'Marigold']];
+  function pressedList() { const p = store.get('pressed', []); return Array.isArray(p) ? p : []; }
+  function openPress() {
+    const today = pacDay(), r = rngOf(hashS('press|' + today)), pool = FLOWERS.slice(), todays = []; while (todays.length < 3) todays.push(pool.splice(Math.floor(r() * pool.length), 1)[0]);
+    const list = pressedList();
+    nook('Flower-pressing corner', 'press', b => {
+      b.appendChild(nkP("Loria's press is open and today's flowers are fresh. Pick one to press between the pages:", 'nk-lead'));
+      const row = document.createElement('div'); row.className = 'nk-flowers';
+      todays.forEach(([id, e, name]) => { const done = list.some(x => x.id === id && x.day === today);
+        const btn = document.createElement('button'); btn.type = 'button'; btn.className = 'nk-flower' + (done ? ' done' : ''); btn.disabled = done; btn.innerHTML = '<i></i><span></span>'; btn.children[0].textContent = e; btn.children[1].textContent = done ? 'Pressed ✓' : name;
+        btn.onclick = () => { const l = pressedList(); l.push({ id, day: today }); store.set('pressed', l.slice(-60)); toast(`Pressed the ${name.toLowerCase()} ${e}. It will be ready in three days.`); openPress(); }; row.appendChild(btn); });
+      b.appendChild(row);
+      const h = document.createElement('h4'); h.textContent = `Pressed-flower album (${list.length})`; b.appendChild(h);
+      if (!list.length) b.appendChild(nkP('Nothing pressed yet. The first page is waiting.', 'nk-small'));
+      const grid = document.createElement('div'); grid.className = 'nk-album';
+      list.slice().reverse().forEach(x => { const f = FLOWERS.find(q => q[0] === x.id) || FLOWERS[0], ready = (new Date(today + 'T12:00:00') - new Date(x.day + 'T12:00:00')) / 864e5 >= 3;
+        const c = document.createElement('div'); c.className = 'nk-card' + (ready ? ' ready' : ''); c.innerHTML = '<i></i><small></small>'; c.children[0].textContent = f[1]; c.children[1].textContent = ready ? f[2] : 'drying…'; c.title = f[2] + ' · ' + prettyDue(x.day); grid.appendChild(c); });
+      b.appendChild(grid);
+      const n = list.length; if (n >= 3) b.appendChild(nkP(n >= 9 ? 'Loria: "Your album is better than mine now. Frame a page!"' : n >= 6 ? 'Loria: "We could press a whole bouquet for the bookshop window."' : 'Loria: "That is a lovely start. I am so proud."', 'nk-quote'));
+    });
+  }
+
+  // --- Scout's treasure hunt: five finds hidden around town. Each one Olithia finds lights up a pin on his corkboard map (saved on this phone).
+  var HUNT = CFG.hunt || { items: [] };
+  function huntGet() { return store.get('hunt', {}) || {}; }
+  function huntCount() { return HUNT.items.filter(i => huntGet()[i.id]).length; }
+  function drawBoardPins(img, box) {
+    const got = huntGet(); $('#actors').querySelectorAll('.pin').forEach(p => p.remove());
+    HUNT.items.forEach(it => { const pin = document.createElement('i'); pin.className = 'pin' + (got[it.id] ? ' lit' : ''); pin.dataset.pin = it.id;
+      pin.style.left = (box.left + box.width * it.pp[0] / 100) + '%'; pin.style.top = (box.top + box.height * it.pp[1] / 100) + '%'; $('#actors').appendChild(pin); });
+  }
+  function buildFinds() {
+    document.querySelectorAll('.find').forEach(e => e.remove());
+    const got = huntGet();
+    HUNT.items.forEach(it => { if (got[it.id]) return;
+      if (it.scene !== 'map' && !(cur && it.scene === curId && $('#house').classList.contains('active'))) return; // map finds live on the map layer, the rest only in their own scene
+      const el = document.createElement('button'); el.type = 'button'; el.className = 'find'; el.setAttribute('aria-label', 'Something shiny'); el.dataset.find = it.id;
+      const im = document.createElement('img'); im.src = it.art; im.alt = ''; im.draggable = false; el.appendChild(im);
+      Object.assign(el.style, { left: it.x + '%', top: it.y + '%', width: it.w + '%' }); el.style.setProperty('--d', (Math.random() * 6).toFixed(1) + 's');
+      el.onclick = ev => { ev.stopPropagation(); if (it.scene === 'map' && mapDragged()) return; foundIt(it, el); };
+      (it.scene === 'map' ? $('#hotspots') : $('#actors')).appendChild(el); });
+  }
+  function foundIt(it, el) {
+    const h = huntGet(); if (h[it.id]) return; h[it.id] = Date.now(); store.set('hunt', h);
+    if (el) { el.classList.add('got'); setTimeout(() => el.remove(), 520); }
+    const n = huntCount(), total = HUNT.items.length;
+    setTimeout(() => nook('You found it!', 'find', b => {
+      const big = document.createElement('img'); big.className = 'nk-find'; big.src = it.art; big.alt = it.name; b.appendChild(big);
+      const t = document.createElement('h3'); t.textContent = it.name; t.className = 'nk-find-name'; b.appendChild(t);
+      b.appendChild(nkP(it.found, 'nk-lead'));
+      b.appendChild(nkP(`📍 Scout pinned it on his wall map. ${n} of ${total} found.`, 'nk-small'));
+      if (n === total) b.appendChild(nkP(HUNT.done, 'nk-quote'));
+      b.appendChild(nkBtn(n === total ? 'Hooray!' : 'Keep looking', () => { $('#nook').hidden = true; }, 'alt'));
+    }), 380);
+    document.querySelectorAll('.pin[data-pin="' + it.id + '"]').forEach(p => p.classList.add('lit'));
+  }
+  function openHunt() {
+    const got = huntGet(), n = huntCount();
+    nook(HUNT.title, 'hunt', b => {
+      b.appendChild(nkP(n === HUNT.items.length ? 'Every pin is lit. Scout is very proud of you.' : `Scout hid ${HUNT.items.length} little finds around Bot Town. Each one you find lights a pin on his map. ${n} of ${HUNT.items.length} found.`, 'nk-lead'));
+      const wrap = document.createElement('div'); wrap.className = 'nk-map'; const im = document.createElement('img'); im.src = 'assets/prop-scout-board.webp'; im.alt = 'Scout\'s corkboard map'; wrap.appendChild(im);
+      HUNT.items.forEach(it => { const p = document.createElement('i'); p.className = 'pin' + (got[it.id] ? ' lit' : ''); p.style.left = it.pp[0] + '%'; p.style.top = it.pp[1] + '%'; wrap.appendChild(p); });
+      b.appendChild(wrap);
+      const ul = document.createElement('ul'); ul.className = 'nk-clues';
+      HUNT.items.forEach(it => { const li = document.createElement('li'); li.className = got[it.id] ? 'got' : ''; li.innerHTML = '<img alt=""><span></span>'; li.children[0].src = it.art; li.children[1].textContent = got[it.id] ? `${it.name}: found!` : it.clue; ul.appendChild(li); });
+      b.appendChild(ul);
+      if (n < HUNT.items.length) b.appendChild(nkP('Tip: the spyglass in the lookout nook points the way.', 'nk-small'));
+    });
+  }
+  // --- Scout's lookout nook: the spyglass gives a hint for the next find; he also reports the weather
+  function openLookout() {
+    const got = huntGet(), left = HUNT.items.filter(i => !got[i.id]), rain = rainNow();
+    nook("Scout's lookout nook", 'lookout', b => {
+      b.appendChild(nkP(rain ? 'Rain is tapping softly on the window. The whole town looks washed and shiny from up here.' : (hourNow() >= 19 || hourNow() < 6) ? 'The lanterns are lit across Bot Town and a few early stars are out. A fine night for a lookout.' : 'From the nook you can see the whole town: smoke from the chimneys, the pond, the swings, the hill.', 'nk-lead'));
+      const out = nkP('', 'nk-glass'); b.appendChild(out);
+      const row = document.createElement('div'); row.className = 'nk-row';
+      row.appendChild(nkBtn('Look through the spyglass', () => { out.textContent = left.length ? '🔭 ' + left[Math.floor(dayNum() + (store.get('spy', 0) || 0)) % left.length].clue : '🔭 No more glints anywhere. Only clouds and a very happy fox.'; store.set('spy', (store.get('spy', 0) || 0) + 1); }));
+      row.appendChild(nkBtn('Wave to the town', () => { out.textContent = '👋 Somewhere down the path, Loria waves back with a teacup.'; }, 'alt'));
+      b.appendChild(row);
+    });
+  }
+
+  // --- gentle rain: seeded per day, drizzle overlay outdoors, a soft sound under the music, bots and Mr. Bubbles stay in
+  var rainParam = new URLSearchParams(location.search).get('rain');
+  function rainWindow(key) { const W = CFG.weather; if (!W) return null; const r = rngOf(hashS('rain|' + key)); if (r() >= W.chance) return null;
+    const s = W.start[0] + r() * (W.start[1] - W.start[0]), d = W.hours[0] + r() * (W.hours[1] - W.hours[0]); return [Math.round(s * 4) / 4, Math.round((s + d) * 4) / 4]; }
+  function rainAt(key, h) { if (rainParam === '1') return true; if (rainParam === '0') return false; const w = rainWindow(key); return !!w && h >= w[0] && h < w[1]; }
+  function rainNow() { return rainAt(dayKey(0), hourNow()); }
+  var rainCv = null, rainRaf = 0, rainDrops = [], rainLast = 0;
+  function outdoorsNow() { return $('#map').classList.contains('active') || !!(cur && (cur.gallery || cur.play)); }
+  function rainSize() { if (!rainCv) return; const d = Math.min(2, devicePixelRatio || 1); rainCv.width = innerWidth * d; rainCv.height = innerHeight * d; rainCv.style.width = innerWidth + 'px'; rainCv.style.height = innerHeight + 'px'; rainCv._d = d; }
+  function rainFrame(t) {
+    if (!rainCv || !document.body.classList.contains('rain-out')) { rainRaf = 0; if (rainCv) rainCv.getContext('2d').clearRect(0, 0, rainCv.width, rainCv.height); return; }
+    const dt = Math.min(.05, (t - rainLast) / 1000 || .016); rainLast = t; const c = rainCv.getContext('2d'), d = rainCv._d || 1; c.clearRect(0, 0, rainCv.width, rainCv.height);
+    c.lineWidth = 1 * d; c.lineCap = 'round';
+    for (const p of rainDrops) { p.y += p.v * dt; p.x -= p.v * dt * .16; if (p.y > innerHeight + 20 || p.x < -20) { p.y = -20 - Math.random() * 60; p.x = Math.random() * (innerWidth + 120); }
+      c.strokeStyle = `rgba(214,232,248,${p.a})`; c.beginPath(); c.moveTo(p.x * d, p.y * d); c.lineTo((p.x + p.l * .16) * d, (p.y - p.l) * d); c.stroke(); }
+    rainRaf = requestAnimationFrame(rainFrame);
+  }
+  function weatherSync() {
+    const on = rainNow(), out = on && outdoorsNow(); const b = document.body;
+    if (!$('#rainTint')) { const tint = document.createElement('div'); tint.id = 'rainTint'; tint.setAttribute('aria-hidden', 'true'); b.appendChild(tint);
+      rainCv = document.createElement('canvas'); rainCv.id = 'rainCv'; rainCv.setAttribute('aria-hidden', 'true'); b.appendChild(rainCv); rainSize(); addEventListener('resize', rainSize);
+      const chip = document.createElement('div'); chip.id = 'wxChip'; chip.hidden = true; chip.textContent = '🌧️ Light rain'; b.appendChild(chip); }
+    b.classList.toggle('raining', on); b.classList.toggle('rain-out', !!out);
+    $('#wxChip').hidden = !(on && $('#map').classList.contains('active'));
+    if (out && motionOK) { if (!rainDrops.length) { const n = Math.round(Math.min(140, innerWidth * innerHeight / 5200)); for (let i = 0; i < n; i++) rainDrops.push({ x: Math.random() * (innerWidth + 120), y: Math.random() * innerHeight, v: 520 + Math.random() * 380, l: 9 + Math.random() * 10, a: .16 + Math.random() * .2 }); }
+      if (!rainRaf) { rainLast = performance.now(); rainRaf = requestAnimationFrame(rainFrame); } }
+    if (window.BotMusic && BotMusic.setRain) BotMusic.setRain(on ? (out ? 1 : .6) : 0);
+  }
+  if (window.BotMusic) { const _play = BotMusic.play; BotMusic.play = id => { _play(id); weatherSync(); }; }
+  // raindrops dimple the pond
+  setInterval(() => { if (!document.body.classList.contains('rain-out') || !$('#map').classList.contains('active') || !motionOK || document.hidden) return;
+    const a = Math.random() * 6.28, r = Math.sqrt(Math.random()), x = (220 + Math.cos(a) * r * 62) / 720 * 100, y = (598 + Math.sin(a) * r * 28) / 2290 * 100, e = document.createElement('i');
+    e.className = 'ripple rain'; e.style.left = x + '%'; e.style.top = y + '%'; $('#hotspots').appendChild(e); setTimeout(() => e.remove(), 1500); }, 650);
+  setInterval(weatherSync, 60000);
+  weatherSync(); buildFinds();
   // v32: reactions under each bulletin note (saved locally; board.json reactions.olithia = recorded, shared across devices)
   const REACT = [['yes', '👍 Yes'], ['no', '👎 No'], ['love', '❤️']], ASKR = [['do', 'Yes, do it'], ['notnow', 'Not now']];
   const RLAB = { yes: '👍 yes', no: '👎 no', love: '❤️', do: 'yes, do it', notnow: 'not now' };

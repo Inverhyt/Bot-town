@@ -1,6 +1,6 @@
 // Gentle generated ambient loops (Web Audio API) — no downloaded music.
 window.BotMusic = (() => {
-  let ctx, master, vbus, noise, timer, nextTime = 0, step = 0, current = null, rain;
+  let ctx, master, vbus, noise, timer, nextTime = 0, step = 0, current = null, rain, layer = null, layerLevel = 0;
   const hz = m => 440 * Math.pow(2, (m - 69) / 12);
   const PROG = [[53, 57, 60, 64], [52, 55, 59, 62], [50, 53, 57, 60], [48, 52, 55, 59]]; // Fmaj7 Em7 Dm7 Cmaj7
   const TRACKS = {
@@ -71,12 +71,23 @@ window.BotMusic = (() => {
     }
   }
   function startRain() { const s = ctx.createBufferSource(); s.buffer = noise; s.loop = true; const f = ctx.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = 1200; f.Q.value = .4; const g = ctx.createGain(); g.gain.value = .12; s.connect(f); f.connect(g); g.connect(master); s.start(); rain = s; }
+  // v59: a soft drizzle bed under whatever track is playing (only while music is on); level 0 = none, ~1 = gentle rain
+  function stopLayer() { if (!layer) return; const l = layer; layer = null; try { l.g.gain.cancelScheduledValues(ctx.currentTime); l.g.gain.setTargetAtTime(0, ctx.currentTime, .6); setTimeout(() => { try { l.s.stop(); } catch (e) {} }, 2500); } catch (e) {} }
+  function startLayer() {
+    if (!ctx || !current || current === 'rain' || layer || layerLevel <= 0) return;
+    const s = ctx.createBufferSource(); s.buffer = noise; s.loop = true;
+    const hp = ctx.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 900;
+    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 5200;
+    const g = ctx.createGain(); g.gain.value = 0; s.connect(hp); hp.connect(lp); lp.connect(g); g.connect(master);
+    g.gain.setTargetAtTime(.05 * layerLevel, ctx.currentTime, 1.2); s.start(); layer = { s, g };
+  }
+  function setRain(level) { layerLevel = level || 0; if (!layerLevel) stopLayer(); else if (layer && ctx) layer.g.gain.setTargetAtTime(.05 * layerLevel, ctx.currentTime, 1); else startLayer(); }
   function play(id) {
     stop(); if (!id || !TRACKS[id]) return;
     init(); ctx.resume(); current = id; step = 0; nextTime = ctx.currentTime + .1;
     if (id === 'rain') startRain();
-    schedule(); timer = setInterval(schedule, 100);
+    schedule(); timer = setInterval(schedule, 100); startLayer();
   }
-  function stop() { clearInterval(timer); timer = null; if (rain) { try { rain.stop(); } catch (e) {} rain = null; } current = null; }
-  return { TRACKS, play, stop, get current() { return current; } };
+  function stop() { stopLayer(); clearInterval(timer); timer = null; if (rain) { try { rain.stop(); } catch (e) {} rain = null; } current = null; }
+  return { TRACKS, play, stop, setRain, get current() { return current; } };
 })();
