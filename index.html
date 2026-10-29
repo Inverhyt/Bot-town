@@ -15,6 +15,7 @@
   <div id="mapTools">
     <button class="ibtn" id="boardBtn" aria-label="Town board"></button>
     <button class="ibtn" id="mailBtn" aria-label="Mailbox"></button>
+    <button class="ibtn" id="bellBtn" aria-label="Notifications"></button>
     <button class="ibtn" id="mapMusic" aria-label="Music"></button>
   </div>
   <div id="mail" hidden>
@@ -71,6 +72,17 @@
     <h2>To-do</h2><p id="nbDate" class="nb-date"></p>
     <div id="nbList"></div>
     <a href="#" id="nbAsk" class="nb-ask">✎ Ask Loria</a>
+  </div>
+</div>
+<div id="notif" class="modal" hidden>
+  <div class="nk-page" role="dialog" aria-label="Notifications">
+    <button type="button" id="ntClose" class="nb-x" aria-label="Close">✕</button>
+    <h2>Notifications</h2>
+    <p class="nt-lead">Bot Town can nudge you when the bots have something new for you.</p>
+    <label class="nt-row"><span><b>Tell me about new things</b><small id="ntState">Off</small></span><input type="checkbox" id="ntToggle" role="switch"><i class="nt-sw" aria-hidden="true"></i></label>
+    <ul class="nt-list"><li>📓 Loria's to-dos</li><li>🗞️ Scout's news</li><li>📌 New town notices</li><li>💬 Chat replies from the bots</li></ul>
+    <p class="nt-note">💡 Real push messages while the app is <b>closed</b> aren't possible, because Bot Town has no push server. You'll be notified while the app is open or in the background. When it's closed, a little dot shows on each house that has something new.</p>
+    <div class="nk-btns"><button type="button" id="ntCheck" class="nk-btn">Check now</button><button type="button" id="ntTest" class="nk-btn alt">Send a test</button></div>
   </div>
 </div>
 <div id="nook" class="modal" hidden>

@@ -152,7 +152,8 @@
   const isNight = () => nightParam !== null ? nightParam === '1' : inHours(cur.room.nightHours || (cur.room.awake ? (CFG.bedNight || [20, 7]) : [19, 6]));
   // v26: which painting to show, from locate() only
   function roomURL() {
-    const R = cur.room;
+    const R = cur.room, lp = layerPlan(); // v60: with character layers the room art is just the empty room; the characters are separate sprites on top
+    if (lp) return lp.base;
     if (R.poses) { // a painted house: its owner in a pose, the visit painting, or empty
       if (!hostHome()) return R.empty || R.poses.idle;
       if (visiting && R.visit) return R.visit;
@@ -202,7 +203,7 @@
   }
   function enter(id, opts = {}) {
     closeDig(); $('#notebook').hidden = $('#paper').hidden = $('#deskTodos').hidden = $('#nook').hidden = true; deskShown = false; // v52, v57, v58
-    curId = id; cur = C[id];
+    curId = id; cur = C[id]; if (typeof clearUnread === 'function') clearUnread(id); // v60: visiting a house reads its unread dot
     visiting = id !== CFG.player && locate(CFG.player).scene === id;
     pose = cur.room.poses && isChar(id) && hostHome() ? locate(id).pose : 'idle';
     $('#house').style.opacity = '';
@@ -223,7 +224,7 @@
     $('#tasks').classList.add('collapsed');
     $('#back').setAttribute('aria-label', cur.returnTo ? ('Back to ' + C[cur.returnTo].house) : 'Back to map');
     $('#map').classList.remove('active'); $('#house').classList.add('active');
-    layout(); buildActors(); buildGuests(); buildCat(); resetCam(false); buildLinks(); buildPlay(); buildOwl(); buildPark44();
+    layout(); buildActors(); buildGuests(); buildCat(); buildChars(false); resetCam(false); buildLinks(); buildPlay(); buildOwl(); buildPark44();
     $('#tasks').hidden = gallery || !(cur.tasks || isBot(id));
     $('#tbTasks span').textContent = isBot(id) ? 'Thoughts' : 'Tasks'; // v55
     $('#tbTasks').hidden = $('#tasks').hidden; $('#tbChat').hidden = id === CFG.player; // v57: no chat in her own house; she chats in the bots' houses
@@ -612,7 +613,8 @@
   // ---------- loader ----------
   (function () {
     const tips = CFG.loadingTips || [];
-    const urls = ['assets/map-v59.webp', 'assets/frog.webp', ...Object.values((CFG.cat && CFG.cat.art) || {}), ...Object.values(CFG.sprites || {}).map(s => s.src), ...Object.values(C).flatMap(c => [c.sprite, c.mapImage, c.room && c.room.image, c.room && c.room.sleeping, c.room && c.room.night, c.room && c.room.awake, c.room && c.room.awakeNight, c.room && c.room.sleepingDay, ...Object.values((c.room && c.room.noCat) || {}), c.room && c.room.visit, c.room && c.room.empty, c.room && c.room.swing && c.room.swing.src, ...Object.values(c.room.cameos || {}).flatMap(k => [k.day, k.night]), ...Object.values(c.room.poses || {}), ...(c.pets || []).filter(p => p.sprite).map(p => p.sprite)])].filter(Boolean);
+    const urls = [...Object.values(CFG.layers || {}).map(l => l.src), 'assets/map-v59.webp', 'assets/frog.webp', ...Object.values((CFG.cat && CFG.cat.art) || {}), ...Object.values(CFG.sprites || {}).map(s => s.src), ...Object.values(C).flatMap(c => [c.sprite, c.mapImage, c.room && c.room.image, c.room && c.room.sleeping, c.room && c.room.night, c.room && c.room.awake, c.room && c.room.awakeNight, c.room && c.room.sleepingDay, ...Object.values((c.room && c.room.noCat) || {}), c.room && c.room.visit, c.room && c.room.empty, c.room && c.room.swing && c.room.swing.src, ...Object.values(c.room.cameos || {}).flatMap(k => [k.day, k.night]), ...Object.values(c.room.poses || {}), ...(c.pets || []).filter(p => p.sprite).map(p => p.sprite)])].filter(Boolean);
+    if (new URLSearchParams(location.search).get('layers') !== '0') { const skip = new Set(); ['olithia', 'gorbo', 'loria'].forEach(h => { const R = (C[h] || {}).room || {}, B = (C[h + '-bed'] || {}).room || {}; Object.values(R.poses || {}).forEach(u => skip.add(u)); [B.awake, B.awakeNight, B.sleeping, B.sleepingDay, B.image && h === 'olithia' ? B.image : null, B.image && h === 'olithia' ? B.night : null, ...(h === 'olithia' ? [(B.noCat || {}).awake, (B.noCat || {}).awakeNight] : [])].forEach(u => u && skip.add(u)); }); for (let k = urls.length - 1; k >= 0; k--) if (skip.has(urls[k])) urls.splice(k, 1); } // v60: the painted-in-character versions aren't needed while the layers are on
     let done = 0, ti = 0; const t0 = Date.now(), slow = +(new URLSearchParams(location.search).get('loaddelay') || 0);
     const tipEl = $('#tip'); if (tips.length) tipEl.textContent = tips[0];
     const tipTimer = setInterval(() => { tipEl.style.opacity = 0; setTimeout(() => { ti = (ti + 1) % tips.length; tipEl.textContent = tips[ti]; tipEl.style.opacity = 1; }, 300); }, 1800);
@@ -874,9 +876,79 @@
     Object.assign(sh.style, { left: s.x + '%', top: s.y + '%', width: wPct * .8 + '%', zIndex: Math.round(s.y * 10) - 1 });
     const el = document.createElement('img'); el.className = 'cat cat-' + c.pose; el.alt = K.name; el.draggable = false; el.src = K.art[c.pose];
     Object.assign(el.style, { left: s.x + '%', top: s.y + '%', height: hPct + '%', zIndex: Math.round(s.y * 10) });
-    el.onclick = ev => { ev.stopPropagation(); showBubble(el, K.name, pick(K.lines)); el.classList.remove('hop'); void el.offsetWidth; el.classList.add('hop'); };
+    el.onclick = ev => { ev.stopPropagation(); showBubble(el, K.name, pick(K.lines)); { const r = el.getBoundingClientRect(); emoteAt(r.left + r.width / 2, r.top, 'cat'); } el.classList.remove('hop'); void el.offsetWidth; el.classList.add('hop'); };
     $('#actors').append(sh, el);
   }
+
+  // ----- v60: character layers, step one. Olithia, Gorbo, Loria and Mr. Bubbles are standalone transparent sprite layers (cut from the painted scenes
+  // in config.js BOT_TOWN.layers) laid over the empty room. Each breathes, and a tap on the character (hit-tested on the sprite's own pixels) pops an emote bubble.
+  // ?layers=0 turns it off and brings the old fully-painted scenes back. Scout's rooms stay painted (his poses were repainted whole, so they can't be separated cleanly).
+  var LAY = CFG.layers || {}, layersOn = new URLSearchParams(location.search).get('layers') !== '0';
+  var LAYER_HOSTS = ['olithia', 'gorbo', 'loria'];
+  function layerPlan() {
+    if (!layersOn || !cur || !cur.room) return null;
+    const R = cur.room;
+    if (R.poses && LAYER_HOSTS.includes(curId)) { // a painted house
+      if (!hostHome() || (visiting && R.visit)) return null; // empty, or both of them painted together in the -visit art
+      const k = curId + '-house-' + pose; return LAY[k] && R.empty ? { base: R.empty, keys: [k] } : null;
+    }
+    const id = String(curId).replace(/-bed$/, '');
+    if ((R.awake || R.sleeping) && curId.endsWith('-bed') && LAYER_HOSTS.includes(id)) { // a bedroom
+      const L = locate(cur.returnTo || curId), here = L.scene === curId, n = isNight();
+      if (id === 'olithia') {
+        const nc = R.noCat; if (!nc) return null; const cat = catNow().scene === 'olithia-bed', ck = n ? 'olithia-bed-catnight' : 'olithia-bed-catday';
+        if (here && L.pose === 'sleeping') return n || !R.sleepingDay ? { base: nc.night, keys: ['olithia-bed-sleep'] } : { base: nc.image, keys: ['olithia-bed-sleepday'] }; // she and Mr. Bubbles are painted curled up together
+        const keys = []; if (here) keys.push(n ? 'olithia-bed-awakenight' : 'olithia-bed-awake'); if (cat) keys.push(ck);
+        return { base: n ? nc.night : nc.image, keys };
+      }
+      const nb = R.night || R.image;
+      if (here && L.pose === 'sleeping') return { base: nb, keys: [id + '-bed-sleeping'] }; // the sleeping art is always the dark night look
+      return { base: n ? nb : R.image, keys: here ? [id + (n ? '-bed-awakenight' : '-bed-awake')] : [] };
+    }
+    return null;
+  }
+  var EMOTES = { olithia: ['✨', '💗', '🌸', '🎵'], gorbo: ['⚙️', '💚', '🎵', '✨'], loria: ['💗', '📖', '🎵', '🦉'], cat: ['💗', '🎵', '🐾'], sleep: ['💤', '💭'] };
+  var chrWho = k => /-bed-cat/.test(k) ? 'cat' : k.split('-')[0];
+  function buildChars(fade) {
+    const a = $('#actors'), lp = layerPlan(), want = (lp ? lp.keys : []).filter(k => LAY[k]);
+    const have = [...a.querySelectorAll('.chr')];
+    if (!fade) have.forEach(e => e.remove());
+    const live = [...a.querySelectorAll('.chr:not(.gone)')], keep = new Set(live.map(e => e.dataset.k)), fresh = want.filter(k => !keep.has(k));
+    if (!fade || !motionOK) live.filter(e => !want.includes(e.dataset.k)).forEach(e => e.remove());
+    else live.filter(e => !want.includes(e.dataset.k)).forEach(e => { e.classList.add('gone'); e.style.opacity = '0'; setTimeout(() => e.remove(), 650); }); // a dissolve: the old pose fades out as the new one fades in
+    fresh.forEach(k => {
+      const d = LAY[k], el = document.createElement('div'), sl = /-sleep(day)?$|-bed-sleeping$/.test(k), cat = /-bed-cat/.test(k);
+      el.className = 'chr' + (sl ? ' asleep' : '') + (cat ? ' cat' : ''); el.dataset.k = k; el.dataset.who = chrWho(k);
+      Object.assign(el.style, { left: d.box[0] + '%', top: d.box[1] + '%', width: d.box[2] + '%', height: d.box[3] + '%', '--d': (-(hashS(k) % 40) / 10) + 's' });
+      if (/-house-idle$/.test(k)) { const cs = document.createElement('i'); cs.className = 'cs'; el.appendChild(cs); } // soft contact shadow under a standing character
+      const im = document.createElement('img'); im.className = 'body'; im.alt = ''; im.draggable = false; im.src = d.src; el.appendChild(im);
+      if (fade && motionOK && live.length) { el.classList.add('fresh'); a.appendChild(el); requestAnimationFrame(() => requestAnimationFrame(() => el.classList.remove('fresh'))); }
+      else a.appendChild(el);
+    });
+  }
+  var chrAlpha = {};
+  function chrHit(el, cx, cy) {
+    const im = el.querySelector('img.body'), r = im.getBoundingClientRect();
+    if (cx < r.left || cx > r.right || cy < r.top || cy > r.bottom || !im.complete || !im.naturalWidth) return false;
+    let c = chrAlpha[el.dataset.k]; if (!c || c.src !== im.src) { const cv = document.createElement('canvas'); cv.width = im.naturalWidth; cv.height = im.naturalHeight;
+      const g = cv.getContext('2d', { willReadFrequently: true }); g.drawImage(im, 0, 0); c = chrAlpha[el.dataset.k] = { src: im.src, g, w: cv.width, h: cv.height }; }
+    const x = Math.min(c.w - 1, Math.max(0, Math.floor((cx - r.left) / r.width * c.w))), y = Math.min(c.h - 1, Math.max(0, Math.floor((cy - r.top) / r.height * c.h)));
+    try { return c.g.getImageData(x, y, 1, 1).data[3] > 60; } catch (e) { return true; }
+  }
+  function emoteAt(cx, cy, who) {
+    const h = $('#house'), hr = h.getBoundingClientRect(); h.querySelectorAll('.emote[data-who="' + who + '"]').forEach(e => e.remove());
+    const pool = EMOTES[who] || EMOTES.olithia, e = document.createElement('div'); e.className = 'emote'; e.dataset.who = who; e.textContent = pick(pool); e.setAttribute('aria-hidden', 'true');
+    e.style.left = (cx - hr.left) + 'px'; e.style.top = (cy - hr.top) + 'px'; h.appendChild(e); setTimeout(() => e.remove(), 1500);
+  }
+  $('#stage').addEventListener('click', ev => {
+    const els = [...$('#actors').querySelectorAll('.chr:not(.gone)')].reverse();
+    for (const el of els) if (chrHit(el, ev.clientX, ev.clientY)) {
+      const im = el.querySelector('img.body'), r = im.getBoundingClientRect(), who = el.classList.contains('asleep') ? 'sleep' : el.dataset.who;
+      emoteAt(r.left + r.width / 2, r.top + Math.min(r.height * .16, 46), who);
+      if (motionOK) { im.classList.remove('tap'); void im.offsetWidth; im.classList.add('tap'); }
+      break;
+    }
+  }, true);
   function refreshScene() {
     if (!cur) return;
     visiting = curId !== CFG.player && locate(CFG.player).scene === curId;
@@ -885,7 +957,7 @@
     $('#actors').querySelectorAll('.link:not(.pboard):not(.pg-slide):not(.pg-chest):not(.pg-chimes)').forEach(e => e.remove()); buildLinks();
     const wantMain = !cur.bot || locate(cur.bot).scene === curId, wantVis = !!(cur.room.visitor && visiting);
     if (cur.sprite && !cur.room.poses && !cur.gallery && (!!actors.main !== wantMain || !!actors.visitor !== wantVis)) buildActors();
-    buildGuests(); buildCat(); buildOwl(); updateMode(true); deskPopup(); buildFinds(); if (cur.play) playTools();
+    buildGuests(); buildCat(); buildChars(true); buildOwl(); updateMode(true); deskPopup(); buildFinds(); if (cur.play) playTools();
     if (!$('#tasks').hidden && (cur.tasks || isBot(curId))) renderTasks();
   }
 
@@ -1890,5 +1962,94 @@
     const openPoemsRefresh = () => fetch('poems.json', { cache: 'no-store' }).then(r => r.json()).catch(() => []).then(j => render([...mine(), ...(Array.isArray(j) ? j : [])]));
   }
   $('#critBtn').onclick = ev => { ev.stopPropagation(); openCritters(); }; $('#critDone').onclick = () => { $('#critters').hidden = true; }; $('#critters').onclick = e => { if (e.target.id === 'critters') $('#critters').hidden = true; };
-  window.__bt = { catNow, catPlan, thoughtFor, openPoems, enter, go, cam, applyCam, where, locate, setOli, dayPlan, dayKey, push: (a, t) => pgPush(a, document.querySelector('#actors .swing-rider[data-toy=' + t + ']')) }; // handy for testing // handy for testing
+
+  // ----- v60: notifications. Opt-in (the bell on the map; the browser's permission prompt only appears when the switch is turned on). While the app is open or
+  // in the background it checks the relay gently (about every 5 minutes) for new things from the bots: Loria's [todo]s, Scout's [news], new [notice]s and chat replies.
+  // Nothing repeats (seen ids are kept on the device). There is no push server, so nothing arrives while the app is closed: each house gets an unread dot as a fallback.
+  IC.bell = sv('<path d="M6 17v-6a6 6 0 0112 0v6l1.5 2h-15z"/><path d="M10 21a2 2 0 004 0"/>'); $('#bellBtn').innerHTML = IC.bell;
+  var NT_POLL_MS = 5 * 60 * 1000, ntLast = 0, ntBusy = false;
+  function ntSupported() { return 'Notification' in window; }
+  function ntOn() { return !!(store.get('notif', {}) || {}).on && ntSupported() && Notification.permission === 'granted'; }
+  function unreadMap() { return store.get('unread', {}) || {}; }
+  function renderDots() {
+    const u = unreadMap();
+    document.querySelectorAll('#hotspots .hot[data-id]').forEach(h => { const id = h.dataset.id, n = u[id] || 0, nm = (C[id] || {}).name || id; let d = h.querySelector('.udot');
+      if (n) { if (!d) { d = document.createElement('i'); d.className = 'udot'; h.appendChild(d); } d.textContent = n > 9 ? '9+' : String(n); h.classList.add('has-new'); h.setAttribute('aria-label', `Visit ${nm} (${n} new)`); }
+      else { if (d) d.remove(); h.classList.remove('has-new'); h.setAttribute('aria-label', 'Visit ' + nm); } });
+    const tot = Object.values(u).reduce((a, b) => a + b, 0); $('#bellBtn').classList.toggle('has-new', tot > 0);
+    if (navigator.setAppBadge) { try { if (tot) navigator.setAppBadge(tot); else navigator.clearAppBadge(); } catch (e) {} }
+    if (cur && isBot(curId)) $('#tbChat').classList.toggle('has-new', !!u[curId]);
+  }
+  function clearUnread(id) { const u = unreadMap(); if (u[id]) { delete u[id]; store.set('unread', u); } renderDots(); }
+  async function ntShow(title, body, tag, bot) {
+    const opt = { body, tag, icon: 'assets/icon-192.png', badge: 'assets/favicon-32.png', data: { bot } };
+    try { const reg = navigator.serviceWorker && await navigator.serviceWorker.getRegistration(); if (reg && reg.showNotification) { await reg.showNotification(title, opt); return true; } } catch (e) {}
+    try { const n = new Notification(title, opt); n.onclick = () => { try { window.focus(); } catch (e) {} n.close(); }; return true; } catch (e) { return false; }
+  }
+  function ntDescribe(it) {
+    const nm = botName(it.bot);
+    if (it.kind === 'todo') { const t = parseTodo({ text: it.text }); return { title: `${nm} added a to-do`, body: t.task + (t.due ? ' · due ' + prettyDue(t.due) : '') }; }
+    if (it.kind === 'news') return { title: `${nm} has news`, body: parseNews({ text: it.text }).headline };
+    if (it.kind === 'notice') return { title: `Notice from ${nm}`, body: it.text };
+    return { title: `${nm} replied`, body: it.text };
+  }
+  async function pollRelay(manual) {
+    if (ntBusy || !relayOn() || !CFG.relay.key) return -1;
+    ntBusy = true; ntLast = Date.now(); let found = [];
+    try {
+      const url = CFG.relay.url.replace(/\/$/, ''), sinceMap = store.get('notif-since', null), first = !sinceMap, nextSince = { ...(sinceMap || {}) }, seen = store.get('notif-seen', {}) || {};
+      const res = await Promise.all(BOTS.map(async b => {
+        const r = await fetch(`${url}/messages?bot=${b}&since=${first ? Date.now() / 1000 - 30 : (nextSince[b] || 0)}`, { headers: { 'X-BotTown-Key': CFG.relay.key }, cache: 'no-store' });
+        if (!r.ok) throw new Error('relay'); return [b, await r.json()]; }));
+      res.forEach(([b, d]) => {
+        if (first) { nextSince[b] = d.now || Date.now() / 1000; (d.messages || []).forEach(m => { seen[b + ':' + m.id] = 1; }); return; } // first run: everything already there counts as seen
+        (d.messages || []).forEach(m => { nextSince[b] = Math.max(nextSince[b] || 0, m.ts || 0);
+          if (m.direction !== 'out' || typeof m.text !== 'string' || seen[b + ':' + m.id]) return; seen[b + ':' + m.id] = 1;
+          const t = m.text.match(KINDS_RE), kind = t ? t[1].toLowerCase() : 'chat';
+          if (kind === 'request') return; // park-board requests aren't part of this
+          if (kind === 'todo' && !NOTEBOOK_BOTS.includes(b)) return;
+          found.push({ bot: b, kind, text: (t ? t[2] : m.text).trim(), ts: m.ts, id: m.id }); });
+      });
+      const keys = Object.keys(seen); if (keys.length > 600) keys.slice(0, keys.length - 400).forEach(k => delete seen[k]);
+      store.set('notif-since', nextSince); store.set('notif-seen', seen);
+    } catch (e) { ntBusy = false; return -1; }
+    ntBusy = false;
+    const watching = BotTownChat.current, vis = document.visibilityState === 'visible';
+    found = found.filter(it => !(it.kind === 'chat' && it.bot === watching && vis)); // the chat for that bot is open right now: they're reading it
+    if (found.length) {
+      const u = unreadMap(); found.forEach(it => { if (!(cur && curId === it.bot && vis && $('#house').classList.contains('active') && it.kind === 'chat')) u[it.bot] = (u[it.bot] || 0) + 1; }); store.set('unread', u); renderDots();
+      if (found.some(it => it.kind !== 'chat')) pullBoard(); // the notebook, the Gazette and the town board catch up too
+      if (ntOn()) {
+        const ds = found.map(ntDescribe);
+        if (found.length > 3) { ntShow('Bot Town', `${found.length} new things: ` + ds.slice(0, 3).map(d => d.title).join(', ') + '…', 'bt-many'); if (vis) toast(`🔔 ${found.length} new things in Bot Town`); }
+        else found.forEach((it, i) => { ntShow(ds[i].title, ds[i].body.slice(0, 160), `bt-${it.bot}-${it.kind}-${it.id}`, it.bot); if (vis) toast(`🔔 ${ds[i].title}: ${ds[i].body.slice(0, 70)}`); });
+      }
+    }
+    return found.length;
+  }
+  var KINDS_RE = /^\s*\[(notice|request|todo|news)\]\s*([\s\S]+)/i;
+  function renderNotif() {
+    const sup = ntSupported(), perm = sup ? Notification.permission : 'unsupported', on = ntOn();
+    $('#ntToggle').checked = on; $('#ntToggle').disabled = !sup || perm === 'denied';
+    $('#ntState').textContent = !sup ? 'Not supported on this device' : perm === 'denied' ? 'Blocked in your browser settings' : on ? 'On · checks about every 5 minutes' : 'Off';
+    $('#bellBtn').classList.toggle('on', on); $('#bellBtn').setAttribute('aria-pressed', on ? 'true' : 'false');
+  }
+  $('#bellBtn').onclick = () => { $('#notif').hidden = false; renderNotif(); }; // opening the panel never asks for permission
+  $('#ntClose').onclick = () => { $('#notif').hidden = true; };
+  $('#notif').addEventListener('click', e => { if (e.target.id === 'notif') $('#notif').hidden = true; });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('#notif').hidden) $('#notif').hidden = true; });
+  $('#ntToggle').onchange = async e => {
+    if (!e.target.checked) { store.set('notif', { on: false }); renderNotif(); toast('Notifications off'); return; }
+    if (!ntSupported()) { e.target.checked = false; renderNotif(); return; }
+    let perm = Notification.permission;
+    if (perm === 'default') { try { perm = await Notification.requestPermission(); } catch (er) { perm = 'denied'; } } // the one place the permission prompt is raised
+    store.set('notif', { on: perm === 'granted' }); renderNotif();
+    if (perm === 'granted') { toast('Notifications on 🔔'); pollRelay(true); }
+  };
+  $('#ntTest').onclick = async () => { if (!ntOn()) { toast('Turn notifications on first'); return; } const ok = await ntShow('Bot Town', 'This is what a Bot Town notification looks like 🔔', 'bt-test'); toast(ok ? 'Test sent 🔔' : 'Could not show a notification here'); };
+  $('#ntCheck').onclick = async () => { const n = await pollRelay(true); toast(n < 0 ? 'Could not reach the relay right now' : n ? `${n} new thing${n > 1 ? 's' : ''} ✨` : 'Nothing new right now'); };
+  $('#tbChat').addEventListener('click', () => { if (cur && isBot(curId)) clearUnread(curId); });
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && Date.now() - ntLast > 60000) pollRelay(); });
+  setInterval(() => pollRelay(), NT_POLL_MS); setTimeout(() => pollRelay(), 4000); renderDots();
+  window.__bt = { pollRelay, ntOn, unreadMap, renderDots, layerPlan, catNow, catPlan, thoughtFor, openPoems, enter, go, cam, applyCam, where, locate, setOli, dayPlan, dayKey, push: (a, t) => pgPush(a, document.querySelector('#actors .swing-rider[data-toy=' + t + ']')) }; // handy for testing // handy for testing
 })();

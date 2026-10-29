@@ -562,3 +562,44 @@ body.raining #rainTint{opacity:.35}body.rain-out #rainTint{opacity:1}
 #deskTodos #dtList{flex:1 1 auto;min-height:0;overflow:auto;max-height:calc(min(52vh,420px) - 110px);-webkit-overflow-scrolling:touch}
 #deskTodos .dt-open{flex:none;align-self:flex-start;margin-top:6px;padding:8px 2px;min-height:40px}
 @media (prefers-reduced-motion:reduce){.pin.lit,.find:after{animation:none!important}.find:after{opacity:.8}}
+
+/* ===== v60: character layers (breathing, contact shadow, tap emotes) ===== */
+#actors .chr{position:absolute;z-index:1;pointer-events:none;transition:opacity .5s ease-in-out}
+#actors .chr.fresh{opacity:0}
+#actors .chr.gone{opacity:1}
+#actors .chr img.body{position:absolute;inset:0;width:100%;height:100%;display:block;pointer-events:none;-webkit-user-drag:none;transform-origin:50% 100%;animation:chrBreath 4.6s ease-in-out var(--d,0s) infinite}
+#actors .chr.asleep img.body{transform-origin:50% 62%;animation:chrSleep 6.4s ease-in-out var(--d,0s) infinite}
+#actors .chr.cat img.body{transform-origin:50% 100%;animation:chrPurr 3.1s ease-in-out var(--d,0s) infinite}
+#actors .chr img.body.tap{animation:chrTap .42s cubic-bezier(.3,1.6,.5,1) 1}
+#actors .chr .cs{position:absolute;left:14%;width:72%;bottom:-2.2%;height:7%;border-radius:50%;background:radial-gradient(ellipse at center,rgba(48,26,10,.26),rgba(48,26,10,.1) 55%,transparent 72%);pointer-events:none}
+@keyframes chrBreath{0%,100%{transform:scale(1,1)}50%{transform:scale(1.003,1.011)}}
+@keyframes chrSleep{0%,100%{transform:scale(1,1)}50%{transform:scale(1.002,1.006)}}
+@keyframes chrPurr{0%,100%{transform:scale(1,1)}50%{transform:scale(1.008,1.02)}}
+@keyframes chrTap{0%{transform:scale(1,1)}35%{transform:scale(1.025,.975)}70%{transform:scale(.99,1.03)}100%{transform:scale(1,1)}}
+#house .emote{position:absolute;z-index:12;transform:translate(-50%,-100%);width:34px;height:34px;border-radius:50%;background:#fffdf6;border:2px solid #d9b98a;box-shadow:0 3px 8px #0003;display:flex;align-items:center;justify-content:center;font-size:18px;line-height:1;pointer-events:none;animation:emoteUp 1.4s ease-out forwards}
+#house .emote::after{content:"";position:absolute;left:50%;bottom:-7px;width:9px;height:9px;background:#fffdf6;border-right:2px solid #d9b98a;border-bottom:2px solid #d9b98a;transform:translateX(-50%) rotate(45deg) scale(.8);border-radius:0 0 3px 0}
+@keyframes emoteUp{0%{opacity:0;transform:translate(-50%,-70%) scale(.4)}14%{opacity:1;transform:translate(-50%,-100%) scale(1.12)}26%{transform:translate(-50%,-100%) scale(1)}78%{opacity:1}100%{opacity:0;transform:translate(-50%,-190%) scale(1)}}
+@media (prefers-reduced-motion:reduce){#actors .chr img.body{animation:none}#house .emote{animation:emoteStill 1.4s linear forwards}@keyframes emoteStill{0%{opacity:0}10%,80%{opacity:1}100%{opacity:0}}}
+
+/* ===== v60: notifications (bell, panel, unread dots) ===== */
+#bellBtn{position:relative}
+#bellBtn.on svg{stroke:#2f6b6b}
+#bellBtn.has-new::after,#tbChat.has-new::after{content:"";position:absolute;top:4px;right:4px;width:11px;height:11px;border-radius:50%;background:#e4572e;border:2px solid #fff8ec}
+#tbChat{position:relative}
+#hotspots .hot .udot{position:absolute;left:58%;top:2%;z-index:6;min-width:20px;height:20px;padding:0 5px;border-radius:10px;background:#e4572e;color:#fff;border:2px solid #fff8ec;box-shadow:0 2px 5px #0005;font:700 11px/16px Fredoka,sans-serif;text-align:center;font-style:normal;pointer-events:none;animation:udot 2.4s ease-in-out infinite}
+@keyframes udot{0%,100%{transform:scale(1)}50%{transform:scale(1.14)}}
+@media (prefers-reduced-motion:reduce){#hotspots .hot .udot{animation:none}}
+.nt-lead{margin:2px 0 10px;font:16px/22px Fredoka,Georgia,serif;color:#5b3a22}
+.nt-row{position:relative;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 12px;border-radius:12px;background:#fffdf6;border:2px solid #e0c9a0;cursor:pointer}
+.nt-row b{display:block;font:600 16px Grandstander,cursive;color:#5b3a22}
+.nt-row small{display:block;margin-top:2px;font:13px Fredoka,sans-serif;color:#8a6a4a}
+.nt-row input{position:absolute;opacity:0;width:100%;height:100%;left:0;top:0;margin:0;cursor:pointer}
+.nt-sw{flex:none;position:relative;width:46px;height:26px;border-radius:13px;background:#d8c7a8;border:2px solid #b99a6c;transition:background .2s}
+.nt-sw::after{content:"";position:absolute;left:2px;top:2px;width:18px;height:18px;border-radius:50%;background:#fff;box-shadow:0 1px 3px #0004;transition:transform .2s}
+.nt-row input:checked~.nt-sw{background:#7fb77e;border-color:#4f8d57}.nt-row input:checked~.nt-sw::after{transform:translateX(20px)}
+.nt-row input:disabled~.nt-sw{opacity:.5}.nt-row input:focus-visible~.nt-sw{outline:3px solid #2f6b6b}
+.nt-list{margin:10px 0 6px;padding:0;list-style:none;display:grid;grid-template-columns:1fr 1fr;gap:6px;font:14px Fredoka,sans-serif;color:#5b3a22}
+.nt-list li{padding:6px 8px;border-radius:9px;background:#f6e9cf}
+.nt-note{margin:10px 0;padding:10px 12px;border-radius:10px;background:#e4f1ef;border:2px solid #9ccac4;font:14px/20px Fredoka,sans-serif;color:#2d4f4b}
+.nk-btns{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
+.nk-btn.alt{background:#fffdf6}

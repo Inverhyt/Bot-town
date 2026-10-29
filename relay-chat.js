@@ -76,5 +76,5 @@
   // v51 (Bot Town): send one message without opening the panel (bulletin-board reactions); resolves true when the relay took it
   async function post(bot, text) { if (!cfg.relay || !BOTS.includes(bot)) return false;
     try { const r = await fetch(cfg.relay + "/messages", { method: "POST", headers: { "Content-Type": "application/json", "X-BotTown-Key": cfg.key || "" }, body: JSON.stringify({ to: bot, from: name(), text }) }); return r.ok; } catch (e) { return false; } }
-  window.BotTownChat = { init(c) { cfg = c; }, open, close, post, get enabled() { return !!cfg.relay; } };
+  window.BotTownChat = { init(c) { cfg = c; }, open, close, post, get current() { return cur; }, get enabled() { return !!cfg.relay; } };
 })();
