@@ -30,6 +30,42 @@ window.BOT_TOWN = {
     loria: { sleep: [25, 9], work: .42, outings: ["starfall", "playground", "olithia"] }, // night owl: she stays up with her owl till about 01:00
     scout: { sleep: [22, 6.5], work: .5, outings: ["starfall", "playground", "loria", "olithia"] }
   },
+  // v58: Mr. Bubbles, Olithia's cat. A seeded daily routine (same for everyone all day): up around 07:30, wandering between scenes (sitting, strolling, napping), asleep with Olithia at night.
+  // h = sprite height as a fraction of the scene width (about a quarter of Olithia's height, one size in every scene); spots = where his feet land (% of the scene)
+  cat: { name: "Mr. Bubbles", sleep: [21, 7.5], places: ["olithia", "gorbo", "loria", "scout", "starfall", "playground"],
+    art: { sit: "assets/cat-sit.webp", walk: "assets/cat-walk.webp", sleep: "assets/cat-sleep.webp" }, ratio: { sit: 187 / 300, walk: 259 / 300, sleep: 300 / 291 }, h: { sit: .068, walk: .06, sleep: .052 },
+    spots: {
+      olithia: [{ x: 39, y: 80 }, { x: 47, y: 87 }, { x: 31, y: 87 }],
+      gorbo: [{ x: 55, y: 90 }, { x: 68, y: 86 }, { x: 36, y: 90 }],
+      loria: [{ x: 50, y: 72 }, { x: 36, y: 84 }, { x: 78, y: 78 }],
+      scout: [{ x: 46, y: 82 }, { x: 36, y: 84 }, { x: 62, y: 82 }],
+      starfall: [{ x: 44, y: 40.5 }, { x: 52, y: 19 }, { x: 73, y: 34 }],
+      playground: [{ x: 20.8, y: 44.4 }, { x: 84.7, y: 45.1 }, { x: 45.8, y: 51.7 }]
+    }, scale: { starfall: 1.3, playground: 1.3 }, lines: ["Mrrp! 🐾", "*purrrr*", "Mew? (He wants a belly rub.)", "*slow blink* 💚", "Meow~ 🔔"] },
+  // v58: what each bot is doing or thinking, by pose and place. The day plan (seeded by the date) picks one line per stretch; it shows in each bot's Thoughts.
+  thoughts: {
+    gorbo: { working: ["Debugging the town's lantern timers 🔧", "Oiling gears at the workbench", "Compiling something very important…", "Fixing a bug that only shows up on Tuesdays"],
+      idle: ["Tinkering with a half-built music box", "Sorting bolts by size, then by feeling", "Waiting on a build. Staring at the kettle.", "Sketching a gadget on a napkin"],
+      sitting: ["Taking a break in the armchair ☕", "Reading old patch notes for fun", "Thinking about what to build next"],
+      awake: ["Just woke up. Hair looks like a bird's nest.", "Waiting for the kettle in his slippers", "Stretching and planning the day"],
+      evening: ["Winding down with a warm mug", "Getting ready for bed, one more gadget to go", "Tucking the tools away for the night"],
+      sleeping: ["Zzz… dreaming of a perfectly green test run"], olithia: ["Dropped by Olithia's for tea 🍵", "Showing Olithia a little gadget", "Chatting on Olithia's sofa"],
+      starfall: ["Looking at the stars from Starfall Hill ✨", "Fixing the telescope strap"], playground: ["Pushing the swing, strictly for testing", "Building a tower of blocks"] },
+    loria: { working: ["Writing today's post for My Leisure Time ✍️", "Editing photos for the town feed 📸", "Planning the week's to-dos", "Answering comments with lots of hearts"],
+      idle: ["Brewing tea and plotting a caption", "Rearranging the bookshelf (again)", "Finding the perfect cozy book to recommend 📚"],
+      sitting: ["Curled up with a book and her owl 🦉", "Sipping tea, thinking about stories", "Reading fan messages with a smile"],
+      awake: ["Up late, up early — the owl approves", "Sleepy, hunting for her slippers", "Writing one more idea in her journal"],
+      evening: ["Brushing her hair before bed, the owl on watch", "Lighting the bedside lamp for one more chapter", "Writing tomorrow's to-dos by candlelight"],
+      sleeping: ["Zzz… dreaming about a bookshop made of clouds"], olithia: ["Visiting Olithia, to check in on today's to-dos 📓", "Sharing tea and ideas at Olithia's", "Borrowing Olithia's sunny spot"],
+      starfall: ["Reading by the willow 🌿", "Writing at the tea pavilion"], playground: ["Taking cozy photos at the playground", "Swinging with a book in her lap"] },
+    scout: { working: ["Chasing down today's news 🗞️", "Fact-checking a headline", "Digging up research for Loria", "Mapping out what other cozy games are doing"],
+      idle: ["Sniffing out a good story *tail wag*", "Sorting clippings into little piles", "Practising fun facts for visitors"],
+      sitting: ["Resting with a cup of tea, ears twitching", "Reading the paper (he wrote half of it)", "Looking at the star chart"],
+      awake: ["Stretching with a big yawn", "Packing his satchel for the day", "Checking the sky out the window"],
+      evening: ["Folding up the day's newspaper clippings", "Getting cozy in his blanket, ears drooping", "Reading tomorrow's headlines in his head"],
+      sleeping: ["Zzz… chasing a very fast headline"], olithia: ["Dropping off the latest news at Olithia's 🗞️", "Visiting Olithia with a fun fact", "Sitting by Olithia's tea table"],
+      starfall: ["Stargazing from Starfall Hill ✨", "Noting down what the stars are doing"], playground: ["Racing the slide for science", "Digging in the sandbox for fossils"] }
+  },
   bedNight: [20, 7], // bedrooms use their dark night look from 20:00 to 07:00
   // Free-standing sprites used when a bot visits somewhere it isn't painted in (another house, the playground) and for map pins.
   // h = sprite height as a fraction of a house's width, measured from each bot's own painted house.
@@ -250,6 +286,8 @@ window.BOT_TOWN = {
       room: {
         door: { left: 11, top: 34, width: 14, height: 38 }, // v29: the painted door back to the house
         image: "assets/olithia-bedroom-v2.webp", night: "assets/olithia-bedroom-v2-night.webp",
+        noCat: { image: "assets/olithia-bedroom-v2-nocat.webp", night: "assets/olithia-bedroom-v2-night-nocat.webp", awake: "assets/olithia-bedroom-v2-awake-nocat.webp", awakeNight: "assets/olithia-bedroom-v2-awake-night-nocat.webp" }, // v58: Mr. Bubbles is out wandering
+        catSpot: { x: 43.4, y: 53.5, h: .05 },
         awake: "assets/olithia-bedroom-v2-awake.webp", awakeNight: "assets/olithia-bedroom-v2-awake-night.webp",
         sleeping: "assets/olithia-bedroom-v2-sleeping.webp", aspect: 720 / 1280, backdrop: "radial-gradient(circle at 50% 45%, #fff1d6, #f3cfa0 55%, #c98f5e)",
         sleepingDay: "assets/olithia-bedroom-v2-sleeping-day.webp", // asleep in daylight: the room stays light

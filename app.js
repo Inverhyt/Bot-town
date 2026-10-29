@@ -59,7 +59,7 @@
   }
 
   // ---------- house state ----------
-  let cur = null, curId = null, actors = {}, visiting = false, pose = 'idle';
+  let cur = null, curId = null, actors = {}, visiting = false, pose = 'idle', deskShown = false;
   // ---------- where each bot is: status.json when fresh, else the default schedule ----------
   const BOTS = CFG.bots || [];
   const isBot = id => BOTS.includes(id);
@@ -93,14 +93,28 @@
       t = q(Math.min(t + dur, bed - .5));
     }
     rows.push([Math.max(t, bed - .75), bot + '-bed', 'awake']);
+    // v58: every bot drops in at Olithia's cottage once a day (early afternoon to evening), if the plan has a free non-work stretch
+    if (C.olithia && !rows.some(rw => rw[1] === 'olithia')) {
+      const cand = rows.filter(rw => rw[1] === bot && rw[2] !== 'working' && rw[0] >= 12 && rw[0] <= 19);
+      if (cand.length) { const rw = cand[Math.floor(rngOf(hashS(ck + 'visit'))() * cand.length)]; rw[1] = 'olithia'; rw[2] = 'idle'; }
+    }
+    rows.forEach((rw, i) => { rw[3] = thoughtFor(bot, rw[1], rw[2], hashS(ck + '|' + i), rw[0] > 12); });
     return (planCache[ck] = { wake, bed, rows });
+  }
+  // v58: a line for what a bot is doing / thinking, chosen by pose and place (seeded so it holds steady through a stretch of the day)
+  function thoughtFor(bot, place, pose, seed, late) {
+    const T = (CFG.thoughts || {})[bot] || {}, at = arr => arr && arr.length ? arr[seed % arr.length] : '';
+    if (String(place).endsWith('-bed')) return pose === 'sleeping' ? at(T.sleeping) : at(late ? T.evening : T.awake);
+    if (place === bot) return at(T[pose]) || at(T.idle);
+    if (place === 'olithia' || place === 'starfall' || place === 'playground') return at(T[place]);
+    return 'Visiting ' + ((C[place] && C[place].house) || place);
   }
   function scheduled(bot) {
     const h = hourNow(); let P = dayPlan(bot, dayKey(0)), t = h;
     if (h < P.wake) { P = dayPlan(bot, dayKey(-1)); t = h + 24; }
-    if (t >= P.bed || t < P.wake) return { place: bot + '-bed', pose: 'sleeping', note: '', live: false };
+    if (t >= P.bed || t < P.wake) return { place: bot + '-bed', pose: 'sleeping', note: thoughtFor(bot, bot + '-bed', 'sleeping', hashS(bot + dayKey(0))), live: false };
     let e = P.rows[0]; P.rows.forEach(rw => { if (t >= rw[0]) e = rw; });
-    return { place: e[1], pose: e[2], note: '', live: false };
+    return { place: e[1], pose: e[2], note: e[3] || '', live: false };
   }
   // ----- v26: THE one place every scene asks "where is this character, doing what?" -----
   // Returns { scene, place (= scene), pose, note, live }. Bots: status.json when fresh, else their day plan.
@@ -146,15 +160,16 @@
     if (R.awake || R.sleeping) { // a bedroom: asleep, awake, or empty, day or night
       const L = locate(cur.returnTo || curId), here = L.scene === curId, n = isNight();
       if (here && L.pose === 'sleeping') return n || !R.sleepingDay ? R.sleeping : R.sleepingDay;
-      if (here) return n ? (R.awakeNight || R.awake) : R.awake;
-      return n ? (R.night || R.image) : R.image;
+      const nc = R.noCat && curId === 'olithia-bed' && catNow().scene !== 'olithia-bed'; // v58: Mr. Bubbles is out and about, so the bed is empty
+      if (here) return n ? (nc ? R.noCat.awakeNight : (R.awakeNight || R.awake)) : (nc ? R.noCat.awake : R.awake);
+      return n ? (nc ? R.noCat.night : (R.night || R.image)) : (nc ? R.noCat.image : R.image);
     }
     if (R.night && isNight()) return R.night;
     return R.image;
   }
   function applyBackdrop() {
     const url = roomURL();
-    const night = [cur.room.sleeping, cur.room.night, cur.room.awakeNight].filter(Boolean).includes(url);
+    const nCat = cur.room.noCat || {}, night = [cur.room.sleeping, cur.room.night, cur.room.awakeNight, nCat.night, nCat.awakeNight].filter(Boolean).includes(url);
     $('#house').style.background = night
       ? 'radial-gradient(circle at 50% 45%, #141a2e, #0b0f1c)'
       : (cur.room.backdrop || '');
@@ -185,7 +200,7 @@
     if (hide.complete && hide.naturalWidth && hide.src === abs) paint();
   }
   function enter(id, opts = {}) {
-    closeDig(); $('#notebook').hidden = $('#paper').hidden = true; // v52, v57
+    closeDig(); $('#notebook').hidden = $('#paper').hidden = $('#deskTodos').hidden = true; deskShown = false; // v52, v57, v58
     curId = id; cur = C[id];
     visiting = id !== CFG.player && locate(CFG.player).scene === id;
     pose = cur.room.poses && isChar(id) && hostHome() ? locate(id).pose : 'idle';
@@ -207,12 +222,12 @@
     $('#tasks').classList.add('collapsed');
     $('#back').setAttribute('aria-label', cur.returnTo ? ('Back to ' + C[cur.returnTo].house) : 'Back to map');
     $('#map').classList.remove('active'); $('#house').classList.add('active');
-    layout(); buildActors(); buildGuests(); resetCam(false); buildLinks(); buildPlay(); buildOwl(); buildPark44();
+    layout(); buildActors(); buildGuests(); buildCat(); resetCam(false); buildLinks(); buildPlay(); buildOwl(); buildPark44();
     $('#tasks').hidden = gallery || !(cur.tasks || isBot(id));
     $('#tbTasks span').textContent = isBot(id) ? 'Thoughts' : 'Tasks'; // v55
     $('#tbTasks').hidden = $('#tasks').hidden; $('#tbChat').hidden = id === CFG.player; // v57: no chat in her own house; she chats in the bots' houses
     if (cur.tasks || isBot(id)) renderTasks();
-    updateMode(true);
+    updateMode(true); deskPopup();
     if (motionOK && opts.arrive) { $('#house').classList.add('arriving'); setTimeout(() => $('#house').classList.remove('arriving'), 720); }
     if (motionOK && opts.door) { vp.classList.remove('door-shut'); vp.classList.add('door-open'); setTimeout(() => vp.classList.remove('door-open'), 680); }
     maybeTiltPrompt();
@@ -220,7 +235,7 @@
   }
   function toMap(fromPop) {
     closeDig(); // v52
-    $('#notebook').hidden = $('#paper').hidden = true;
+    $('#notebook').hidden = $('#paper').hidden = $('#deskTodos').hidden = true; deskShown = false;
     $('#house').classList.remove('active'); $('#map').classList.add('active'); $('#music').hidden = true;
     $('#house').style.opacity = '';
     cur = null; curId = null;
@@ -544,7 +559,7 @@
     const ul = $('#taskList'); ul.innerHTML = '';
     $('#tasksHead b').textContent = C[curId].name + "'s thoughts"; $('#taskCount').textContent = '';
     const w = where(curId);
-    const doing = w.pose === 'sleeping' ? 'Asleep… zzz' : (w.note || (w.pose === 'working' ? 'Working' : w.pose === 'sitting' ? 'Taking a break' : 'Hanging out'));
+    const doing = w.note || thoughtFor(curId, w.place, w.pose, hashS(curId + dayKey(0) + Math.floor(hourNow() / 1.5))) || (w.pose === 'sleeping' ? 'Asleep… zzz' : w.pose === 'working' ? 'Working' : w.pose === 'sitting' ? 'Taking a break' : 'Hanging out'); // v58
     const li = document.createElement('li'); li.className = 'thought'; li.innerHTML = `<span>💭</span> <span></span> <small></small>`;
     li.children[1].textContent = doing; li.children[2].textContent = (w.pose === 'sleeping' ? placeName(curId) + ' bedroom' : placeName(w.place)) + (w.live ? '' : ' · usual schedule');
     ul.appendChild(li);
@@ -588,7 +603,7 @@
   // ---------- loader ----------
   (function () {
     const tips = CFG.loadingTips || [];
-    const urls = ['assets/map-v3.webp', ...Object.values(CFG.sprites || {}).map(s => s.src), ...Object.values(C).flatMap(c => [c.sprite, c.mapImage, c.room && c.room.image, c.room && c.room.sleeping, c.room && c.room.night, c.room && c.room.awake, c.room && c.room.awakeNight, c.room && c.room.sleepingDay, c.room && c.room.visit, c.room && c.room.empty, c.room && c.room.swing && c.room.swing.src, ...Object.values(c.room.cameos || {}).flatMap(k => [k.day, k.night]), ...Object.values(c.room.poses || {}), ...(c.pets || []).filter(p => p.sprite).map(p => p.sprite)])].filter(Boolean);
+    const urls = ['assets/map-v3.webp', 'assets/frog.webp', ...Object.values((CFG.cat && CFG.cat.art) || {}), ...Object.values(CFG.sprites || {}).map(s => s.src), ...Object.values(C).flatMap(c => [c.sprite, c.mapImage, c.room && c.room.image, c.room && c.room.sleeping, c.room && c.room.night, c.room && c.room.awake, c.room && c.room.awakeNight, c.room && c.room.sleepingDay, ...Object.values((c.room && c.room.noCat) || {}), c.room && c.room.visit, c.room && c.room.empty, c.room && c.room.swing && c.room.swing.src, ...Object.values(c.room.cameos || {}).flatMap(k => [k.day, k.night]), ...Object.values(c.room.poses || {}), ...(c.pets || []).filter(p => p.sprite).map(p => p.sprite)])].filter(Boolean);
     let done = 0, ti = 0; const t0 = Date.now(), slow = +(new URLSearchParams(location.search).get('loaddelay') || 0);
     const tipEl = $('#tip'); if (tips.length) tipEl.textContent = tips[0];
     const tipTimer = setInterval(() => { tipEl.style.opacity = 0; setTimeout(() => { ti = (ti + 1) % tips.length; tipEl.textContent = tips[ti]; tipEl.style.opacity = 1; }, 300); }, 1800);
@@ -817,6 +832,42 @@
       $('#actors').appendChild(el);
     });
   }
+  // ----- v58: Mr. Bubbles, Olithia's cat. A seeded routine per day: bed at night (with Olithia), then stretches of napping / sitting / strolling in one scene after another -----
+  const catPlans = {};
+  function catPlan(key) {
+    if (catPlans[key]) return catPlans[key];
+    const K = CFG.cat, r = rngOf(hashS('cat|' + key)), q = v => Math.round(v * 4) / 4;
+    const wake = q(K.sleep[1] + (r() - .5)), bed = q(K.sleep[0] + (r() - .5) * 1.5);
+    const rows = [[wake, 'olithia', 'sit', 0]]; let t = q(wake + .5 + r() * .75), last = 'olithia';
+    while (t < bed - .5) {
+      const ok = K.places.filter(p => p !== last && C[p] && (p !== 'playground' || (t >= 8 && t < 19))), place = ok[Math.floor(r() * ok.length)], x = r();
+      const pose = x < .3 ? 'sleep' : x < .62 ? 'sit' : 'walk', dur = pose === 'sleep' ? 1 + r() * 1.5 : .5 + r() * 1.25;
+      rows.push([t, place, pose, Math.floor(r() * 3)]); last = place; t = q(t + dur);
+    }
+    return (catPlans[key] = { wake, bed, rows });
+  }
+  function catNow() {
+    const L = locate(CFG.player); // when Olithia is tucked in, he is curled up on the bed with her
+    if (L.scene === 'olithia-bed' && L.pose === 'sleeping') return { scene: 'olithia-bed', pose: 'sleep', spot: 0 };
+    const h = hourNow(); let P = catPlan(dayKey(0)), t = h;
+    if (h < P.wake) { P = catPlan(dayKey(-1)); t = h + 24; }
+    if (t >= P.bed || t < P.wake) return { scene: 'olithia-bed', pose: 'sleep', spot: 0 };
+    let e = P.rows[0]; P.rows.forEach(rw => { if (t >= rw[0]) e = rw; });
+    return { scene: e[1], pose: e[2], spot: e[3] };
+  }
+  function buildCat() {
+    $('#actors').querySelectorAll('.cat,.cat-sh').forEach(e => e.remove());
+    const K = CFG.cat; if (!cur || !K) return;
+    const c = catNow(); if (c.scene !== curId || curId === 'olithia-bed') return; // the bed cat is painted into the bedroom art
+    const spots = K.spots[curId]; if (!spots) return; const s = spots[c.spot % spots.length];
+    const hPct = K.h[c.pose] * ((K.scale || {})[curId] || 1) * 100 / (cur.room.aspect || .75), wPct = hPct * K.ratio[c.pose] * (cur.room.aspect || .75); // width as % of the stage
+    const sh = document.createElement('i'); sh.className = 'cat-sh';
+    Object.assign(sh.style, { left: s.x + '%', top: s.y + '%', width: wPct * .8 + '%', zIndex: Math.round(s.y * 10) - 1 });
+    const el = document.createElement('img'); el.className = 'cat cat-' + c.pose; el.alt = K.name; el.draggable = false; el.src = K.art[c.pose];
+    Object.assign(el.style, { left: s.x + '%', top: s.y + '%', height: hPct + '%', zIndex: Math.round(s.y * 10) });
+    el.onclick = ev => { ev.stopPropagation(); showBubble(el, K.name, pick(K.lines)); el.classList.remove('hop'); void el.offsetWidth; el.classList.add('hop'); };
+    $('#actors').append(sh, el);
+  }
   function refreshScene() {
     if (!cur) return;
     visiting = curId !== CFG.player && locate(CFG.player).scene === curId;
@@ -825,7 +876,7 @@
     $('#actors').querySelectorAll('.link:not(.pboard):not(.pg-slide):not(.pg-chest):not(.pg-chimes)').forEach(e => e.remove()); buildLinks();
     const wantMain = !cur.bot || locate(cur.bot).scene === curId, wantVis = !!(cur.room.visitor && visiting);
     if (cur.sprite && !cur.room.poses && !cur.gallery && (!!actors.main !== wantMain || !!actors.visitor !== wantVis)) buildActors();
-    buildGuests(); buildOwl(); updateMode(true); if (cur.play) playTools();
+    buildGuests(); buildCat(); buildOwl(); updateMode(true); deskPopup(); if (cur.play) playTools();
     if (!$('#tasks').hidden && (cur.tasks || isBot(curId))) renderTasks();
   }
 
@@ -1395,25 +1446,55 @@
   function weekBounds() { const t = new Date(pacDay() + 'T12:00:00'); const dow = (t.getDay() + 6) % 7; const mon = new Date(t); mon.setDate(t.getDate() - dow);
     const sun = new Date(mon); sun.setDate(mon.getDate() + 6); const nsun = new Date(sun); nsun.setDate(sun.getDate() + 7); return [ymd(sun), ymd(nsun)]; }
   const prettyDue = d => { const x = new Date(d + 'T12:00:00'); return x.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }); };
-  function openNotebook() {
-    const today = pacDay(), month = today.slice(0, 7), [endW, endNW] = weekBounds(), dm = doneMap(), now = Date.now();
-    const list = todos.filter(t => (t.due ? t.due.slice(0, 7) <= month : t.date.slice(0, 7) === month)) // this month (and anything overdue)
+  // v58: the notebook is a daily layout: Overdue (if any), Today, Tomorrow, then each following day that has to-dos, then Anytime. Ticking sends the same "Board reply: done" to Loria.
+  const dayName = (d, today) => { const dd = Math.round((new Date(d + 'T12:00:00') - new Date(today + 'T12:00:00')) / 864e5); return (dd === 0 ? 'Today · ' : dd === 1 ? 'Tomorrow · ' : '') + prettyDue(d); };
+  function visibleTodos() {
+    const today = pacDay(), dm = doneMap(), now = Date.now();
+    return todos.filter(t => !/^v\d+ test:/i.test(t.task)) // earlier test posts are not real to-dos
+      .filter(t => t.due ? true : t.date >= pacDay(Date.now() - 7 * 864e5))
       .filter(t => !dm[t.id] || now - dm[t.id] < 864e5)
+      .filter(t => !t.due || t.due >= today || !dm[t.id] || now - dm[t.id] < 864e5)
       .sort((x, y) => (x.due || '9999') < (y.due || '9999') ? -1 : (x.due || '9999') > (y.due || '9999') ? 1 : x.ts - y.ts);
-    const groups = [['This week', t => t.due && t.due <= endW], ['Next week', t => t.due && t.due > endW && t.due <= endNW], ['Later this month', t => !t.due || t.due > endNW]];
-    const box = $('#nbList'); box.innerHTML = '';
-    $('#nbDate').textContent = new Date(today + 'T12:00:00').toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
-    if (!list.length) box.innerHTML = '<p class="nb-empty">Nothing on the list yet ~ a quiet month 🌿</p>';
-    groups.forEach(([name, f]) => { const g = list.filter(f); if (!g.length) return;
-      const h = document.createElement('h4'); h.textContent = name; box.appendChild(h);
-      g.forEach(t => { const done = !!dm[t.id], row = document.createElement('label'); row.className = 'nb-item' + (done ? ' done' : '');
-        row.innerHTML = `<input type="checkbox" ${done ? 'checked disabled' : ''}><span class="nb-task"></span>${t.tag ? `<i class="nb-tag nb-${t.tag.toLowerCase()}">${esc(t.tag)}</i>` : ''}${t.due ? `<small>${esc(prettyDue(t.due))}</small>` : ''}`;
-        row.querySelector('.nb-task').textContent = t.task;
-        row.querySelector('input').onchange = async e => { if (!e.target.checked) return; const d = doneMap(); d[t.id] = Date.now(); store.set('todo-done', d); openNotebook();
-          if (!(relayOn() && await BotTownChat.post('loria', `Board reply: done — "${t.task}"`))) napToast(); else toast('Ticked off — Loria knows ✓'); };
-        box.appendChild(row); }); });
-    $('#notebook').hidden = false;
   }
+  function todoRow(t, dm, again) {
+    const done = !!dm[t.id], row = document.createElement('label'); row.className = 'nb-item' + (done ? ' done' : '');
+    row.innerHTML = `<input type="checkbox" ${done ? 'checked disabled' : ''}><span class="nb-task"></span>${t.tag ? `<i class="nb-tag nb-${t.tag.toLowerCase()}">${esc(t.tag)}</i>` : ''}`;
+    row.querySelector('.nb-task').textContent = t.task;
+    row.querySelector('input').onchange = async e => { if (!e.target.checked) return; const d = doneMap(); d[t.id] = Date.now(); store.set('todo-done', d); again();
+      if (!(relayOn() && await BotTownChat.post('loria', `Board reply: done — "${t.task}"`))) napToast(); else toast('Ticked off — Loria knows ✓'); };
+    return row;
+  }
+  function openNotebook() {
+    const today = pacDay(), dm = doneMap(), list = visibleTodos(), box = $('#nbList'); box.innerHTML = '';
+    $('#nbDate').textContent = new Date(today + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+    const groups = []; const add = (title, items, cls) => { if (items.length) groups.push([title, items, cls]); };
+    const days = [...new Set(list.filter(t => t.due && t.due >= today).map(t => t.due))]; if (!days.includes(today)) days.unshift(today);
+    days.forEach(d => groups.push([dayName(d, today), list.filter(t => t.due === d), d === today ? 'today' : '']));
+    add('Anytime', list.filter(t => !t.due), '');
+    add('Earlier · not ticked yet', list.filter(t => t.due && t.due < today), 'late'); // Today first, then each day after; anything past due waits at the bottom
+    if (!list.length) box.innerHTML = '<p class="nb-empty">Nothing on the list yet ~ a quiet few days 🌿</p>';
+    groups.forEach(([name, items, cls]) => { if (!list.length) return;
+      const h = document.createElement('h4'); h.textContent = name; if (cls) h.className = 'nb-' + cls; box.appendChild(h);
+      if (!items.length) { const p = document.createElement('p'); p.className = 'nb-empty'; p.textContent = 'Nothing due today 🌿'; box.appendChild(p); }
+      items.forEach(t => box.appendChild(todoRow(t, dm, openNotebook))); });
+    $('#nbList').scrollTop = 0; $('#notebook').hidden = false; $('#deskTodos').hidden = true;
+  }
+  // when Olithia is at her desk (the working pose) a small card lists this week's to-dos; ✕ puts it away until she sits down again
+  function deskPopup() {
+    const pop = $('#deskTodos'), want = curId === 'olithia' && pose === 'working';
+    if (!want) { pop.hidden = true; deskShown = false; return; }
+    if (deskShown) return; deskShown = true; fillDesk();
+  }
+  function fillDesk() {
+    const pop = $('#deskTodos'), today = pacDay(), endW = weekBounds()[0], dm = doneMap();
+    const items = visibleTodos().filter(t => t.due && t.due <= endW && !dm[t.id]), box = $('#dtList'); box.innerHTML = '';
+    if (!items.length) { pop.hidden = true; return; }
+    items.sort((x, y) => (x.due < today) - (y.due < today)); // today first, past-due last
+    let last = ''; items.forEach(t => { const k = t.due < today ? 'Earlier · not ticked yet' : dayName(t.due, today); if (k !== last) { const h = document.createElement('h5'); h.textContent = k; box.appendChild(h); last = k; } box.appendChild(todoRow(t, dm, fillDesk)); });
+    pop.hidden = false;
+  }
+  $('#dtClose').onclick = () => { $('#deskTodos').hidden = true; };
+  $('#dtOpen').onclick = () => { $('#deskTodos').hidden = true; openNotebook(); };
   function openPaper() {
     const box = $('#gzList'); box.innerHTML = '';
     $('#gzDate').textContent = new Date(pacDay() + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
@@ -1446,7 +1527,7 @@
     const [headline, summary = '', link = ''] = n.text.split('|').map(s => s.trim());
     return { ...n, headline: headline || n.text, summary, link: /^https?:\/\//i.test(link) ? link : '' };
   }
-  const pacDay = (t = Date.now()) => new Date(t).toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' });
+  const pacDay = t => t === undefined && /^\d{4}-\d{2}-\d{2}$/.test(dayParam || '') ? dayParam : new Date(t === undefined ? Date.now() : t).toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' }); // ?day=YYYY-MM-DD previews a day
   let taskTo = BOTS[0] || 'gorbo';
   const statusLabel = s => ({ done: 'Done', doing: 'Doing', open: 'Open', answered: 'Answered' }[s] || 'Open');
   const sentTasks = () => { const s = store.get('sent-tasks', []); return Array.isArray(s) ? s : []; };
@@ -1469,7 +1550,7 @@
         all.forEach(([b, ms]) => ms.forEach(m => { if (m.direction !== 'out' || typeof m.text !== 'string') return;
           const t = m.text.match(/^\s*\[(notice|request|todo|news)\]\s*([\s\S]+)/i); if (!t) return;
           const kind = t[1].toLowerCase(), n = { id: 'r' + m.id, from: b, text: t[2].trim(), ts: m.ts, date: pacDay(m.ts * 1000) };
-          if (kind === 'todo') { if (NOTEBOOK_BOTS.includes(b)) todo.push(parseTodo(n)); return; } // v57
+          if (kind === 'todo') { if (NOTEBOOK_BOTS.includes(b) && !/^v\d+ test:/i.test(n.text)) todo.push(parseTodo(n)); return; } // v57; v58: skip leftover test posts
           if (m.ts < wk) return;
           if (kind === 'news') { paper.push(parseNews(n)); return; }
           if (kind === 'notice') paper.push({ ...n, headline: n.text, summary: '', link: '' });
@@ -1530,6 +1611,28 @@
     Object.assign(h.style, { left: '40.3%', top: '41.5%', width: '19.4%', height: '6.1%' }); h.innerHTML = '<span class="label">Town board</span>';
     h.addEventListener('click', () => { if (mapDragged()) return; h.classList.remove('glowing'); void h.offsetWidth; h.classList.add('glowing'); setTimeout(() => openBoard(), motionOK ? 220 : 0); });
     $('#hotspots').appendChild(h); })();
+  // v58: the lily pond (painted into the map between Olithia's cottage and the playground) with its frog. Tap: ripples, a croak, and the frog hops to another lily pad.
+  (() => { const pct = (x, y) => [x / 720 * 100, y / 2290 * 100]; // map art is 720 x 2290
+    const pads = [[238, 612], [166, 596], [283, 607], [205, 626]]; let at = 0, taps = 0, busy = false;
+    const hot = document.createElement('div'); hot.className = 'hot pond'; hot.setAttribute('role', 'button'); hot.setAttribute('aria-label', 'Pond');
+    Object.assign(hot.style, { left: '18.5%', top: '23.6%', width: '24%', height: '4.6%' });
+    const frog = document.createElement('img'); frog.className = 'frog'; frog.src = 'assets/frog.webp'; frog.alt = ''; frog.draggable = false;
+    const place = i => { const [x, y] = pct(...pads[i]); frog.style.left = x + '%'; frog.style.top = y + '%'; };
+    $('#hotspots').appendChild(frog); $('#hotspots').appendChild(hot);
+    const hs = $('#hotspots'), setPos = () => place(at); setPos();
+    const ripple = (x, y) => { for (let i = 0; i < 2; i++) { const r = document.createElement('i'); r.className = 'ripple'; r.style.left = x + '%'; r.style.top = y + '%'; r.style.animationDelay = i * .25 + 's'; hs.appendChild(r); setTimeout(() => r.remove(), 1700); } };
+    const hop = (to) => new Promise(res => { const from = at; at = to; const [x0, y0] = pct(...pads[from]), [x1, y1] = pct(...pads[to]);
+      if (!motionOK) { place(to); return res(); }
+      frog.classList.toggle('flip', x1 < x0); frog.style.transition = 'left .55s ease-in-out, top .55s ease-in-out'; place(to);
+      frog.animate([{ translate: '0 0', scale: '1 1' }, { translate: '0 -9px', scale: '.92 1.1' }, { translate: '0 0', scale: '1.1 .9' }, { translate: '0 0', scale: '1 1' }], { duration: 560, easing: 'ease-out' });
+      setTimeout(() => { frog.style.transition = ''; ripple(x1, y1 + .3); res(); }, 580); });
+    hot.addEventListener('click', async e => { if (mapDragged() || busy) return; busy = true; taps++;
+      const r = hs.getBoundingClientRect(), px = (e.clientX - r.left) / r.width * 100, py = (e.clientY - r.top) / r.height * 100; ripple(px, py);
+      const msgs = ['Ribbit! 🐸', 'Ribbit ribbit~', 'The frog blinks at you 🪷', 'Splish! 💦']; toast(taps % 7 === 0 ? 'The frog is thinking about becoming a prince 👑' : msgs[taps % msgs.length]);
+      await hop((at + 1 + Math.floor(Math.random() * (pads.length - 1))) % pads.length); busy = false; });
+    // now and then the frog hops on his own
+    setInterval(() => { if (document.hidden || busy || !$('#map').classList.contains('active') || !motionOK) return; if (Math.random() < .5) { busy = true; hop((at + 1) % pads.length).then(() => { busy = false; }); } }, 14000);
+  })();
   // v32: reactions under each bulletin note (saved locally; board.json reactions.olithia = recorded, shared across devices)
   const REACT = [['yes', '👍 Yes'], ['no', '👎 No'], ['love', '❤️']], ASKR = [['do', 'Yes, do it'], ['notnow', 'Not now']];
   const RLAB = { yes: '👍 yes', no: '👎 no', love: '❤️', do: 'yes, do it', notnow: 'not now' };
@@ -1603,5 +1706,5 @@
     const openPoemsRefresh = () => fetch('poems.json', { cache: 'no-store' }).then(r => r.json()).catch(() => []).then(j => render([...mine(), ...(Array.isArray(j) ? j : [])]));
   }
   $('#critBtn').onclick = ev => { ev.stopPropagation(); openCritters(); }; $('#critDone').onclick = () => { $('#critters').hidden = true; }; $('#critters').onclick = e => { if (e.target.id === 'critters') $('#critters').hidden = true; };
-  window.__bt = { openPoems, enter, go, cam, applyCam, where, locate, setOli, dayPlan, dayKey, push: (a, t) => pgPush(a, document.querySelector('#actors .swing-rider[data-toy=' + t + ']')) }; // handy for testing // handy for testing
+  window.__bt = { catNow, catPlan, thoughtFor, openPoems, enter, go, cam, applyCam, where, locate, setOli, dayPlan, dayKey, push: (a, t) => pgPush(a, document.querySelector('#actors .swing-rider[data-toy=' + t + ']')) }; // handy for testing // handy for testing
 })();

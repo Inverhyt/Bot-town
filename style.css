@@ -483,3 +483,31 @@ button{font-family:inherit;color:inherit;cursor:pointer;touch-action:manipulatio
 .gz-link{font:italic 13px Georgia,serif;color:#5a2e14}
 .gz-ask{display:block;margin-top:8px;text-align:right;font:italic 14px Georgia,serif;color:#5a2e14}
 .gz-empty{font-style:italic;opacity:.7}
+
+/* ===== v58: Mr. Bubbles, the pond + frog, desk to-do card, daily notebook ===== */
+#actors .cat{position:absolute;transform:translate(-50%,-100%);width:auto;cursor:pointer;pointer-events:auto;-webkit-user-drag:none;transform-origin:50% 100%;filter:drop-shadow(0 2px 1.5px #0004)}
+#actors .cat-sh{position:absolute;transform:translate(-50%,-50%);aspect-ratio:5/1;border-radius:50%;background:radial-gradient(ellipse,#0000004d,#0000 70%);pointer-events:none}
+#actors .cat-sit,#actors .cat-sleep{animation:catBreath 4.2s ease-in-out infinite}
+#actors .cat-walk{animation:catStroll 16s ease-in-out infinite}
+#actors .cat.hop{animation:catHop .5s ease-out}
+@keyframes catBreath{0%,100%{transform:translate(-50%,-100%) scale(1,1)}50%{transform:translate(-50%,-100%) scale(1.012,1.03)}}
+@keyframes catStroll{0%{transform:translate(-50%,-100%) translateX(-60%) scaleX(1)}44%{transform:translate(-50%,-100%) translateX(60%) scaleX(1)}50%{transform:translate(-50%,-100%) translateX(60%) scaleX(-1)}94%{transform:translate(-50%,-100%) translateX(-60%) scaleX(-1)}100%{transform:translate(-50%,-100%) translateX(-60%) scaleX(1)}}
+@keyframes catHop{0%{transform:translate(-50%,-100%)}40%{transform:translate(-50%,-118%) scale(.96,1.06)}100%{transform:translate(-50%,-100%)}}
+.hot.pond{border-radius:50%}
+#hotspots .frog{position:absolute;width:4.4%;height:auto;transform:translate(-50%,-78%);pointer-events:none;z-index:2;filter:drop-shadow(0 1.5px 1px #0004)}
+#hotspots .frog.flip{transform:translate(-50%,-78%) scaleX(-1)}
+#hotspots .hot.pond{z-index:3}
+#hotspots .ripple{position:absolute;width:7%;aspect-ratio:3/1;border:1.5px solid #e8fbffcc;border-radius:50%;transform:translate(-50%,-50%) scale(.2);opacity:0;pointer-events:none;z-index:2;animation:ripple 1.4s ease-out forwards}
+@keyframes ripple{0%{opacity:.9;transform:translate(-50%,-50%) scale(.2)}100%{opacity:0;transform:translate(-50%,-50%) scale(1.5)}}
+#deskTodos{position:absolute;left:50%;top:56px;transform:translateX(-50%);width:min(330px,calc(100% - 24px));max-height:46%;overflow:auto;z-index:900;padding:12px 14px 10px 18px;background:#fff8ec;border:2px solid var(--wood);border-radius:6px 14px 14px 6px;box-shadow:0 8px 20px #0005,inset 0 0 0 1px #fff;animation:dtIn .35s ease-out}
+#deskTodos[hidden]{display:none}
+@keyframes dtIn{from{opacity:0;transform:translate(-50%,-10px)}to{opacity:1;transform:translate(-50%,0)}}
+#deskTodos .dt-head{display:flex;align-items:center;justify-content:space-between}
+#deskTodos .dt-head b{font:700 18px Grandstander,cursive;color:#7a3e2a}
+#deskTodos .dt-x{border:0;background:none;font:20px Grandstander,cursive;color:#7a5a3e;min-width:36px;min-height:36px}
+#deskTodos h5{margin:6px 0 0;font:700 14px/22px Grandstander,cursive;color:#2f6b6b}
+#deskTodos .dt-open{display:inline-block;margin-top:8px;border:0;background:none;color:#7a3e2a;font:600 15px Grandstander,cursive;text-decoration:underline wavy #7a3e2a66;padding:6px 0}
+.nb-page h4.nb-today{color:#b5427a;text-decoration-color:#b5427a66}.nb-page h4.nb-late{color:#a23b2a;text-decoration-color:#a23b2a66}
+.nb-page .nb-empty{margin:2px 0 0 4px;font-size:14px}
+@media (prefers-reduced-motion:reduce){#actors .cat{animation:none!important}#hotspots .ripple{animation-duration:.01s}}
+.nb-x,.gz-x{z-index:3}
