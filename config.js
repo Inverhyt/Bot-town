@@ -167,14 +167,15 @@ window.BOT_TOWN = {
         aspect: 720 / 1280, zoom: 1, // whole 16:9 cutaway fits a phone, so both doors are on screen
         backdrop: "radial-gradient(circle at 50% 45%, #fff0dc, #f2c7a0 55%, #b9674a)",
         poses: {
-          idle: "assets/loria-house-v4-idle.webp",
-          working: "assets/loria-house-v4-working.webp",
-          sitting: "assets/loria-house-v4-sitting.webp"
+          idle: "assets/loria-house-v5-idle.webp",
+          working: "assets/loria-house-v5-working.webp",
+          sitting: "assets/loria-house-v5-sitting.webp"
         },
         // Olithia visiting: tap the seating area (sofa and armchairs. Art: x=787–1125, y=287–587 on 1280×720) to sit together
-        visit: "assets/loria-house-v4-visit.webp", seat: { left: 61.5, top: 39.9, width: 26.4, height: 41.7 },
-        // far-left bedroom door. Art: x=66,y=352,w=64,h=180 on 1280×720, padded for taps.
-        bedroom: { to: "loria-bed", label: "Loria's bedroom", door: { left: 1.5, top: 47.2, width: 12.3, height: 28.2 }, doors: [{ left: 44.3, top: 26, width: 13.5, height: 36 }] },
+        visit: "assets/loria-house-v5-visit.webp", seat: { left: 61.5, top: 39.9, width: 26.4, height: 41.7 },
+        // far-left door (study). Art: x=66,y=352,w=64,h=180 on 1280×720, padded for taps.
+        bedroom: { to: "loria-bed", label: "Loria's bedroom", door: { left: 44.3, top: 26, width: 13.5, height: 36 } }, // v62: the round door in the middle entry room is the bedroom's
+        reading: { to: "loria-read", label: "Loria's study", door: { left: 1.5, top: 47.2, width: 12.3, height: 28.2 } }, // v62: the far-left wooden door opens Loria's study
         // v28: tap the desk to send loria to work, the seating to sit, the floor (or loria) for idle
         objects: [
           { pose: "working", label: "Desk", zone: { left: 17, top: 37, width: 22, height: 30 } },
@@ -182,13 +183,8 @@ window.BOT_TOWN = {
         ],
         // v55: the round door in the middle entry room is Loria's bedroom door too (same glow-on-touch door)
         links: [],
-        empty: "assets/loria-house-v4.webp",
-        // v59: painted props (feet = where they stand, w = width, all % of the stage; ratio = image height / width): tap each for its little nook
-        props: [
-          { id: "loria-chair", label: "Reading chair", src: "assets/prop-loria-chair.webp", ratio: 379 / 440, feet: { x: 16.4, y: 89, w: 12 } },
-          { id: "loria-sign", label: "Currently reading", src: "assets/prop-loria-sign.webp", ratio: 435 / 300, feet: { x: 27.2, y: 91, w: 6 } },
-          { id: "loria-press", label: "Flower-pressing corner", src: "assets/prop-loria-press.webp", ratio: 513 / 560, feet: { x: 38.5, y: 90, w: 14 } }
-        ],
+        empty: "assets/loria-house-v5.webp",
+        // v62: the reading nook props (chair, 'currently reading' sign, flower press) moved into Loria's study (scene loria-read)
         guests: { gorbo: { x: 63, y: 88 }, scout: { x: 76, y: 89 } }
       },
       tasks: ["Schedule posts for My Leisure Time", "Test the new game level", "Reply to fan comments", "Shelve the cozy novels"],
@@ -352,6 +348,22 @@ window.BOT_TOWN = {
         awake: "assets/loria-bedroom-v4-awake.webp", awakeNight: "assets/loria-bedroom-v4-awake-night.webp",
         sleeping: "assets/loria-bedroom-v4-sleeping.webp", aspect: 720 / 1280, backdrop: "radial-gradient(circle at 50% 45%, #fff0dc, #f2c7a0 55%, #b9674a)",
         objects: [{ pose: "sleeping", label: "Bed", zone: { left: 20, top: 56, width: 58, height: 27 } }, { pose: "awake", label: "Floor", floor: true, zone: { left: 8, top: 62, width: 84, height: 30 } }],
+      }
+    },
+    "loria-read": { // internal id kept (renaming is risky); the player sees it as "Study"
+      name: "Loria", role: "Study", house: "Loria's Bookshop",
+      gallery: true, returnTo: "loria",
+      // v62: Loria's study (its own door on the left wall of the main room; the bedroom keeps the middle door). v62b: the nook items are painted into the room art; the taps are zones over them.
+      room: {
+        door: { left: 31.5, top: 27, width: 12.5, height: 37 }, // the painted arched door back to the house
+        image: "assets/loria-study-v2.webp", night: "assets/loria-study-v2-night.webp", aspect: 720 / 1280,
+        backdrop: "radial-gradient(circle at 50% 45%, #fff0dc, #f2c7a0 55%, #b9674a)",
+        props: [ // baked: painted into the room art (no overlay image), tap zones are % of the stage
+          { id: "loria-chair", label: "Reading chair", baked: true, zone: { left: 15, top: 53, width: 19.5, height: 27 } },
+          { id: "loria-sign", label: "Currently reading", baked: true, zone: { left: 34.2, top: 50.3, width: 9, height: 22.6 } },
+          { id: "loria-press", label: "Flower-pressing corner", baked: true, zone: { left: 43.5, top: 35.6, width: 17.6, height: 31.3 } }
+        ],
+        objects: []
       }
     },
     "scout-bed": {

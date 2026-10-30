@@ -400,6 +400,7 @@
     (cur.room.objects || []).forEach(o => { const el = addZone(o.zone, o.label, () => tapObject(o)); el.classList.remove('glow'); el.classList.add('obj'); el.style.zIndex = o.floor ? 500 : 600; });
     if ((cur.room.objects || []).length && !store.get('hinted-' + curId, false)) { store.set('hinted-' + curId, true); $('#actors').querySelectorAll('.obj:not([aria-label=Floor])').forEach(e => e.classList.add('hint')); }
     (cur.room.props || []).forEach(p => { // v57: painted props (notebook, newspaper): glow on touch, open their page. v59: feet/ratio props (Loria's nooks, Scout's nook and corkboard)
+      if (p.baked) { const zb = addZone(p.zone, p.label, () => { zb.classList.add('open'); setTimeout(() => { zb.classList.remove('open'); openProp(p.id); }, motionOK ? 200 : 0); }); zb.className = 'link zone door propz'; hintOnce(zb, 'prop-' + p.id); return; } // v62b: painted into the room art, only the tap zone
       const asp = cur.room.aspect || .75;
       let box = p.box, zone = p.zone;
       if (p.feet) { const hh = p.feet.w * p.ratio / asp; box = { left: p.feet.x - p.feet.w / 2, top: p.feet.y - hh, width: p.feet.w, height: hh }; }
@@ -408,12 +409,13 @@
       const img = document.createElement('img'); img.className = 'prop' + (p.wall ? ' wall' : ''); img.src = p.src; img.alt = ''; img.draggable = false; img.dataset.prop = p.id;
       Object.assign(img.style, { left: box.left + '%', top: box.top + '%', width: box.width + '%', height: box.height + '%' });
       if (p.feet) img.style.zIndex = Math.round(p.feet.y * 10);
-      $('#actors').appendChild(img); if (curId.endsWith('-bed') && isNight()) img.classList.add('nt'); // v61: props in a bedroom dim with the night art
+      $('#actors').appendChild(img); if (/-(bed|read)$/.test(curId) && isNight()) img.classList.add('nt'); // v61: props in a bedroom dim with the night art
       if (p.id === 'scout-board') drawBoardPins(img, box);
       const el = addZone(zone, p.label, () => { el.classList.add('open'); setTimeout(() => { el.classList.remove('open'); openProp(p.id); }, motionOK ? 200 : 0); });
       el.className = 'link zone door propz'; if (p.feet) el.style.zIndex = Math.round(p.feet.y * 10) + 1; hintOnce(el, 'prop-' + p.id); });
     const bed = cur.room.bedroom;
     if (bed) [bed.door, ...(bed.doors || [])].forEach(d => doorZone(d, bed.label, () => travel(bed.to, { door: true }))); // v55: extra doors to the same bedroom
+    const rd = cur.room.reading; if (rd) doorZone(rd.door, rd.label, () => travel(rd.to, { door: true })); // v62: its own door to Loria's study
     if (cur.returnTo && cur.room.door) doorZone(cur.room.door, 'Back to the house', () => travel(cur.returnTo, { door: true })); // v29: bedroom door -> house
     (cur.room.spots || []).forEach((s, si) => { const el = addZone(s.zone, s.label, () => {
       if (s.sky) { if (window.BotSky) BotSky.open(); return; }
@@ -1537,17 +1539,25 @@
     const today = pacDay(), dm = doneMap(), now = Date.now();
     return todos.filter(t => !/^v\d+ test:/i.test(t.task)) // earlier test posts are not real to-dos
       .filter(t => t.due ? true : t.date >= pacDay(Date.now() - 7 * 864e5))
-      .filter(t => !dm[t.id] || now - dm[t.id] < 864e5)
-      .filter(t => !t.due || t.due >= today || !dm[t.id] || now - dm[t.id] < 864e5)
+      .filter(t => !dm[t.id] || (t.due ? t.due >= pacDay(now - 7 * 864e5) : now - dm[t.id] < 7 * 864e5)) // v62: ticked items stay visible (and tappable) for a week so an accidental tick can be undone
       .sort((x, y) => (x.due || '9999') < (y.due || '9999') ? -1 : (x.due || '9999') > (y.due || '9999') ? 1 : x.ts - y.ts);
   }
   function todoRow(t, dm, again) {
     const done = !!dm[t.id], row = document.createElement('label'); row.className = 'nb-item' + (done ? ' done' : '');
-    row.innerHTML = `<input type="checkbox" ${done ? 'checked disabled' : ''}><span class="nb-task"></span>${t.tag ? `<i class="nb-tag nb-${t.tag.toLowerCase()}">${esc(t.tag)}</i>` : ''}`;
+    row.innerHTML = `<input type="checkbox" ${done ? 'checked' : ''}><span class="nb-task"></span>${t.tag ? `<i class="nb-tag nb-${t.tag.toLowerCase()}">${esc(t.tag)}</i>` : ''}`;
     row.querySelector('.nb-task').textContent = t.task;
-    row.querySelector('input').onchange = async e => { if (!e.target.checked) return; const d = doneMap(); d[t.id] = Date.now(); store.set('todo-done', d); again();
+    row.querySelector('input').onchange = async e => { const d = doneMap();
+      if (!e.target.checked) { delete d[t.id]; store.set('todo-done', d); again(); // v62: tap a ticked item to untick it (saved on this device, same as ticking)
+        if (!(relayOn() && await BotTownChat.post('loria', `Board reply: not done yet — "${t.task}"`))) toast('Unticked'); else toast('Unticked — Loria knows it\'s not done yet'); return; }
+      d[t.id] = Date.now(); store.set('todo-done', d); again();
       if (!(relayOn() && await BotTownChat.post('loria', `Board reply: done — "${t.task}"`))) napToast(); else toast('Ticked off — Loria knows ✓'); };
     return row;
+  }
+  // v62: one-time clean-up: untick every to-do due 2026-11-01 (ticked by mistake). Ticks live in this device's localStorage ('bt-todo-done'); the relay only ever gets the "Board reply" chat note.
+  function migrateNov1() {
+    if (store.get('mig62-nov1', false)) return;
+    const d = doneMap(); let n = 0; todos.forEach(t => { if (t.due === '2026-11-01' && d[t.id]) { delete d[t.id]; n++; } });
+    store.set('todo-done', d); store.set('mig62-nov1', true);
   }
   function openNotebook() {
     const today = pacDay(), dm = doneMap(), list = visibleTodos(), box = $('#nbList'); box.innerHTML = '';
@@ -1556,7 +1566,8 @@
     const days = [...new Set(list.filter(t => t.due && t.due >= today).map(t => t.due))]; if (!days.includes(today)) days.unshift(today);
     days.forEach(d => groups.push([dayName(d, today), list.filter(t => t.due === d), d === today ? 'today' : '']));
     add('Anytime', list.filter(t => !t.due), '');
-    add('Earlier · not ticked yet', list.filter(t => t.due && t.due < today), 'late'); // Today first, then each day after; anything past due waits at the bottom
+    add('Earlier · not ticked yet', list.filter(t => t.due && t.due < today && !dm[t.id]), 'late'); // Today first, then each day after; anything past due waits at the bottom
+    add('Ticked off recently ✓', list.filter(t => t.due && t.due < today && dm[t.id]), ''); // v62: past ticks stay tappable so they can be undone
     if (!list.length) box.innerHTML = '<p class="nb-empty">Nothing on the list yet ~ a quiet few days 🌿</p>';
     groups.forEach(([name, items, cls]) => { if (!list.length) return;
       const h = document.createElement('h4'); h.textContent = name; if (cls) h.className = 'nb-' + cls; box.appendChild(h);
@@ -1572,10 +1583,10 @@
   }
   function fillDesk() {
     const pop = $('#deskTodos'), today = pacDay(), endW = weekBounds()[0], dm = doneMap();
-    const items = visibleTodos().filter(t => t.due && t.due <= endW && !dm[t.id]), box = $('#dtList'); box.innerHTML = '';
+    const items = visibleTodos().filter(t => t.due && t.due <= endW), box = $('#dtList'); box.innerHTML = '';
     if (!items.length) { pop.hidden = true; return; }
-    items.sort((x, y) => (x.due < today) - (y.due < today)); // today first, past-due last
-    let last = ''; items.forEach(t => { const k = t.due < today ? 'Earlier · not ticked yet' : dayName(t.due, today); if (k !== last) { const h = document.createElement('h5'); h.textContent = k; box.appendChild(h); last = k; } box.appendChild(todoRow(t, dm, fillDesk)); });
+    items.sort((x, y) => ((x.due < today) - (y.due < today)) || ((x.due < today && y.due < today) ? (!!dm[x.id] - !!dm[y.id]) : 0)); // today first, past-due last (ticked ones after the untick-yet ones)
+    let last = ''; items.forEach(t => { const k = t.due < today ? (dm[t.id] ? 'Ticked off recently ✓' : 'Earlier · not ticked yet') : dayName(t.due, today); /* v62: ticked items stay in the card so a mis-tap can be undone */ if (k !== last) { const h = document.createElement('h5'); h.textContent = k; box.appendChild(h); last = k; } box.appendChild(todoRow(t, dm, fillDesk)); });
     pop.hidden = false;
   }
   $('#dtClose').onclick = () => { $('#deskTodos').hidden = true; };
@@ -1665,7 +1676,7 @@
           if (m.ts < wk) return;
           if (kind === 'news') { paper.push(parseNews(n)); return; } // v61: the Gazette is [news] only now (notices stay on the town board)
           (kind === 'notice' ? news : req).push(n); }));
-        todos = todo; paperItems = paper.sort((x, y) => y.ts - x.ts); codeItems = codes.sort((x, y) => y.ts - x.ts);
+        todos = todo; migrateNov1(); paperItems = paper.sort((x, y) => y.ts - x.ts); codeItems = codes.sort((x, y) => y.ts - x.ts);
         townNews = news.sort((x, y) => y.ts - x.ts);
         boardNotes = req.filter(n => n.date === pacDay()).sort((x, y) => y.ts - x.ts).map(n => ({ ...n, ask: true }));
         fromRelay = true;

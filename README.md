@@ -2,6 +2,13 @@
 
 A cozy phone web game (installable PWA). Plain HTML/CSS/JS — no build step.
 
+## v62 (Update 8)
+- **Loria's study** — a new room (scene id `loria-read`) behind the far-left wooden door of the main room. The v59 nook items (reading chair with lamp and side table, the "currently reading" sign, the flower press) moved in from the house floor, are painted into a fully furnished room (v2 art: desk built against the back wall with the flower press, armchair nook by the window, the sign beside the door — furniture against walls, rugs and clutter like Olithia's house), and keep their taps (zones over the painted items). Her bedroom keeps its own room behind the round door in the middle entry room. Art: `assets/loria-study-v2.webp` (+ `-night`).
+- **House edges** — Loria's cutaway (`loria-house-v5*.webp`) has a clean anti-aliased silhouette and a soft ground shadow, like Olithia's house; the dark stair-step fringe and stray bits are gone.
+- **To-dos can be unticked** — tap a ticked item in the notebook or the weekly desk card to untick it (saved in this device's localStorage `bt-todo-done`, and Loria gets a "Board reply: not done yet" note). Ticked items now stay visible for a week (past ones sit under "Ticked off recently").
+- One-time migration (`bt-mig62-nov1`): clears the ticks on every to-do due 2026-11-01.
+- Service worker: `bot-town-v62`.
+
 ## Deploy on GitHub Pages
 1. Create a new GitHub repository (public).
 2. Upload **all files in this folder** to the **repo root** (index.html, style.css, app.js, config.js, music.js, sw.js, manifest.json, README.md and the `assets/` folder). Easiest: unzip `bot-town-site.zip` and drag its contents into GitHub's "Add file → Upload files" page.
@@ -75,5 +82,5 @@ A cozy phone web game (installable PWA). Plain HTML/CSS/JS — no build step.
 - **Olithia's wardrobe.** A painted wardrobe stands in her bedroom. Tap it to open the outfit picker (thumbnails; the choice is saved on this device in `bt-outfit`). Six looks: Classic Teal (the original, default), Wine & Cream, Autumn Suede, Sage Garden, Bluebell Sundress and Denim Day, inspired by the Pinterest "clothes" board (wine, suede, cream ruffles, sage, denim) and adapted to cozy elf cottagecore. The outfit swaps her sprite layers in her house (idle, working, sitting) and her bedroom (awake, day and night). Asleep she stays in pajamas. Data: `BOT_TOWN.outfits` and the `olithia-<scene>-<outfit>` entries in `BOT_TOWN.layers` (config.js); `oKey()` / `openWardrobe()` in app.js.
 - **Scout is a layer.** His house (idle/working/sitting) and bedroom (awake day/night, sleeping) are now separate transparent sprites over the unchanged empty rooms, with breathing and tap emotes (`LAYER_HOSTS`, `EMOTES.scout`). The art with Olithia visiting stays fully painted. `?layers=0` still brings the old painted scenes back.
 - Fix: after tapping a character the bounce now ends and breathing resumes.
-- Service worker: `bot-town-v61` (precaches the new layers and the wardrobe prop).
+- Service worker: `bot-town-v62` (precaches the new layers and the wardrobe prop).
 - **Gazette + codes:** the Gazette prints only today's `[news]` (by the phone's local date) and says "No news yet today" otherwise (`[notice]` stays on the town board). A **Codes** box at the bottom lists `[code] CODE | reward | expires YYYY-MM-DD` posts from any bot for 2 days (the day posted and the next; sooner if the expiry date comes first), with tap-to-copy; notifications cover `[code]` too. Documented in `pi-relay/BOARDS.md`.
