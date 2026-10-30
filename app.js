@@ -408,7 +408,7 @@
       const img = document.createElement('img'); img.className = 'prop' + (p.wall ? ' wall' : ''); img.src = p.src; img.alt = ''; img.draggable = false; img.dataset.prop = p.id;
       Object.assign(img.style, { left: box.left + '%', top: box.top + '%', width: box.width + '%', height: box.height + '%' });
       if (p.feet) img.style.zIndex = Math.round(p.feet.y * 10);
-      $('#actors').appendChild(img);
+      $('#actors').appendChild(img); if (curId.endsWith('-bed') && isNight()) img.classList.add('nt'); // v61: props in a bedroom dim with the night art
       if (p.id === 'scout-board') drawBoardPins(img, box);
       const el = addZone(zone, p.label, () => { el.classList.add('open'); setTimeout(() => { el.classList.remove('open'); openProp(p.id); }, motionOK ? 200 : 0); });
       el.className = 'link zone door propz'; if (p.feet) el.style.zIndex = Math.round(p.feet.y * 10) + 1; hintOnce(el, 'prop-' + p.id); });
@@ -614,7 +614,7 @@
   (function () {
     const tips = CFG.loadingTips || [];
     const urls = [...Object.values(CFG.layers || {}).map(l => l.src), 'assets/map-v59.webp', 'assets/frog.webp', ...Object.values((CFG.cat && CFG.cat.art) || {}), ...Object.values(CFG.sprites || {}).map(s => s.src), ...Object.values(C).flatMap(c => [c.sprite, c.mapImage, c.room && c.room.image, c.room && c.room.sleeping, c.room && c.room.night, c.room && c.room.awake, c.room && c.room.awakeNight, c.room && c.room.sleepingDay, ...Object.values((c.room && c.room.noCat) || {}), c.room && c.room.visit, c.room && c.room.empty, c.room && c.room.swing && c.room.swing.src, ...Object.values(c.room.cameos || {}).flatMap(k => [k.day, k.night]), ...Object.values(c.room.poses || {}), ...(c.pets || []).filter(p => p.sprite).map(p => p.sprite)])].filter(Boolean);
-    if (new URLSearchParams(location.search).get('layers') !== '0') { const skip = new Set(); ['olithia', 'gorbo', 'loria'].forEach(h => { const R = (C[h] || {}).room || {}, B = (C[h + '-bed'] || {}).room || {}; Object.values(R.poses || {}).forEach(u => skip.add(u)); [B.awake, B.awakeNight, B.sleeping, B.sleepingDay, B.image && h === 'olithia' ? B.image : null, B.image && h === 'olithia' ? B.night : null, ...(h === 'olithia' ? [(B.noCat || {}).awake, (B.noCat || {}).awakeNight] : [])].forEach(u => u && skip.add(u)); }); for (let k = urls.length - 1; k >= 0; k--) if (skip.has(urls[k])) urls.splice(k, 1); } // v60: the painted-in-character versions aren't needed while the layers are on
+    if (new URLSearchParams(location.search).get('layers') !== '0') { const skip = new Set(); ['olithia', 'gorbo', 'loria', 'scout'].forEach(h => { const R = (C[h] || {}).room || {}, B = (C[h + '-bed'] || {}).room || {}; Object.values(R.poses || {}).forEach(u => skip.add(u)); [B.awake, B.awakeNight, B.sleeping, B.sleepingDay, B.image && h === 'olithia' ? B.image : null, B.image && h === 'olithia' ? B.night : null, ...(h === 'olithia' ? [(B.noCat || {}).awake, (B.noCat || {}).awakeNight] : [])].forEach(u => u && skip.add(u)); }); for (let k = urls.length - 1; k >= 0; k--) if (skip.has(urls[k])) urls.splice(k, 1); } // v60: the painted-in-character versions aren't needed while the layers are on
     let done = 0, ti = 0; const t0 = Date.now(), slow = +(new URLSearchParams(location.search).get('loaddelay') || 0);
     const tipEl = $('#tip'); if (tips.length) tipEl.textContent = tips[0];
     const tipTimer = setInterval(() => { tipEl.style.opacity = 0; setTimeout(() => { ti = (ti + 1) % tips.length; tipEl.textContent = tips[ti]; tipEl.style.opacity = 1; }, 300); }, 1800);
@@ -882,9 +882,9 @@
 
   // ----- v60: character layers, step one. Olithia, Gorbo, Loria and Mr. Bubbles are standalone transparent sprite layers (cut from the painted scenes
   // in config.js BOT_TOWN.layers) laid over the empty room. Each breathes, and a tap on the character (hit-tested on the sprite's own pixels) pops an emote bubble.
-  // ?layers=0 turns it off and brings the old fully-painted scenes back. Scout's rooms stay painted (his poses were repainted whole, so they can't be separated cleanly).
+  // ?layers=0 turns it off and brings the old fully-painted scenes back. (v61: Scout is layered too; only the visit art with Olithia stays fully painted.)
   var LAY = CFG.layers || {}, layersOn = new URLSearchParams(location.search).get('layers') !== '0';
-  var LAYER_HOSTS = ['olithia', 'gorbo', 'loria'];
+  var LAYER_HOSTS = ['olithia', 'gorbo', 'loria', 'scout']; // v61: Scout joins (his house poses and bedroom were regenerated into the empty rooms so he can be cut out)
   function layerPlan() {
     if (!layersOn || !cur || !cur.room) return null;
     const R = cur.room;
@@ -907,10 +907,14 @@
     }
     return null;
   }
-  var EMOTES = { olithia: ['✨', '💗', '🌸', '🎵'], gorbo: ['⚙️', '💚', '🎵', '✨'], loria: ['💗', '📖', '🎵', '🦉'], cat: ['💗', '🎵', '🐾'], sleep: ['💤', '💭'] };
+  var EMOTES = { olithia: ['✨', '💗', '🌸', '🎵'], gorbo: ['⚙️', '💚', '🎵', '✨'], loria: ['💗', '📖', '🎵', '🦉'], scout: ['🔎', '📜', '🦊', '✨', '🎵'], cat: ['💗', '🎵', '🐾'], sleep: ['💤', '💭'] };
   var chrWho = k => /-bed-cat/.test(k) ? 'cat' : k.split('-')[0];
+  // v61: Olithia's wardrobe. Her chosen outfit swaps the sprite layers (lay-olithia-<scene>-<outfit>); asleep she stays in pajamas, and "default" keeps the art she always had.
+  var OUTFITS = CFG.outfits || [];
+  function outfitId() { const o = store.get('outfit', 'default'); return OUTFITS.some(x => x.id === o) ? o : 'default'; }
+  function oKey(k) { const o = outfitId(); return o !== 'default' && /^olithia-(house|bed-awake)/.test(k) && LAY[k + '-' + o] ? k + '-' + o : k; }
   function buildChars(fade) {
-    const a = $('#actors'), lp = layerPlan(), want = (lp ? lp.keys : []).filter(k => LAY[k]);
+    const a = $('#actors'), lp = layerPlan(), want = (lp ? lp.keys : []).map(oKey).filter(k => LAY[k]);
     const have = [...a.querySelectorAll('.chr')];
     if (!fade) have.forEach(e => e.remove());
     const live = [...a.querySelectorAll('.chr:not(.gone)')], keep = new Set(live.map(e => e.dataset.k)), fresh = want.filter(k => !keep.has(k));
@@ -920,7 +924,7 @@
       const d = LAY[k], el = document.createElement('div'), sl = /-sleep(day)?$|-bed-sleeping$/.test(k), cat = /-bed-cat/.test(k);
       el.className = 'chr' + (sl ? ' asleep' : '') + (cat ? ' cat' : ''); el.dataset.k = k; el.dataset.who = chrWho(k);
       Object.assign(el.style, { left: d.box[0] + '%', top: d.box[1] + '%', width: d.box[2] + '%', height: d.box[3] + '%', '--d': (-(hashS(k) % 40) / 10) + 's' });
-      if (/-house-idle$/.test(k)) { const cs = document.createElement('i'); cs.className = 'cs'; el.appendChild(cs); } // soft contact shadow under a standing character
+      if (/-house-idle(-[a-z]+)?$/.test(k)) { const cs = document.createElement('i'); cs.className = 'cs'; el.appendChild(cs); } // soft contact shadow under a standing character
       const im = document.createElement('img'); im.className = 'body'; im.alt = ''; im.draggable = false; im.src = d.src; el.appendChild(im);
       if (fade && motionOK && live.length) { el.classList.add('fresh'); a.appendChild(el); requestAnimationFrame(() => requestAnimationFrame(() => el.classList.remove('fresh'))); }
       else a.appendChild(el);
@@ -945,7 +949,7 @@
     for (const el of els) if (chrHit(el, ev.clientX, ev.clientY)) {
       const im = el.querySelector('img.body'), r = im.getBoundingClientRect(), who = el.classList.contains('asleep') ? 'sleep' : el.dataset.who;
       emoteAt(r.left + r.width / 2, r.top + Math.min(r.height * .16, 46), who);
-      if (motionOK) { im.classList.remove('tap'); void im.offsetWidth; im.classList.add('tap'); }
+      if (motionOK) { im.classList.remove('tap'); void im.offsetWidth; im.classList.add('tap'); im.addEventListener('animationend', () => im.classList.remove('tap'), { once: true }); } // v61: the bounce ends and breathing resumes (it used to stay stuck on the tap animation)
       break;
     }
   }, true);
@@ -1576,15 +1580,39 @@
   }
   $('#dtClose').onclick = () => { $('#deskTodos').hidden = true; };
   $('#dtOpen').onclick = () => { $('#deskTodos').hidden = true; openNotebook(); };
-  function openProp(id) { ({ notebook: openNotebook, paper: openPaper, 'loria-chair': openChair, 'loria-sign': openSign, 'loria-press': openPress, 'scout-nook': openLookout, 'scout-board': openHunt }[id] || (() => {}))(); }
+  function openProp(id) { ({ wardrobe: openWardrobe, notebook: openNotebook, paper: openPaper, 'loria-chair': openChair, 'loria-sign': openSign, 'loria-press': openPress, 'scout-nook': openLookout, 'scout-board': openHunt }[id] || (() => {}))(); }
+  // v61: the Gazette prints only today's [news] (by the phone's local date), and a "Codes" box lists active [code] posts until they expire (tap a code to copy it)
+  const localDay = t => t === undefined && /^\d{4}-\d{2}-\d{2}$/.test(dayParam || '') ? dayParam : new Date(t === undefined ? Date.now() : t).toLocaleDateString('en-CA'); // YYYY-MM-DD in the device's own time zone
+  function parseCode(n) { // [code] CODE | reward | expires YYYY-MM-DD (reward and expiry optional). Shown for 2 days (the day posted and the next), or until its expiry if sooner
+    const parts = n.text.split('|').map(s => s.trim()).filter(Boolean), code = (parts.shift() || '').replace(/\s+/g, ' '); let reward = '', exp = '';
+    parts.forEach(p => { const d = p.match(/^(?:expires?|exp|until|valid\s+until)?\s*:?\s*(\d{4}-\d{2}-\d{2})$/i); if (d) exp = d[1]; else if (!reward) reward = p; });
+    const nd = new Date(localDay(n.ts * 1000) + 'T12:00:00'); nd.setDate(nd.getDate() + 1); const next = nd.toLocaleDateString('en-CA'); // the day after it was posted
+    return { ...n, code, reward, exp, noExp: !exp, last: exp && exp < next ? exp : next }; // v61: shown the day it's posted and the next day, or until its expiry if that comes sooner
+  }
+  const activeCodes = () => { const today = localDay(), seen = new Set(); return codeItems.filter(c => c.code && c.last >= today && !seen.has(c.code.toLowerCase()) && seen.add(c.code.toLowerCase())); }; // newest first, one per code; shown through `last` (posted day + 1, or the expiry day if sooner)
+  function copyText(t, ok) {
+    const done = () => toast(ok || 'Copied ' + t + ' 📋');
+    const fb = () => { const x = document.createElement('textarea'); x.value = t; x.style.cssText = 'position:fixed;opacity:0;left:-99px'; document.body.appendChild(x); x.select(); try { document.execCommand('copy'); } catch (e) {} x.remove(); done(); };
+    try { if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(t).then(done, fb); else fb(); } catch (e) { fb(); }
+  }
   function openPaper() {
     const box = $('#gzList'); box.innerHTML = '';
-    $('#gzDate').textContent = new Date(pacDay() + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
-    if (!paperItems.length) box.innerHTML = '<p class="gz-empty">No news this week. Scout is out gathering stories…</p>';
-    paperItems.forEach((n, i) => { const a = document.createElement('article'); a.className = 'gz-art' + (i === 0 ? ' lead' : '');
-      a.innerHTML = `<h3></h3><p class="gz-by">${esc(botName(n.from))} · ${esc(prettyDue(n.date))}</p>${n.summary ? '<p class="gz-sum"></p>' : ''}${n.link ? '<a class="gz-link" target="_blank" rel="noopener">Read more →</a>' : ''}`;
+    const today = localDay();
+    $('#gzDate').textContent = new Date(today + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+    const items = paperItems.filter(n => localDay(n.ts * 1000) === today);
+    if (!items.length) box.innerHTML = '<p class="gz-empty">No news yet today ☕ Scout is still out gathering stories…</p>';
+    items.forEach((n, i) => { const a = document.createElement('article'); a.className = 'gz-art' + (i === 0 ? ' lead' : '');
+      a.innerHTML = `<h3></h3><p class="gz-by">${esc(botName(n.from))} · ${esc(prettyDue(localDay(n.ts * 1000)))}</p>${n.summary ? '<p class="gz-sum"></p>' : ''}${n.link ? '<a class="gz-link" target="_blank" rel="noopener">Read more →</a>' : ''}`;
       a.querySelector('h3').textContent = n.headline; if (n.summary) a.querySelector('.gz-sum').textContent = n.summary; if (n.link) a.querySelector('a').href = n.link;
       box.appendChild(a); });
+    const cb = $('#gzCodes'); cb.innerHTML = ''; const codes = activeCodes();
+    cb.hidden = false; const h = document.createElement('h4'); h.textContent = '🎟️ Codes'; cb.appendChild(h);
+    if (!codes.length) { const p = document.createElement('p'); p.className = 'gz-empty'; p.textContent = 'No codes right now. Check back soon!'; cb.appendChild(p); }
+    codes.forEach(c => { const b = document.createElement('button'); b.type = 'button'; b.className = 'gz-code'; b.dataset.code = c.code; b.setAttribute('aria-label', 'Copy code ' + c.code);
+      b.innerHTML = `<b></b><span class="rw"></span><small></small>`; b.querySelector('b').textContent = c.code; b.querySelector('.rw').textContent = c.reward || 'A little surprise';
+      b.querySelector('small').textContent = (c.noExp ? 'from ' + botName(c.from) : 'expires ' + prettyDue(c.exp)) + ' · tap to copy';
+      b.onclick = () => { copyText(c.code, 'Copied ' + c.code + ' 📋'); b.classList.add('copied'); b.querySelector('small').textContent = 'Copied! ✓'; setTimeout(() => b.classList.remove('copied'), 1600); };
+      cb.appendChild(b); });
     $('#paper').hidden = false;
   }
   const askBotChat = b => { $('#notebook').hidden = $('#paper').hidden = $('#nook').hidden = true; if (relayOn()) BotTownChat.open(b); else napToast(); };
@@ -1595,7 +1623,7 @@
   addEventListener('keydown', e => { if (e.key === 'Escape') { $('#notebook').hidden = true; $('#paper').hidden = true; $('#nook').hidden = true; } });
 
   // ----- the town board: who's doing what, and Olithia's questions & tasks for the bots -----
-  let taskItems = [], boardNotes = [], townNews = [], todos = [], paperItems = [];
+  let taskItems = [], boardNotes = [], townNews = [], todos = [], paperItems = [], codeItems = [];
   // v57: notebook to-dos ([todo] task | due YYYY-MM-DD | IG/FB/Story, both optional, any order) and the newspaper ([news] headline | summary | link, plus [notice])
   const NOTEBOOK_BOTS = ['loria', 'gorbo'];
   function parseTodo(n) {
@@ -1625,19 +1653,19 @@
     let fromRelay = false;
     if (CFG.relay && CFG.relay.url && CFG.relay.key) {
       try {
-        const since = Date.now() / 1000 - 35 * 86400, wk = Date.now() / 1000 - 7 * 86400, req = [], news = [], todo = [], paper = []; // v57: 35 days for this month's to-dos
+        const since = Date.now() / 1000 - 35 * 86400, wk = Date.now() / 1000 - 7 * 86400, req = [], news = [], todo = [], paper = [], codes = []; // v57: 35 days for this month's to-dos
         const all = await Promise.all(['gorbo', 'loria', 'scout'].map(async b => {
           const r = await fetch(`${CFG.relay.url.replace(/\/$/, '')}/messages?bot=${b}&since=${since}`, { headers: { 'X-BotTown-Key': CFG.relay.key }, cache: 'no-store' });
           if (!r.ok) throw 0; return [b, (await r.json()).messages || []]; }));
         all.forEach(([b, ms]) => ms.forEach(m => { if (m.direction !== 'out' || typeof m.text !== 'string') return;
-          const t = m.text.match(/^\s*\[(notice|request|todo|news)\]\s*([\s\S]+)/i); if (!t) return;
+          const t = m.text.match(/^\s*\[(notice|request|todo|news|code)\]\s*([\s\S]+)/i); if (!t) return;
           const kind = t[1].toLowerCase(), n = { id: 'r' + m.id, from: b, text: t[2].trim(), ts: m.ts, date: pacDay(m.ts * 1000) };
           if (kind === 'todo') { if (NOTEBOOK_BOTS.includes(b) && !/^v\d+ test:/i.test(n.text)) todo.push(parseTodo(n)); return; } // v57; v58: skip leftover test posts
+          if (kind === 'code') { const c = parseCode(n); if (c.code) codes.push(c); return; } // v61: kept until it expires, not just 7 days
           if (m.ts < wk) return;
-          if (kind === 'news') { paper.push(parseNews(n)); return; }
-          if (kind === 'notice') paper.push({ ...n, headline: n.text, summary: '', link: '' });
+          if (kind === 'news') { paper.push(parseNews(n)); return; } // v61: the Gazette is [news] only now (notices stay on the town board)
           (kind === 'notice' ? news : req).push(n); }));
-        todos = todo; paperItems = paper.sort((x, y) => y.ts - x.ts);
+        todos = todo; paperItems = paper.sort((x, y) => y.ts - x.ts); codeItems = codes.sort((x, y) => y.ts - x.ts);
         townNews = news.sort((x, y) => y.ts - x.ts);
         boardNotes = req.filter(n => n.date === pacDay()).sort((x, y) => y.ts - x.ts).map(n => ({ ...n, ask: true }));
         fromRelay = true;
@@ -1726,6 +1754,23 @@
   $('#nkClose').onclick = () => { $('#nook').hidden = true; };
   $('#nook').onclick = e => { if (e.target.id === 'nook') $('#nook').hidden = true; };
 
+  // --- v61: Olithia's wardrobe (in her bedroom): pick an outfit; it's saved on this device and applies to her in every layered scene
+  function openWardrobe() {
+    nook("Olithia's wardrobe", 'ward', b => {
+      const cur_ = outfitId();
+      b.appendChild(nkP('Pick something cozy for Olithia to wear around the cottage. She still sleeps in her pajamas. 🌙', 'nk-lead'));
+      const g = document.createElement('div'); g.className = 'nk-outfits';
+      OUTFITS.forEach(o => {
+        const c = document.createElement('button'); c.type = 'button'; c.className = 'nk-outfit' + (o.id === cur_ ? ' on' : ''); c.dataset.outfit = o.id; c.setAttribute('aria-pressed', o.id === cur_ ? 'true' : 'false');
+        const im = document.createElement('img'); im.src = o.thumb; im.alt = ''; im.draggable = false; c.appendChild(im);
+        const n = document.createElement('b'); n.textContent = o.name; c.appendChild(n);
+        const t = document.createElement('small'); t.textContent = o.id === cur_ ? 'Wearing now' : o.note; c.appendChild(t);
+        c.onclick = () => { if (o.id === outfitId()) return; store.set('outfit', o.id); buildChars(true); toast('Olithia changed into ' + o.name + ' ✨'); openWardrobe(); const nb = $('#nkBody'); if (nb) nb.scrollTop = 0; };
+        g.appendChild(c);
+      });
+      b.appendChild(g);
+    });
+  }
   // --- Loria's reading chair: a cozy page to read (turn the page for another)
   const COZY_PAGES = [
     'The rain had only just started when the lamplighter reached the last street. She hung her coat by the fire, set the kettle on, and decided the rest of the evening belonged to the book on the arm of the chair.',
@@ -1990,6 +2035,7 @@
     const nm = botName(it.bot);
     if (it.kind === 'todo') { const t = parseTodo({ text: it.text }); return { title: `${nm} added a to-do`, body: t.task + (t.due ? ' · due ' + prettyDue(t.due) : '') }; }
     if (it.kind === 'news') return { title: `${nm} has news`, body: parseNews({ text: it.text }).headline };
+    if (it.kind === 'code') { const c = parseCode({ text: it.text, ts: it.ts || 0, from: it.bot }); return { title: `${nm} shared a code`, body: c.code + (c.reward ? ' · ' + c.reward : '') }; }
     if (it.kind === 'notice') return { title: `Notice from ${nm}`, body: it.text };
     return { title: `${nm} replied`, body: it.text };
   }
@@ -2027,7 +2073,7 @@
     }
     return found.length;
   }
-  var KINDS_RE = /^\s*\[(notice|request|todo|news)\]\s*([\s\S]+)/i;
+  var KINDS_RE = /^\s*\[(notice|request|todo|news|code)\]\s*([\s\S]+)/i;
   function renderNotif() {
     const sup = ntSupported(), perm = sup ? Notification.permission : 'unsupported', on = ntOn();
     $('#ntToggle').checked = on; $('#ntToggle').disabled = !sup || perm === 'denied';

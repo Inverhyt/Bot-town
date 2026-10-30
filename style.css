@@ -603,3 +603,19 @@ body.raining #rainTint{opacity:.35}body.rain-out #rainTint{opacity:1}
 .nt-note{margin:10px 0;padding:10px 12px;border-radius:10px;background:#e4f1ef;border:2px solid #9ccac4;font:14px/20px Fredoka,sans-serif;color:#2d4f4b}
 .nk-btns{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
 .nk-btn.alt{background:#fffdf6}
+
+/* ===== v61: wardrobe, outfits ===== */
+#actors img.prop.nt{filter:drop-shadow(0 2px 1.5px rgba(30,18,8,.5)) brightness(.58) saturate(.8) sepia(.15)}
+.nk-outfits{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-top:8px}
+.nk-outfit{display:grid;justify-items:center;align-content:start;gap:2px;padding:8px 6px 8px;border:2px solid #d9b98a;border-radius:12px;background:linear-gradient(#fffdf6,#f8e8c8);color:var(--ink);font:inherit;text-align:center;min-height:200px}
+.nk-outfit img{height:118px;width:auto;max-width:100%;object-fit:contain;filter:drop-shadow(0 3px 2px #4a2f1d55)}
+.nk-outfit b{font:700 15px/18px Grandstander,cursive;color:#7a3e2a}.nk-outfit small{font-size:12px;line-height:15px;opacity:.75}
+.nk-outfit.on{border-color:#2f6b6b;background:linear-gradient(#f2fbf7,#d9efe4);box-shadow:0 0 0 2px #2f6b6b55}.nk-outfit.on small{color:#2f6b6b;font-weight:700;opacity:1}
+
+/* v61: Gazette codes box */
+.gz-codes{margin:12px 0 4px;padding:10px 10px 8px;border:2px dashed #5a2e14;border-radius:8px;background:rgba(255,248,226,.55)}
+.gz-codes h4{margin:0 0 6px;font:700 17px Georgia,serif;color:#5a2e14}
+.gz-code{display:grid;grid-template-columns:1fr;gap:1px;width:100%;margin:6px 0;padding:8px 10px;text-align:left;border:1.5px solid #8a5a2e;border-radius:6px 14px 6px 14px;background:#fffdf3;color:#2a2620;font:inherit;min-height:56px;cursor:pointer}
+.gz-code b{font:700 19px/22px "Courier New",monospace;letter-spacing:1.5px;color:#7a3e2a;word-break:break-all}
+.gz-code .rw{font:14px/18px Georgia,serif}.gz-code small{font:italic 12px Georgia,serif;opacity:.7}
+.gz-code.copied{background:#e3f3dc;border-color:#2f7a3a}.gz-code.copied small{color:#2f7a3a;opacity:1;font-weight:700}
